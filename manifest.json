@@ -1,10 +1,10 @@
 {
   "manifest_version": "0.2",
   "name": "eodhd-mcp",
-  "version": "2.3.2",
+  "version": "2.3.4",
   "description": "A simple MCP server for EODHD APIs",
   "author": {
-    "name": "Enlavan",
+    "name": "Alex Chernyshev",
     "email": "support@eodhistoricaldata.com",
     "url": "https://github.com/Enlavan/EODHD_MCP_server"
   },
