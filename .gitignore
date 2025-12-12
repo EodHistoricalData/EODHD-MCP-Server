@@ -1,0 +1,167 @@
+# ----------------------------
+# Python bytecode / cache
+# ----------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# ----------------------------
+# Virtual environments
+# ----------------------------
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# pyenv
+.python-version
+
+# ----------------------------
+# Distribution / packaging
+# ----------------------------
+.Python
+build/
+dist/
+wheels/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# ----------------------------
+# Installer logs
+# ----------------------------
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ----------------------------
+# Testing / coverage
+# ----------------------------
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# ----------------------------
+# Type checking / linters
+# ----------------------------
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.ruff-cache/
+
+# ----------------------------
+# Jupyter / IPython
+# ----------------------------
+.ipynb_checkpoints
+profile_default/
+ipython_config.py
+
+# ----------------------------
+# Translations
+# ----------------------------
+*.mo
+*.pot
+
+# ----------------------------
+# Django / Flask / Scrapy (optional, harmless)
+# ----------------------------
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+instance/
+.webassets-cache
+
+.scrapy
+
+# ----------------------------
+# Sphinx / docs / mkdocs
+# ----------------------------
+docs/_build/
+site/
+
+# ----------------------------
+# PyBuilder
+# ----------------------------
+target/
+
+# ----------------------------
+# PEP 582
+# ----------------------------
+__pypackages__/
+
+# ----------------------------
+# Celery
+# ----------------------------
+celerybeat-schedule
+celerybeat.pid
+
+# ----------------------------
+# SageMath
+# ----------------------------
+*.sage.py
+
+# ----------------------------
+# IDE / editor configs
+# ----------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.spyderproject
+.spyproject
+.ropeproject
+
+# ----------------------------
+# OS-specific junk
+# ----------------------------
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Environment / secrets
+# ----------------------------
+.env.local
+.env.*.local
+
+# ----------------------------
+# Project-specific ignores
+# ----------------------------
+
+# Local sandbox / scratch scripts
+sandbox.py
+
+# Data files generated during testing / examples
+*.csv
+*.tsv
+
+# MCP bundle artifacts (built for releases, not source)
+*.mcpb
