@@ -6,7 +6,7 @@
   "author": {
     "name": "Alex Chernyshev",
     "email": "support@eodhistoricaldata.com",
-    "url": "https://github.com/Enlavan/EODHD_MCP_server"
+    "url": "https://github.com/EodHistoricalData/EODHD-MCP-Server"
   },
   "server": {
     "type": "python",
