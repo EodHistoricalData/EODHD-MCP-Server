@@ -440,6 +440,9 @@ the MCP server. **Total: 75 tools**
 * `get_mp_illio_market_insights_largest_volatility`
 * `get_mp_illio_market_insights_beta_bands`
 
+These tools support canonical IDs like SnP500, dow, nasdaq100, NDX, spx, etc.
+where the server normalizes aliases to the correct index.
+
 ### Praams Marketplace
 
 * `get_mp_praams_risk_scoring_by_ticker`
@@ -459,7 +462,8 @@ the MCP server. **Total: 75 tools**
 * `get_mp_investverte_esg_list_sectors`
 * `get_mp_investverte_esg_view_sector`
 
-For specific parameter examples and edge-case coverage, see test/all_tests.py.
+For specific parameter examples and edge-case coverage, see test/all_tests.py,
+which registers a wide set of "happy-path" and near-boundary calls against all tools.
 
 ---
 
@@ -495,6 +499,13 @@ EODHD-MCP-Server/
 ├── CHANGELOG.md           # Version history
 └── README.md              # This file
 ```
+
+**Entry points**
+
+* `server.py` – convenience HTTP server entrypoint (reads `.env`).
+* `entrypoints/server_http.py` – HTTP MCP server (module form).
+* `entrypoints/server_sse.py` – HTTP + SSE MCP server.
+* `entrypoints/server_stdio.py` – STDIO MCP server (supports `--apikey`).
 
 ---
 
