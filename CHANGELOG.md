@@ -5,6 +5,43 @@ All notable changes to the EODHD MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] - 2025-01-25
+
+### Added
+
+- **OAuth 2.1 Support (MCP Authorization Spec):**
+  - `app/oauth.py` - OAuth token validation and Protected Resource Metadata
+  - `app/auth.py` - Dual authentication middleware (OAuth + legacy api_token)
+  - `app/oauth_server.py` - OAuth-enabled HTTP server wrapper
+  - `/.well-known/oauth-protected-resource` endpoint (RFC9728)
+  - Scopes for all 80+ MCP tools (read:eod, read:fundamentals, etc.)
+  - WWW-Authenticate header support for 401/403 responses
+
+- **MCP Authorization Compliance:**
+  - STDIO transport: credentials from environment (per spec)
+  - HTTP transport: OAuth 2.1 Bearer tokens (per spec)
+  - Backward compatibility with legacy api_token parameter
+
+- **New OAuth Scopes:**
+  - `read:eod` - End-of-day data
+  - `read:intraday` - Intraday and tick data
+  - `read:live` - Real-time quotes
+  - `read:fundamentals` - Company fundamentals
+  - `read:news` - News and sentiment
+  - `read:technicals` - Technical indicators
+  - `read:options` - US options data
+  - `read:marketplace` - Marketplace tools
+  - `read:screener` - Stock screener
+  - `read:macro` - Macro indicators
+  - `full-access` - Full API access
+
+### Changed
+
+- Updated HTTP server entry point with OAuth support
+- Added `OAUTH_ENABLED` environment variable
+
+---
+
 ## [2.6.1] - 2025-01-25
 
 ### Added

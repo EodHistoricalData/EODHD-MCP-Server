@@ -61,6 +61,8 @@ It provides tool-based access to:
 
 ✅ **NEW (v2.6.1):** Jupyter notebook examples for portfolio analysis
 
+✅ **NEW (v2.7.0):** OAuth 2.1 support per MCP Authorization Specification
+
 
 ## Requirements
 
@@ -173,6 +175,67 @@ The server will be available at `http://localhost:8000/mcp`
 
 ```bash
 curl http://localhost:8000/health
+```
+
+---
+
+## OAuth 2.1 Support (v2.7.0)
+
+The MCP server supports OAuth 2.1 authentication as per the [MCP Authorization Specification](https://modelcontextprotocol.io/specification/2025-11-25/basic/authorization).
+
+### Transport-specific Authentication
+
+| Transport | Authentication Method |
+|-----------|----------------------|
+| **STDIO** | `EODHD_API_KEY` environment variable |
+| **HTTP/SSE** | OAuth 2.1 Bearer token OR legacy `api_token` parameter |
+
+### Protected Resource Metadata (RFC9728)
+
+```bash
+curl http://localhost:8000/.well-known/oauth-protected-resource
+```
+
+Returns:
+```json
+{
+  "resource": "https://mcp.eodhd.com",
+  "authorization_servers": ["https://eodhd.com"],
+  "scopes_supported": ["read:eod", "read:fundamentals", "full-access", ...],
+  "bearer_methods_supported": ["header"]
+}
+```
+
+### Available Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `read:eod` | End-of-day historical data |
+| `read:intraday` | Intraday and tick data |
+| `read:live` | Real-time/delayed quotes |
+| `read:fundamentals` | Company fundamentals, ESG, analysts |
+| `read:news` | News and sentiment data |
+| `read:technicals` | Technical indicators |
+| `read:options` | US options data |
+| `read:marketplace` | Marketplace tools (illio, Praams, ESG) |
+| `read:screener` | Stock screener |
+| `read:macro` | Macro indicators |
+| `full-access` | Full API access |
+
+### OAuth Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OAUTH_ENABLED` | `false` | Enable OAuth logging |
+| `OAUTH_ISSUER` | `https://eodhd.com` | OAuth authorization server |
+| `OAUTH_INTROSPECTION_URL` | - | Token introspection endpoint |
+| `MCP_SERVER_URL` | `https://mcp.eodhd.com` | Canonical MCP server URL |
+
+### Backward Compatibility
+
+Legacy `api_token` parameter is still supported for backward compatibility:
+```bash
+curl "http://localhost:8000/mcp?api_token=YOUR_API_KEY"
 ```
 
 ---

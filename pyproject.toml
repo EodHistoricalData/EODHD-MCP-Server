@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "eodhd-mcp-server"
-version = "2.6.1"
+version = "2.7.0"
 description = "MCP server for EODHD APIs - Financial market data for AI assistants"
 readme = "README.md"
 license = {text = "MIT"}
