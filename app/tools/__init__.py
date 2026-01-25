@@ -37,7 +37,32 @@ MAIN_TOOLS: list[str] = [
     "get_technical_indicators",
     "get_us_live_extended_quotes",
     "get_cboe_indices_list",
-    "get_cboe_index_data"
+    "get_cboe_index_data",
+    # v2.5 - Advanced Analytics
+    "get_esg_data",
+    "get_analyst_ratings",
+    "get_institutional_holders",
+    "get_insider_summary",
+    "get_short_interest",
+    "get_financial_ratios",
+    # v2.4 - Bulk & Reference Data
+    "get_bulk_eod",
+    "get_id_mapping",
+    "get_historical_constituents",
+    "get_market_status",
+    "get_delisted_stocks",
+    "get_stock_logo",
+    "get_forex_list",
+    "get_crypto_list",
+    "get_bonds_data",
+    "get_bulk_fundamentals",
+    # v2.6 - Sector, Peers, Batch, Export
+    "get_sector_performance",
+    "get_stock_peers",
+    "get_historical_dividends",
+    "batch_quotes",
+    "compare_stocks",
+    "export_data",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [

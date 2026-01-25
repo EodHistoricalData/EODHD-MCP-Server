@@ -1,10 +1,10 @@
 {
   "manifest_version": "0.2",
   "name": "eodhd-mcp",
-  "version": "2.3.4",
-  "description": "A simple MCP server for EODHD APIs",
+  "version": "2.6.0",
+  "description": "MCP server for EODHD APIs - Financial market data for AI assistants",
   "author": {
-    "name": "Alex Chernyshev",
+    "name": "EODHD Team",
     "email": "support@eodhistoricaldata.com",
     "url": "https://github.com/EodHistoricalData/EODHD-MCP-Server"
   },
@@ -28,9 +28,9 @@
     "EODHD_API_KEY": {
       "type": "string",
       "title": "EODHD API Key",
-      "description": "EODHD API key",
+      "description": "EODHD API key for accessing financial data",
       "required": true,
-      "sensitive": false
+      "sensitive": true
     }
   },
   "license": "MIT"
