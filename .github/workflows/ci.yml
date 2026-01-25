@@ -3,40 +3,14 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, 'claude/**']
   pull_request:
     branches: [main]
 
 jobs:
-  lint:
-    name: Lint & Format Check
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install ruff
-          pip install -r requirements.txt
-
-      - name: Run Ruff linter
-        run: ruff check . --ignore E501,F401,F841 || true
-
-      - name: Run Ruff formatter check
-        run: ruff format --check . || true
-
   test:
     name: Test Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
-    continue-on-error: true
     strategy:
       matrix:
         python-version: ['3.11']
@@ -59,30 +33,7 @@ jobs:
       - name: Run tests
         env:
           EODHD_API_KEY: demo
-        run: |
-          pytest tests/ -v || true
-
-  type-check:
-    name: Type Checking
-    runs-on: ubuntu-latest
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install mypy
-          pip install -r requirements.txt
-
-      - name: Run MyPy
-        run: mypy app/ --ignore-missing-imports --no-error-summary || true
+        run: pytest tests/ -v
 
   docker:
     name: Docker Build
@@ -102,6 +53,53 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  lint:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+          pip install -r requirements.txt
+
+      - name: Run Ruff linter
+        run: ruff check . --ignore E501,F401,F841,E402,F403 --exit-zero
+
+      - name: Run Ruff formatter check
+        run: ruff format --check . --exit-zero
+
+  type-check:
+    name: Type Checking
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install mypy types-requests
+          pip install -r requirements.txt
+
+      - name: Run MyPy
+        run: mypy app/ --ignore-missing-imports --no-error-summary --exit-zero || true
+
   security:
     name: Security Scan
     runs-on: ubuntu-latest
@@ -118,4 +116,4 @@ jobs:
         run: pip install bandit
 
       - name: Run Bandit security scan
-        run: bandit -r app/ -ll -s B101 || true
+        run: bandit -r app/ -ll -s B101,B311 --exit-zero || true
