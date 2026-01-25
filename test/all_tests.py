@@ -1384,6 +1384,230 @@ def register(add_test, COMMON):
         },
     })
 
+    # ============================================================
+    # v2.6.0 New Tools Integration Tests
+    # ============================================================
+
+    # --- ESG Scores ---
+    add_test({
+        "name": "ESG Scores: AAPL.US",
+        "tool": "get_esg_scores",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Analyst Ratings ---
+    add_test({
+        "name": "Analyst Ratings: AAPL.US",
+        "tool": "get_analyst_ratings",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Price Targets ---
+    add_test({
+        "name": "Price Targets: MSFT.US",
+        "tool": "get_price_targets",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "MSFT.US",
+        },
+    })
+
+    # --- Short Interest ---
+    add_test({
+        "name": "Short Interest: TSLA.US",
+        "tool": "get_short_interest",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "TSLA.US",
+        },
+    })
+
+    # --- Institutional Holders ---
+    add_test({
+        "name": "Institutional Holders: AAPL.US",
+        "tool": "get_institutional_holders",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Fund Holdings ---
+    add_test({
+        "name": "Fund Holdings: VTI.US",
+        "tool": "get_fund_holdings",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "VTI.US",
+        },
+    })
+
+    # --- Bulk EOD Data ---
+    add_test({
+        "name": "Bulk EOD: US exchange",
+        "tool": "get_bulk_eod",
+        "use_common": ["api_token"],
+        "params": {
+            "exchange": "US",
+            "date": "2024-01-15",
+        },
+    })
+
+    # --- Bonds Fundamentals ---
+    add_test({
+        "name": "Bonds Fundamentals: US0378331005",
+        "tool": "get_bond_fundamentals",
+        "use_common": ["api_token"],
+        "params": {
+            "isin": "US0378331005",
+        },
+    })
+
+    # --- Exchange Symbols ---
+    add_test({
+        "name": "Exchange Symbols: US",
+        "tool": "get_exchange_symbols",
+        "use_common": ["api_token", "fmt"],
+        "params": {
+            "exchange": "US",
+        },
+    })
+
+    # --- Trading Hours ---
+    add_test({
+        "name": "Trading Hours: US",
+        "tool": "get_trading_hours",
+        "use_common": ["api_token"],
+        "params": {
+            "exchange": "US",
+        },
+    })
+
+    # --- Available Exchanges ---
+    add_test({
+        "name": "Available Exchanges List",
+        "tool": "get_available_exchanges",
+        "use_common": ["api_token", "fmt"],
+        "params": {},
+    })
+
+    # --- Financial News ---
+    add_test({
+        "name": "Financial News: general",
+        "tool": "get_financial_news",
+        "use_common": ["api_token"],
+        "params": {
+            "limit": 10,
+        },
+    })
+
+    add_test({
+        "name": "Financial News: by ticker AAPL",
+        "tool": "get_financial_news",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+            "limit": 5,
+        },
+    })
+
+    # --- Outgoing Earnings ---
+    add_test({
+        "name": "Outgoing Earnings: AAPL.US",
+        "tool": "get_outgoing_earnings",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Splits History ---
+    add_test({
+        "name": "Splits History: AAPL.US",
+        "tool": "get_splits_history",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Dividends History ---
+    add_test({
+        "name": "Dividends History: AAPL.US",
+        "tool": "get_dividends_history",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Batch Quotes ---
+    add_test({
+        "name": "Batch Quotes: AAPL, MSFT, GOOGL",
+        "tool": "get_batch_quotes",
+        "use_common": ["api_token"],
+        "params": {
+            "tickers": ["AAPL.US", "MSFT.US", "GOOGL.US"],
+        },
+    })
+
+    # --- Historical Dividends ---
+    add_test({
+        "name": "Historical Dividends: AAPL.US 2023",
+        "tool": "get_historical_dividends",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+            "from_date": "2023-01-01",
+            "to_date": "2023-12-31",
+        },
+    })
+
+    # --- Historical Splits ---
+    add_test({
+        "name": "Historical Splits: AAPL.US",
+        "tool": "get_historical_splits",
+        "use_common": ["api_token"],
+        "params": {
+            "ticker": "AAPL.US",
+        },
+    })
+
+    # --- Sector Performance ---
+    add_test({
+        "name": "Sector Performance: US sectors",
+        "tool": "get_sector_performance",
+        "use_common": ["api_token"],
+        "params": {},
+    })
+
+    # --- Market Movers ---
+    add_test({
+        "name": "Market Movers: gainers",
+        "tool": "get_market_movers",
+        "use_common": ["api_token"],
+        "params": {
+            "exchange": "US",
+            "direction": "gainers",
+        },
+    })
+
+    add_test({
+        "name": "Market Movers: losers",
+        "tool": "get_market_movers",
+        "use_common": ["api_token"],
+        "params": {
+            "exchange": "US",
+            "direction": "losers",
+        },
+    })
+
 
 
 

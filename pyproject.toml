@@ -1,0 +1,124 @@
+# pyproject.toml - EODHD MCP Server configuration
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eodhd-mcp-server"
+version = "2.7.0"
+description = "MCP server for EODHD APIs - Financial market data for AI assistants"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "EODHD Team", email = "support@eodhistoricaldata.com"}
+]
+keywords = ["mcp", "eodhd", "financial-data", "api", "stocks", "market-data"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "httpx>=0.25.0",
+    "pydantic>=2.0.0",
+    "fastmcp>=0.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "black>=24.0.0",
+    "isort>=5.12.0",
+    "flake8>=7.0.0",
+    "mypy>=1.8.0",
+    "pre-commit>=3.5.0",
+]
+redis = [
+    "redis>=5.0.0",
+]
+all = [
+    "eodhd-mcp-server[dev,redis]",
+]
+
+[project.urls]
+Homepage = "https://github.com/EodHistoricalData/EODHD-MCP-Server"
+Documentation = "https://eodhd.com/financial-apis/"
+Repository = "https://github.com/EodHistoricalData/EODHD-MCP-Server"
+Issues = "https://github.com/EodHistoricalData/EODHD-MCP-Server/issues"
+
+[project.scripts]
+eodhd-mcp = "cli:main"
+
+# Black configuration
+[tool.black]
+line-length = 100
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+    | examples
+)/
+'''
+
+# isort configuration
+[tool.isort]
+profile = "black"
+line_length = 100
+skip_gitignore = true
+skip = [".git", ".venv", "venv", "examples"]
+
+# pytest configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+# mypy configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
+exclude = ["tests", "examples"]
+
+# bandit configuration
+[tool.bandit]
+exclude_dirs = ["tests", "examples", ".venv", "venv"]
+skips = ["B101", "B311"]
+
+# coverage configuration
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*", "examples/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

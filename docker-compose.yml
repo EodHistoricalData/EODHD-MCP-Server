@@ -1,0 +1,51 @@
+# docker-compose.yml for EODHD MCP Server
+version: '3.8'
+
+services:
+  eodhd-mcp-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eodhd-mcp-server
+    ports:
+      - "${MCP_PORT:-8000}:8000"
+    environment:
+      - EODHD_API_KEY=${EODHD_API_KEY:-demo}
+      - MCP_HOST=0.0.0.0
+      - MCP_PORT=8000
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - eodhd-network
+
+  # Optional: Redis for distributed caching
+  # Uncomment if you need Redis caching
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: eodhd-redis
+  #   ports:
+  #     - "6379:6379"
+  #   volumes:
+  #     - redis-data:/data
+  #   networks:
+  #     - eodhd-network
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 10s
+  #     timeout: 5s
+  #     retries: 5
+
+networks:
+  eodhd-network:
+    driver: bridge
+
+# volumes:
+#   redis-data:
