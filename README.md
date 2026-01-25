@@ -57,6 +57,10 @@ It provides tool-based access to:
 
 ✅ **NEW:** Docker support, Prometheus metrics, health endpoints
 
+✅ **NEW (v2.6.1):** Redis cache, structured JSON logging, pre-commit hooks
+
+✅ **NEW (v2.6.1):** Jupyter notebook examples for portfolio analysis
+
 
 ## Requirements
 

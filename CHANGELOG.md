@@ -5,6 +5,50 @@ All notable changes to the EODHD MCP Server will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] - 2025-01-25
+
+### Added
+
+- **Enhanced API Client:**
+  - Retry logic with exponential backoff (max 3 retries)
+  - Rate limiting (100ms between requests)
+  - Better error handling for timeouts and HTTP errors
+  - Support for 429 rate limit responses
+
+- **Structured Logging:**
+  - `app/logging_config.py` - JSON structured logging
+  - Context-aware logging with request tracking
+  - Prometheus-compatible log format
+
+- **Redis Cache Support:**
+  - `app/redis_cache.py` - Distributed caching with Redis
+  - Fallback to in-memory cache when Redis unavailable
+  - `@cached` decorator for easy function caching
+
+- **Integration Tests:**
+  - Added 24 new integration tests for v2.6.0 tools
+  - Tests for ESG, analyst ratings, bulk data, etc.
+
+- **Jupyter Notebook Examples:**
+  - `examples/getting_started.ipynb` - Basic usage guide
+  - `examples/portfolio_analysis.ipynb` - Advanced portfolio analytics
+
+- **Pre-commit Hooks:**
+  - `.pre-commit-config.yaml` - Code quality automation
+  - Black, isort, flake8, mypy, bandit integration
+  - Dockerfile linting with hadolint
+
+- **Project Configuration:**
+  - `pyproject.toml` - Modern Python packaging
+  - Tool configurations (black, isort, pytest, mypy, bandit)
+
+### Changed
+
+- Improved `app/api_client.py` with production-ready features
+- Enhanced test coverage
+
+---
+
 ## [2.6.0] - 2025-01-25
 
 ### Added
