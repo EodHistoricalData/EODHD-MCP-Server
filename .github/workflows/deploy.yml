@@ -6,12 +6,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Login to DO Registry
-        run: docker login registry.digitalocean.com -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to Registry
+        run: docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
       - name: Build & push
         run: |
-          docker build -t registry.digitalocean.com/vault33/eodhd-mcp:latest .
-          docker push registry.digitalocean.com/vault33/eodhd-mcp:latest
+          docker build -t ${{ vars.DOCKER_REGISTRY }}/${{ vars.IMAGE_NAME }}:latest .
+          docker push ${{ vars.DOCKER_REGISTRY }}/${{ vars.IMAGE_NAME }}:latest
   deploy:
     needs: build-push
     runs-on: ubuntu-latest
@@ -20,10 +20,10 @@ jobs:
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
-          username: puppy
+          username: ${{ vars.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker login registry.digitalocean.com -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
-            docker pull registry.digitalocean.com/vault33/eodhd-mcp:latest
-            cd ~/apps
-            docker compose up -d --no-deps --force-recreate mcp
+            docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+            docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.IMAGE_NAME }}:latest
+            cd ${{ vars.DEPLOY_PATH }}
+            docker compose up -d --no-deps --force-recreate ${{ vars.DEPLOY_SERVICE }}
