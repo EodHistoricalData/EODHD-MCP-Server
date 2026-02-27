@@ -1,0 +1,14 @@
+name: Build & Push
+on:
+  workflow_dispatch:
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to DO Registry
+        run: docker login registry.digitalocean.com -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build & push
+        run: |
+          docker build -t registry.digitalocean.com/vault33/eodhd-mcp:latest .
+          docker push registry.digitalocean.com/vault33/eodhd-mcp:latest

@@ -1,0 +1,29 @@
+name: Build, Push & Deploy
+on:
+  workflow_dispatch:
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to DO Registry
+        run: docker login registry.digitalocean.com -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build & push
+        run: |
+          docker build -t registry.digitalocean.com/vault33/eodhd-mcp:latest .
+          docker push registry.digitalocean.com/vault33/eodhd-mcp:latest
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: puppy
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            docker login registry.digitalocean.com -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+            docker pull registry.digitalocean.com/vault33/eodhd-mcp:latest
+            cd ~/apps
+            docker compose up -d --no-deps --force-recreate mcp
