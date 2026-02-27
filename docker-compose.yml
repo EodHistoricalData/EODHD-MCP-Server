@@ -1,0 +1,11 @@
+name: eodhd-mcp-dev
+services:
+  mcp:
+    build: .
+    container_name: eodhd_mcp_dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${MCP_PORT_OUT}:${MCP_PORT}"
+    command: ["python", "server.py"]
