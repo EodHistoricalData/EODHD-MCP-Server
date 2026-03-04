@@ -442,8 +442,13 @@ def register(mcp: FastMCP):
 
         title = Path(filename).stem.replace("-", " ").replace("_", " ").title()
 
+        try:
+            structured = _parse_markdown(content)
+        except Exception as e:
+            structured = {"parsing_error": str(e)}
+
         return json.dumps(
             {"type": page_type, "id": page_id, "title": title,
-             "content": _parse_markdown(content)},
+             "content": structured, "raw": content},
             indent=2,
         )
