@@ -5,7 +5,8 @@ import sys
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
-from app.tools import register_all
+from app.tools import register_all as register_all_tools
+from app.resources import register_all as register_all_resources
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,7 +85,8 @@ def main(argv: list[str] | None = None) -> int:
     logger = logging.getLogger("eodhd-mcp")
 
     mcp = FastMCP("eodhd-datasets")
-    register_all(mcp)
+    register_all_tools(mcp)
+    register_all_resources(mcp)
 
     # Determine transport:
     # - If --stdio: stdio
