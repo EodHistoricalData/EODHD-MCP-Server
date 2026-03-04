@@ -71,20 +71,12 @@ def _pp(obj: Any) -> str:
     except Exception:
         return str(obj)
 
-# ---------- MCP stdio client (compat with multiple mcp versions) ----------
+# ---------- MCP stdio client ----------
 from mcp.client.session import ClientSession  # type: ignore
-from mcp.client.stdio import stdio_client  # type: ignore
-
-# Try to import StdioServer (newer mcp); if not present, we'll still try with raw string.
-try:
-    from mcp.client.stdio import StdioServer  # type: ignore
-    HAVE_STDIO_SERVER = True
-except Exception:
-    HAVE_STDIO_SERVER = False
+from mcp.client.stdio import stdio_client, StdioServerParameters  # type: ignore
+import shlex
 
 async def _run_suite(session: ClientSession) -> None:
-    await session.initialize()
-
     tools_resp = await session.list_tools()
     tool_names = [t.name for t in getattr(tools_resp, "tools", [])]
     print("Available tools:", tool_names)
@@ -99,26 +91,20 @@ async def _run_suite(session: ClientSession) -> None:
         print("Params:", _pp(params))
 
         try:
-            results = await session.call_tool(tool, params)
+            result = await session.call_tool(tool, params)
 
             parts: List[str] = []
-            for r in results or []:
-                for c in getattr(r, "content", []) or []:
-                    ctype = getattr(c, "type", None)
-                    if ctype == "text" and hasattr(c, "text"):
-                        parts.append(str(c.text))
-                    elif ctype == "json" and hasattr(c, "json"):
-                        parts.append(_pp(c.json))
-                    else:
-                        parts.append(_pp(c))
-            print("Result:\n", "\n".join(parts) if parts else _pp(results))
+            for c in getattr(result, "content", []) or []:
+                ctype = getattr(c, "type", None)
+                if ctype == "text" and hasattr(c, "text"):
+                    parts.append(str(c.text))
+                elif ctype == "json" and hasattr(c, "json"):
+                    parts.append(_pp(c.json))
+                else:
+                    parts.append(_pp(c))
+            print("Result:\n", "\n".join(parts) if parts else _pp(result))
         except Exception as e:
             print("ERROR:", e)
-
-    try:
-        await session.close()
-    except Exception:
-        pass
 
 async def run_tests_stdio(cmdline: str) -> None:
     """
@@ -127,23 +113,17 @@ async def run_tests_stdio(cmdline: str) -> None:
     """
     _load_test_modules()
 
-    # Prefer the new-style API that takes a StdioServer, and fall back to
-    # the old API (which takes a raw string) only if needed.
-    if HAVE_STDIO_SERVER:
-        try:
-            server = StdioServer(command=cmdline)  # newer mcp expects this
-            async with stdio_client(server) as (read, write):
-                session = ClientSession(read, write)
-                await _run_suite(session)
-                return
-        except TypeError:
-            # Some older builds accept only a raw string; fall back below.
-            pass
-
-    # Fallback: older mcp that expects a raw string command
-    async with stdio_client(cmdline) as (read, write):
-        session = ClientSession(read, write)
-        await _run_suite(session)
+    # Parse the command string into executable + args for StdioServerParameters
+    tokens = shlex.split(cmdline)
+    server = StdioServerParameters(
+        command=tokens[0],
+        args=tokens[1:],
+        cwd=str(ROOT),
+    )
+    async with stdio_client(server) as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+            await _run_suite(session)
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run MCP tool tests against STDIO server.")
