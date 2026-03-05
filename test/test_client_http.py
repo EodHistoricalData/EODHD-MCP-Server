@@ -8,7 +8,7 @@ from fastmcp import Client
 
 # ---------- Common defaults (can be overridden per test) ----------
 COMMON: Dict[str, Any] = {
-    #"api_token": "PLACE_YOUR_API_TOKEN_HERE",
+    #"api_token": "PLACE_YOUR_API_KEY_HERE",
     "api_token": os.getenv("EODHD_API_KEY", "demo"),
     "fmt": "json",
     "ticker": "AAPL.US",
