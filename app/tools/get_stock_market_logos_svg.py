@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def register(mcp: FastMCP):
@@ -37,7 +34,7 @@ def register(mcp: FastMCP):
             - Limited to US and TO exchanges.
         """
         if not symbol or not isinstance(symbol, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format "
                 "(e.g. 'AAPL.US', 'RY.TO')."
             )
@@ -51,11 +48,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

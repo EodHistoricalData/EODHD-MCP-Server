@@ -4,13 +4,10 @@ import json
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def register(mcp: FastMCP):
@@ -87,25 +84,25 @@ def register(mcp: FastMCP):
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'index_code' is required and must be a non-empty string "
                 "(e.g., 'BDE30P')."
             )
 
         if not feed_type or not isinstance(feed_type, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'feed_type' is required and must be a non-empty string "
                 "(e.g., 'snapshot_official_closing')."
             )
 
         if not date or not isinstance(date, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'date' is required and must be a non-empty string "
                 "in 'YYYY-MM-DD' format (e.g., '2017-02-01')."
             )
 
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         # Build URL with deep-object-style filter params
         url = (
@@ -121,13 +118,13 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             # Classic EODHD error envelope
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             # For both success and {"errors": {...}} cases, return pretty JSON
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

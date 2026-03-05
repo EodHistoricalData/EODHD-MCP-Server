@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -50,7 +47,7 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
     # Validate/normalize ISIN
     ci = _canon_isin(isin)
     if ci is None:
-        return _err("Invalid 'isin'. It must be a non-empty string (e.g., 'US7593518852').")
+        raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g., 'US7593518852').")
 
     # Build URL
     # Example: /api/mp/praams/analyse/bond/US7593518852?api_token=...  (JSON only)
@@ -61,15 +58,18 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The Praams bond API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):

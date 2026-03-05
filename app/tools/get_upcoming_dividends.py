@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -45,18 +42,18 @@ def register(mcp: FastMCP):
         # --- Validate basic args ---
         fmt = (fmt or "json").lower()
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool (fmt must be 'json').")
+            raise ToolError("Only 'json' is supported by this tool (fmt must be 'json').")
 
         if symbol is None and date_eq is None:
-            return _err("You must provide at least one of 'symbol' or 'date_eq'.")
+            raise ToolError("You must provide at least one of 'symbol' or 'date_eq'.")
 
         if page_limit is not None:
             if not isinstance(page_limit, int) or not (1 <= page_limit <= 1000):
-                return _err("'page_limit' must be an integer between 1 and 1000.")
+                raise ToolError("'page_limit' must be an integer between 1 and 1000.")
 
         if page_offset is not None:
             if not isinstance(page_offset, int) or page_offset < 0:
-                return _err("'page_offset' must be a non-negative integer.")
+                raise ToolError("'page_offset' must be a non-negative integer.")
 
         # --- Build URL ---
         # Base: /api/calendar/dividends?filter[symbol]=...&filter[date_from]=...&page[limit]=...&page[offset]=...&fmt=json
@@ -80,13 +77,13 @@ def register(mcp: FastMCP):
         # --- Request upstream ---
         data = await make_request(url)
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # --- Return normalized JSON string ---
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected JSON response format from API.")
+            raise ToolError("Unexpected JSON response format from API.")

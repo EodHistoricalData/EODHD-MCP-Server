@@ -4,13 +4,10 @@ import json
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
@@ -53,11 +50,11 @@ def register(mcp: FastMCP):
             - US stocks only.
         """
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g. 'AAPL').")
+            raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")
 
         ticker = ticker.strip()
         if len(ticker) > 30:
-            return _err("Parameter 'ticker' must be at most 30 characters.")
+            raise ToolError("Parameter 'ticker' must be at most 30 characters.")
 
         url = f"{EODHD_API_BASE}/mp/unicornbay/tickdata/ticks?s={ticker}"
 
@@ -65,27 +62,27 @@ def register(mcp: FastMCP):
             try:
                 f_ts = _to_int("from_timestamp", from_timestamp)
             except ValueError as ve:
-                return _err(str(ve))
+                raise ToolError(str(ve))
             if f_ts is not None and f_ts < 0:
-                return _err("'from_timestamp' must be a non-negative UNIX timestamp.")
+                raise ToolError("'from_timestamp' must be a non-negative UNIX timestamp.")
             url += f"&from={f_ts}"
 
         if to_timestamp is not None:
             try:
                 t_ts = _to_int("to_timestamp", to_timestamp)
             except ValueError as ve:
-                return _err(str(ve))
+                raise ToolError(str(ve))
             if t_ts is not None and t_ts < 0:
-                return _err("'to_timestamp' must be a non-negative UNIX timestamp.")
+                raise ToolError("'to_timestamp' must be a non-negative UNIX timestamp.")
             url += f"&to={t_ts}"
 
         if limit is not None:
             try:
                 lim = int(limit)
             except (ValueError, TypeError):
-                return _err("Parameter 'limit' must be an integer (1-10000).")
+                raise ToolError("Parameter 'limit' must be an integer (1-10000).")
             if lim < 1 or lim > 10000:
-                return _err("Parameter 'limit' must be between 1 and 10000.")
+                raise ToolError("Parameter 'limit' must be between 1 and 10000.")
             url += f"&limit={lim}"
 
         if api_token:
@@ -94,11 +91,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

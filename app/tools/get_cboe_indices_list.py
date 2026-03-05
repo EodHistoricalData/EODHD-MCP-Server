@@ -4,13 +4,10 @@ import json
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def register(mcp: FastMCP):
@@ -65,7 +62,7 @@ def register(mcp: FastMCP):
                 * 10 API calls per request (CBOE dataset rule of thumb).
         """
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         # Base URL for CBOE indices list
         url = f"{EODHD_API_BASE}/cboe/indices?fmt={fmt}"
@@ -75,13 +72,13 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             # Propagate API error message
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             # Expected: dict with 'meta', 'data', 'links'
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

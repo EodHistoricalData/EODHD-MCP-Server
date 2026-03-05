@@ -4,15 +4,13 @@ import json
 from typing import Iterable, Optional, Sequence
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 ALLOWED_FMT = {"json", "csv"}
 MAX_EXTRA_TICKERS = 20  # soft limit recommended by docs (15–20)
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _normalize_symbols(symbols: Optional[Iterable[str]]) -> list[str]:
     if not symbols:
@@ -52,17 +50,17 @@ def register(mcp: FastMCP):
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         extras = _normalize_symbols(additional_symbols)
         # Prevent duplicates of the primary ticker in 's='
         extras = [s for s in extras if s != ticker]
 
         if len(extras) > MAX_EXTRA_TICKERS:
-            return _err(
+            raise ToolError(
                 f"Too many symbols in 'additional_symbols'. "
                 f"Got {len(extras)}, max recommended is {MAX_EXTRA_TICKERS}."
             )
@@ -82,10 +80,10 @@ def register(mcp: FastMCP):
 
         # --- Normalize errors / outputs ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # If make_request always returns JSON (since it calls response.json()),
         # this will succeed for fmt=json. For fmt=csv, consider adapting make_request to return text.
@@ -94,4 +92,4 @@ def register(mcp: FastMCP):
         except Exception:
             if isinstance(data, str):  # if you adapted make_request to return text for CSV
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

@@ -4,11 +4,8 @@ from pathlib import Path
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "references"
@@ -354,11 +351,11 @@ def _serve_global_readme(fallback: bool = False) -> str:
     """Return the global README, optionally flagged as a fallback."""
     file_path = _RESOURCES_DIR / "README.md"
     if not file_path.is_file():
-        return _err("Global README not found.")
+        raise ToolError("Global README not found.")
     try:
         content = file_path.read_text(encoding="utf-8")
     except OSError as e:
-        return _err(f"Failed to read global README: {e}")
+        raise ToolError(f"Failed to read global README: {e}")
     try:
         structured = _parse_markdown(content)
     except Exception as e:
@@ -471,12 +468,12 @@ def register(mcp: FastMCP):
         subdir, filename = entry
         file_path = _RESOURCES_DIR / subdir / filename
         if not file_path.is_file():
-            return _err(f"Documentation file not found for type {page_type}, id {page_id}.")
+            raise ToolError(f"Documentation file not found for type {page_type}, id {page_id}.")
 
         try:
             content = file_path.read_text(encoding="utf-8")
         except OSError as e:
-            return _err(f"Failed to read documentation file: {e}")
+            raise ToolError(f"Failed to read documentation file: {e}")
 
         title = Path(filename).stem.replace("-", " ").replace("_", " ").title()
 

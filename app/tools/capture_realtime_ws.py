@@ -6,6 +6,7 @@ import time
 from typing import List, Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 
@@ -23,9 +24,6 @@ FEED_ENDPOINTS = {
     "forex": "forex",
     "crypto": "crypto",
 }
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _symbols_to_str(symbols: Union[str, List[str]]) -> str:
     if isinstance(symbols, str):
@@ -75,16 +73,16 @@ def register(mcp: FastMCP):
                 }
         """
         if websockets is None:
-            return _err("The 'websockets' package is required. Install with: pip install websockets")
+            raise ToolError("The 'websockets' package is required. Install with: pip install websockets")
 
         if feed not in FEED_ENDPOINTS:
-            return _err(f"Invalid 'feed'. Allowed: {sorted(FEED_ENDPOINTS.keys())}")
+            raise ToolError(f"Invalid 'feed'. Allowed: {sorted(FEED_ENDPOINTS.keys())}")
 
         if not symbols:
-            return _err("Parameter 'symbols' is required (e.g., 'AAPL,MSFT' or ['AAPL','MSFT']).")
+            raise ToolError("Parameter 'symbols' is required (e.g., 'AAPL,MSFT' or ['AAPL','MSFT']).")
 
         if not isinstance(duration_seconds, int) or not (1 <= duration_seconds <= 600):
-            return _err("'duration_seconds' must be an integer between 1 and 600.")
+            raise ToolError("'duration_seconds' must be an integer between 1 and 600.")
 
         endpoint = FEED_ENDPOINTS[feed]
         sym_str = _symbols_to_str(symbols)
@@ -134,9 +132,9 @@ def register(mcp: FastMCP):
             try:
                 ws = await asyncio.wait_for(conn_task, timeout=connect_timeout)
             except asyncio.TimeoutError:
-                return _err("Timed out while establishing WebSocket connection.")
+                raise ToolError("Timed out while establishing WebSocket connection.")
         except Exception as e:
-            return _err(f"Failed to connect to WebSocket endpoint: {str(e)}")
+            raise ToolError(f"Failed to connect to WebSocket endpoint: {str(e)}")
 
         try:
             stop_time = time.time() + duration_seconds

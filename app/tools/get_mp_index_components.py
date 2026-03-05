@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str]) -> str:
     if val is None or val == "":
@@ -39,11 +36,11 @@ def register(mcp: FastMCP):
           JSON string (pretty-printed) or {"error": "..."} on failure.
         """
         if not (symbol and symbol.strip()):
-            return _err("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")
+            raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")
 
         fmt = (fmt or "json").lower()
         if fmt != "json":
-            return _err("Only JSON is supported for this endpoint.")
+            raise ToolError("Only JSON is supported for this endpoint.")
 
         # Build URL - symbol is in the path
         path_symbol = quote_plus(symbol.strip())
@@ -54,8 +51,11 @@ def register(mcp: FastMCP):
 
         data = await make_request(url)
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
+
+        if isinstance(data, dict) and data.get("error"):
+            raise ToolError(str(data["error"]))
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected JSON response format from API.")
+            raise ToolError("Unexpected JSON response format from API.")

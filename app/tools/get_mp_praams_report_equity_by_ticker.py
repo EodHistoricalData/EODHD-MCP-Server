@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -24,9 +21,9 @@ async def _run_praams_report_equity_by_ticker(
     ticker: str, email: str, is_full: Optional[bool], api_token: Optional[str]
 ) -> str:
     if not ticker or not isinstance(ticker, str):
-        return _err("Parameter 'ticker' is required (e.g. 'AAPL', 'TSLA').")
+        raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL', 'TSLA').")
     if not email or not isinstance(email, str):
-        return _err("Parameter 'email' is required for report notifications.")
+        raise ToolError("Parameter 'email' is required for report notifications.")
 
     ticker = ticker.strip().upper()
     email = email.strip()
@@ -40,12 +37,15 @@ async def _run_praams_report_equity_by_ticker(
 
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected response format from API.")
+        raise ToolError("Unexpected response format from API.")
 
 
 def register(mcp: FastMCP):
