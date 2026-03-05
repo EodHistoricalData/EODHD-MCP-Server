@@ -9,6 +9,7 @@ logger = logging.getLogger("eodhd-mcp.tools")
 # --- Tool module names (filenames without .py) ---
 
 MAIN_TOOLS: list[str] = [
+    "resolve_ticker",
     "get_historical_stock_prices",
     "get_live_price_data",
     "get_intraday_historical_data",

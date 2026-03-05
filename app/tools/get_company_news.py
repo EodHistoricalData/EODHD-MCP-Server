@@ -43,6 +43,7 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str, optional): SYMBOL.EXCHANGE_ID (e.g., 'AAPL.US'). Mapped to 's'.
+                          If you only have a company name, call resolve_ticker first.
             tag (str, optional): Topic tag (e.g., 'technology'). Mapped to 't'.
             start_date (str, optional): YYYY-MM-DD. Mapped to 'from'.
             end_date (str, optional): YYYY-MM-DD. Mapped to 'to'.

@@ -43,6 +43,7 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): Symbol in SYMBOL.EXCHANGE format, e.g. 'AAPL.US'.
+                          If you only have a company name, call resolve_ticker first.
             start_date (str, optional): 'from' date in YYYY-MM-DD. If omitted, API returns full history (plan limits apply).
             end_date (str, optional): 'to' date in YYYY-MM-DD. If omitted, API returns up to most recent.
             period (str): 'd' (daily), 'w' (weekly), 'm' (monthly). Default 'd'.

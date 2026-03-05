@@ -2,13 +2,13 @@ import asyncio
 from app.tools import ALL_TOOLS, MAIN_TOOLS, MARKETPLACE_TOOLS, THIRD_PARTY_TOOLS
 
 def test_all_tools_list_not_empty():
-    assert len(ALL_TOOLS) == 73
+    assert len(ALL_TOOLS) == 74
 
 def test_no_duplicate_tools():
     assert len(ALL_TOOLS) == len(set(ALL_TOOLS))
 
 def test_register_all_tools_no_errors(mcp_with_tools):
-    """All 73 tool modules import and register without raising."""
+    """All 74 tool modules import and register without raising."""
     tools = asyncio.run(mcp_with_tools.list_tools())
     registered_names = {t.name for t in tools}
     assert len(registered_names) >= len(ALL_TOOLS), (
