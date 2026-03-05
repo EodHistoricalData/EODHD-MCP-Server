@@ -37,6 +37,11 @@ def register(mcp: FastMCP):
         Returns:
           - JSON (stringified) when fmt='json'
           - CSV (raw text wrapped as JSON string if the upstream returns text)
+
+        Examples:
+            "IPOs this week" → from_date="2026-03-02", to_date="2026-03-06"
+            "IPOs in March 2026" → from_date="2026-03-01", to_date="2026-03-31"
+            "Upcoming IPOs next 30 days" → from_date="2026-03-06", to_date="2026-04-05"
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()

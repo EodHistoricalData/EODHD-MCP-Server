@@ -37,6 +37,11 @@ def register(mcp: FastMCP):
         Returns past/future economic events with optional filters:
         date window, country (ISO2), comparison (mom|qoq|yoy), type text,
         and pagination (offset/limit).
+
+        Examples:
+            "US economic events this week" → country="US", start_date="2026-03-02", end_date="2026-03-06"
+            "German GDP year-over-year" → country="DE", comparison="yoy", type="GDP"
+            "All events in March 2026, first 200" → start_date="2026-03-01", end_date="2026-03-31", limit=200
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:

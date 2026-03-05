@@ -35,6 +35,11 @@ def register(mcp: FastMCP):
               DU, F, HE, HK, HM, IC, IR, IS, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
               MCX, MI, MU, MX, NEO, NSE, NZ, OL, PA, RG, SA, SG, SHE, SHG, SN, SR,
               ST, STU, SW, TA, TO, TSE, TW, TWO, US, V, VI, VS, VX, XETRA.
+
+        Examples:
+            "Apple logo" → get_stock_market_logos(symbol="AAPL.US")
+            "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
+            "Toyota logo from Tokyo" → get_stock_market_logos(symbol="7203.TSE")
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(

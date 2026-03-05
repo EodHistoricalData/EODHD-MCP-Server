@@ -107,6 +107,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
+        Examples:
+            "JPMorgan income statement by ISIN" → isin="US46625H1005"
+            "Bank of America income via ISIN" → isin="US0605051046"
         """
         return await _run_praams_income_statement_by_isin(
             isin=isin,
@@ -119,6 +123,13 @@ def register(mcp: FastMCP):
         isin: str,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_bank_income_statement_by_isin.
+
+        Examples:
+            "Citigroup bank income ISIN" → isin="US1729674242"
+            "Goldman Sachs income statement ISIN" → isin="US38141G1040"
+        """
         return await _run_praams_income_statement_by_isin(
             isin=isin,
             api_token=api_token,

@@ -106,6 +106,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
+        Examples:
+            "JPMorgan balance sheet" → ticker="JPM"
+            "HSBC bank balance sheet" → ticker="HSBA.LSE"
         """
         return await _run_praams_balance_sheet_by_ticker(
             ticker=ticker,
@@ -118,6 +122,13 @@ def register(mcp: FastMCP):
         ticker: str,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_bank_balance_sheet_by_ticker.
+
+        Examples:
+            "Bank of America balance sheet" → ticker="BAC"
+            "Wells Fargo total assets and loans" → ticker="WFC"
+        """
         return await _run_praams_balance_sheet_by_ticker(
             ticker=ticker,
             api_token=api_token,

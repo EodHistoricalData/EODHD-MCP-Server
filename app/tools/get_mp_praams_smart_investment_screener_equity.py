@@ -309,6 +309,10 @@ def register(mcp: FastMCP):
         Notes:
           - All *Min/*Max fields are 1..7 scale integers (nullable).
           - Provide at least one filter value in the JSON body.
+
+        Examples:
+            "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
+            "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
@@ -369,6 +373,10 @@ def register(mcp: FastMCP):
     ) -> str:
         """
         Convenience alias for the common equity filters shown in docs/examples.
+
+        Examples:
+            "High-dividend stocks with strong solvency" → dividendsMin=5, solvencyMin=5
+            "Screen solvent equities in sector 3" → sectors=[3], solvencyMin=4
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:

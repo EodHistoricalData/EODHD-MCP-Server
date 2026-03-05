@@ -53,6 +53,11 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON string with exchange details or {"error": "..."} on failure.
+
+        Examples:
+            "Is the US market open right now?" → get_exchange_details(exchange_code="US")
+            "LSE trading hours and timezone" → get_exchange_details(exchange_code="LSE")
+            "XETRA holidays in Q1 2026" → get_exchange_details(exchange_code="XETRA", start_date="2026-01-01", end_date="2026-03-31")
         """
         # --- Validate inputs ---
         if not exchange_code or not isinstance(exchange_code, str):

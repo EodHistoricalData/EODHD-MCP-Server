@@ -95,6 +95,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
+        Examples:
+            "Apple risk score" → ticker="AAPL"
+            "Tesla risk and return scoring" → ticker="TSLA"
         """
         return await _run_praams_equity_by_ticker(ticker=ticker, api_token=api_token)
 
@@ -104,4 +108,11 @@ def register(mcp: FastMCP):
         ticker: str,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_risk_scoring_by_ticker.
+
+        Examples:
+            "AMZN risk analysis" → ticker="AMZN"
+            "Siemens risk score by ticker" → ticker="SIE.XETRA"
+        """
         return await _run_praams_equity_by_ticker(ticker=ticker, api_token=api_token)

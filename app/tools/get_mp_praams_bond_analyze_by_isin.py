@@ -97,6 +97,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
+        Examples:
+            "Analyze US Treasury bond" → isin="US912810TM53"
+            "Realty Income bond risk analysis" → isin="US7593518852"
         """
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)
 
@@ -106,4 +110,11 @@ def register(mcp: FastMCP):
         isin: str,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_bond_analyze_by_isin.
+
+        Examples:
+            "US Treasury note analysis" → isin="US91282CJN20"
+            "Corporate bond risk scoring" → isin="US7593518852"
+        """
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)

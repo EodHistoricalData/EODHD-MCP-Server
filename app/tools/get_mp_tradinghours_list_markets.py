@@ -42,6 +42,11 @@ def register(mcp: FastMCP):
             - Response fields: fin_id, exchange, market, products, mic, asset_type,
               group, permanently_closed, holidays_min_date, holidays_max_date.
             - Core tier: 24 G20+ markets.
+
+        Examples:
+            "list all tracked markets" → (no params)
+            "show only G20 core markets" → group="core"
+            "all equity and derivative markets" → group="all"
         """
         if group is not None:
             group = group.strip().lower()

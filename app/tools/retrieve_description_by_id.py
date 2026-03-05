@@ -437,6 +437,12 @@ def register(mcp: FastMCP):
         Returns:
             JSON string with "type", "id", "title", "content", and "raw" keys.
             Invalid parameters return the global README with "fallback": true.
+
+        Examples:
+            "show me the global help page" → type=0
+            "docs for the All-In-One subscription plan" → type=1, id=5
+            "how does the historical stock prices endpoint work" → type=2, id=12
+            "explain rate limits" → type=3, id=22
         """
         if type is None:
             page_type = 0

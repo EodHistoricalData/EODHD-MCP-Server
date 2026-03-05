@@ -88,6 +88,10 @@ def register(mcp: FastMCP):
             - Risk factors: default, volatility, stress-test, selling difficulty,
               country, other risks.
             - Demo ISINs: US7593518852, US91282CJN20.
+
+        Examples:
+            "Full bond report for Realty Income" → isin="US7593518852", email="user@example.com", is_full=True
+            "US Treasury bond PDF report" → isin="US91282CJN20", email="user@example.com"
         """
         return await _run_praams_report_bond_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token
@@ -100,6 +104,13 @@ def register(mcp: FastMCP):
         is_full: Optional[bool] = None,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_report_bond_by_isin.
+
+        Examples:
+            "Corporate bond analysis report" → isin="US7593518852", email="user@example.com"
+            "Full Treasury note report" → isin="US912810TM53", email="user@example.com", is_full=True
+        """
         return await _run_praams_report_bond_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token
         )

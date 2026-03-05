@@ -44,6 +44,11 @@ def register(mcp: FastMCP):
             - Marketplace product: 10 API calls per request.
             - Over 900 different trading schedules tracked.
             - Omitting 'q' returns all markets (like list endpoint).
+
+        Examples:
+            "find NASDAQ market" → q="NASDAQ"
+            "search for London Stock Exchange" → q="London Stock Exchange"
+            "markets in Japan, core tier" → q="Japan", group="core"
         """
         if group is not None:
             group = group.strip().lower()

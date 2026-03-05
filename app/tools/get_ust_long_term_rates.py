@@ -37,6 +37,11 @@ def register(mcp: FastMCP):
             - Response fields: date, rate_type, rate, extrapolation_factor.
             - Combines "Daily Treasury Real Long-Term Rate Averages" and
               "Daily Treasury Long-Term Rates".
+
+        Examples:
+            "long-term treasury rates for 2024" → year=2024
+            "20-year bond rates this year, first 20 records" → year=2026, limit=20
+            "real long-term rate averages for 2022" → year=2022
         """
         url = f"{EODHD_API_BASE}/ust/long-term-rates?1=1"
 

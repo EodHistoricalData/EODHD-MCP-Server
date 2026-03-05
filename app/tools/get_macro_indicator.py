@@ -76,6 +76,11 @@ def register(mcp: FastMCP):
         Returns:
             str: JSON with indicator timeseries or {"csv": "..."} wrapper if returning CSV text,
                  or {"error": "..."} on validation/transport errors.
+
+        Examples:
+            "US GDP over time" → get_macro_indicator(country="USA", indicator="gdp_current_usd")
+            "Germany unemployment rate" → get_macro_indicator(country="DEU", indicator="unemployment_total_percent")
+            "France inflation (CPI)" → get_macro_indicator(country="FRA", indicator="inflation_consumer_prices_annual")
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

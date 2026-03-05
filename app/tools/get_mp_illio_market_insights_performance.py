@@ -100,6 +100,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON
+
+        Examples:
+            "S&P 500 performance vs market" → id="SnP500"
+            "Nasdaq-100 market performance chapter" → id="NDX"
         """
         return await _run_market_insights(id=id, fmt=fmt, api_token=api_token)
 
@@ -110,4 +114,11 @@ def register(mcp: FastMCP):
         fmt: str = "json",
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_illio_market_insights_performance.
+
+        Examples:
+            "Dow Jones performance vs market" → id="DJI"
+            "SPX market performance insights" → id="SnP500"
+        """
         return await _run_market_insights(id=id, fmt=fmt, api_token=api_token)

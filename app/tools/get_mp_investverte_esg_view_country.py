@@ -51,6 +51,10 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            "US ESG rating for 2021" → symbol="US", year=2021, frequency="FY"
+            "Germany ESG scores all years" → symbol="DE"
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")

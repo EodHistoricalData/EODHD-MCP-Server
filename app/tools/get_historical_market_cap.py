@@ -46,6 +46,11 @@ def register(mcp: FastMCP):
         Returns:
             str: JSON string with weekly market cap data
                  (or {"csv": "..."} if you later adapt make_request to return text for csv).
+
+        Examples:
+            "Apple market cap history in 2025" → ticker="AAPL.US", start_date="2025-01-01", end_date="2025-12-31"
+            "Microsoft market cap last 6 months" → ticker="MSFT.US", start_date="2025-09-06", end_date="2026-03-06"
+            "Google market cap since 2023" → ticker="GOOG.US", start_date="2023-01-01"
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

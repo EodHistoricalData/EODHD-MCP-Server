@@ -22,6 +22,10 @@ def register(mcp: FastMCP):
         Returns:
             str: JSON array of exchanges, each with fields:
                  Name, Code, OperatingMIC, Country, Currency, CountryISO2, CountryISO3
+
+        Examples:
+            "List all available exchanges" → get_exchanges_list()
+            "What stock exchanges does EODHD support?" → get_exchanges_list()
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

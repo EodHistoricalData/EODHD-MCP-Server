@@ -97,6 +97,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
+        Examples:
+            "Apple risk score by ISIN" → isin="US0378331005"
+            "Tesla risk scoring via ISIN" → isin="US88160R1014"
         """
         return await _run_praams_equity_by_isin(isin=isin, api_token=api_token)
 
@@ -106,4 +110,11 @@ def register(mcp: FastMCP):
         isin: str,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_risk_scoring_by_isin.
+
+        Examples:
+            "Amazon equity risk by ISIN" → isin="US0231351067"
+            "SAP risk and return ISIN lookup" → isin="DE0007164600"
+        """
         return await _run_praams_equity_by_isin(isin=isin, api_token=api_token)

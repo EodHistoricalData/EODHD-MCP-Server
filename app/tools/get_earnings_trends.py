@@ -42,6 +42,10 @@ def register(mcp: FastMCP):
           - 'symbols' is REQUIRED (one or more, comma-separated).
           - Response is JSON only (fmt kept to mirror other tools).
           - Each request consumes ~10 API calls under EODHD's system.
+
+        Examples:
+            "Apple earnings trend" → symbols="AAPL.US"
+            "Compare Tesla and Nvidia earnings trends" → symbols="TSLA.US,NVDA.US"
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:

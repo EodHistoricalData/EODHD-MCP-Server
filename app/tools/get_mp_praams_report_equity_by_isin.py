@@ -88,6 +88,10 @@ def register(mcp: FastMCP):
             - Risk factors: default, volatility, stress-test, selling difficulty,
               country, other risks.
             - Demo ISINs: US0378331005, US88160R1014, US0231351067.
+
+        Examples:
+            "Full Apple equity report by ISIN" → isin="US0378331005", email="user@example.com", is_full=True
+            "Tesla equity PDF via ISIN" → isin="US88160R1014", email="user@example.com"
         """
         return await _run_praams_report_equity_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token
@@ -100,6 +104,13 @@ def register(mcp: FastMCP):
         is_full: Optional[bool] = None,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_report_equity_by_isin.
+
+        Examples:
+            "Amazon equity report ISIN" → isin="US0231351067", email="user@example.com"
+            "SAP full equity report ISIN" → isin="DE0007164600", email="user@example.com", is_full=True
+        """
         return await _run_praams_report_equity_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token
         )

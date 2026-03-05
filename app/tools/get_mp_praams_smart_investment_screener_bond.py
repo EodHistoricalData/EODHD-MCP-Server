@@ -412,6 +412,16 @@ def register(mcp: FastMCP):
         # auth
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Marketplace: Praams Smart Investment Screener (Bond)
+        POST /api/mp/praams/explore/bond?skip={skip}&take={take}
+
+        Screens bonds by risk/return scoring, geography, yield, duration, and more.
+
+        Examples:
+            "High-yield EUR bonds low risk" → currency=["EUR"], yieldMin=5, countryRiskMax=3
+            "US investment-grade bonds short duration" → regions=[1], durationMax=3, solvencyMin=5
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)
@@ -485,6 +495,13 @@ def register(mcp: FastMCP):
         excludePerpetuals: Optional[bool] = None,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Convenience alias for bond screener with common filters.
+
+        Examples:
+            "Screen bonds in USD with good growth" → currency=["USD"], growthMomMin=4
+            "Find high-yield bonds, exclude perpetuals" → yieldMin=6, excludePerpetuals=True
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)

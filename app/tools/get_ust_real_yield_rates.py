@@ -36,6 +36,11 @@ def register(mcp: FastMCP):
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
             - Response fields: date, tenor, rate.
             - Compare with nominal yields for implied inflation expectations.
+
+        Examples:
+            "real yield rates for 2025" → year=2025
+            "last 10 inflation-adjusted treasury yields" → limit=10
+            "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
 

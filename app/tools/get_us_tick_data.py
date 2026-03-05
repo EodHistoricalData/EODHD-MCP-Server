@@ -47,6 +47,10 @@ def register(mcp: FastMCP):
               /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
             • Each request costs 10 API calls (any history depth).
             • Response fields (arrays): mkt, price, seq, shares, sl, sub_mkt, ts (ms).
+
+        Examples:
+            "AAPL tick data on 2026-03-05 first 100 ticks" → get_us_tick_data(ticker="AAPL", from_timestamp=1772870400, to_timestamp=1772956800, limit=100)
+            "TSLA trades between two timestamps" → get_us_tick_data(ticker="TSLA", from_timestamp=1772870400, to_timestamp=1772874000, limit=500)
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

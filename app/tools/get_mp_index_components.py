@@ -34,6 +34,11 @@ def register(mcp: FastMCP):
 
         Response:
           JSON string (pretty-printed) or {"error": "..."} on failure.
+
+        Examples:
+            "what are the S&P 500 components" → symbol="GSPC.INDX"
+            "Dow Jones Industrial Average constituents" → symbol="DJI.INDX"
+            "S&P 400 MidCap index members" → symbol="SP400.INDX"
         """
         if not (symbol and symbol.strip()):
             raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")

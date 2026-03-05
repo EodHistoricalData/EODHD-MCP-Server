@@ -103,6 +103,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON
+
+        Examples:
+            "S&P 500 risk-return insight" → id="SnP500"
+            "Nasdaq-100 risk vs return" → id="NDX"
         """
         return await _run_risk_return(id=id, fmt=fmt, api_token=api_token)
 
@@ -113,4 +117,11 @@ def register(mcp: FastMCP):
         fmt: str = "json",
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_illio_market_insights_risk_return.
+
+        Examples:
+            "Dow Jones risk-return chapter" → id="DJI"
+            "S&P risk return analysis" → id="SnP500"
+        """
         return await _run_risk_return(id=id, fmt=fmt, api_token=api_token)

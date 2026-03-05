@@ -172,6 +172,11 @@ def register(mcp: FastMCP):
             - If no 'from'/'to' provided, API returns last 120 days by default (per docs).
             - Max span depends on interval:
                 1m -> 120 days, 5m -> 600 days, 1h -> 7200 days.
+
+        Examples:
+            "Apple 1-minute candles today" → ticker="AAPL.US", interval="1m", from_timestamp="2026-03-06"
+            "Hourly Siemens data for January 2026" → ticker="SIE.XETRA", interval="1h", from_timestamp="2026-01-01", to_timestamp="2026-01-31"
+            "5-min BTC intraday since last week (unix)" → ticker="BTC-USD.CC", interval="5m", from_timestamp=1740787200
         """
 
         # --- Validate required/typed params ---

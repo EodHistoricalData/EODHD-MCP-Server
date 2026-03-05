@@ -103,6 +103,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON
+
+        Examples:
+            "S&P 500 best and worst days" → id="SnP500"
+            "Nasdaq-100 largest single-day moves" → id="NDX"
         """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)
 
@@ -113,4 +117,11 @@ def register(mcp: FastMCP):
         fmt: str = "json",
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_illio_market_insights_best_worst.
+
+        Examples:
+            "Dow Jones best and worst days" → id="DJI"
+            "S&P biggest daily moves" → id="SnP500"
+        """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)

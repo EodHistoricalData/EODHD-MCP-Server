@@ -40,6 +40,11 @@ def register(mcp: FastMCP):
               status, reason, until, next_bell.
             - Does NOT include circuit breakers or trading halts.
             - Cache-friendly: use the 'until' field to know when to re-check.
+
+        Examples:
+            "is NYSE open right now" → fin_id="us.nyse"
+            "check if London Stock Exchange is trading" → fin_id="gb.lse"
+            "NASDAQ market status" → fin_id="us.nasdaq"
         """
         if not fin_id or not isinstance(fin_id, str):
             raise ToolError(

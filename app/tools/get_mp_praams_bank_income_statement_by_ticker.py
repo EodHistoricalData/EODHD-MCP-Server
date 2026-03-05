@@ -104,6 +104,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
+        Examples:
+            "JPMorgan income statement" → ticker="JPM"
+            "HSBC bank income financials" → ticker="HSBA.LSE"
         """
         return await _run_praams_bank_income_statement_by_ticker(
             ticker=ticker,
@@ -116,6 +120,13 @@ def register(mcp: FastMCP):
         ticker: str,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_bank_income_statement_by_ticker.
+
+        Examples:
+            "Bank of America income statement" → ticker="BAC"
+            "Wells Fargo bank revenue" → ticker="WFC"
+        """
         return await _run_praams_bank_income_statement_by_ticker(
             ticker=ticker,
             api_token=api_token,

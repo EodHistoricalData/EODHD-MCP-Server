@@ -116,6 +116,10 @@ def register(mcp: FastMCP):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON
+
+        Examples:
+            "S&P 500 largest volatility changes" → id="SnP500"
+            "Nasdaq-100 biggest volatility movers" → id="NDX"
         """
         return await _run_largest_volatility(id=id, fmt=fmt, api_token=api_token)
 
@@ -128,5 +132,9 @@ def register(mcp: FastMCP):
     ) -> str:
         """
         Alias for get_mp_illio_market_insights_largest_volatility.
+
+        Examples:
+            "Dow Jones largest volatility change" → id="DJI"
+            "S&P biggest vol movers this year" → id="SnP500"
         """
         return await _run_largest_volatility(id=id, fmt=fmt, api_token=api_token)

@@ -43,6 +43,11 @@ def register(mcp: FastMCP):
 
         If 'symbols' is provided, API ignores 'from'/'to' (per docs).
         Otherwise, optional date window defaults server-side to [today, today+7d].
+
+        Examples:
+            "Apple earnings schedule" → symbols="AAPL.US"
+            "Earnings this week" → start_date="2026-03-02", end_date="2026-03-06"
+            "Microsoft and Google earnings" → symbols="MSFT.US,GOOG.US"
         """
         sym_param = _normalize_symbols(symbols)
 

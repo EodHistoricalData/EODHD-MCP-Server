@@ -73,6 +73,10 @@ def register(mcp: FastMCP):
 
         Returns:
           Pretty-printed JSON string or {"error": "..."} on failure.
+
+        Examples:
+            "Dow Jones risk insights" → id="DJI"
+            "S&P 500 risk attributes" → id="SnP500"
         """
         # Validate fmt
         fmt = (fmt or "json").lower()

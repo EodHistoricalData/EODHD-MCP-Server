@@ -78,6 +78,10 @@ def register(mcp: FastMCP):
             - Risk factors: default, volatility, stress-test, selling difficulty,
               country, other risks.
             - Demo tickers: AAPL, TSLA, AMZN.
+
+        Examples:
+            "Full Apple equity report" → ticker="AAPL", email="user@example.com", is_full=True
+            "Tesla quick equity analysis" → ticker="TSLA", email="user@example.com"
         """
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token
@@ -90,6 +94,13 @@ def register(mcp: FastMCP):
         is_full: Optional[bool] = None,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Alias for get_mp_praams_report_equity_by_ticker.
+
+        Examples:
+            "Amazon full equity PDF report" → ticker="AMZN", email="user@example.com", is_full=True
+            "Siemens equity report" → ticker="SIE.XETRA", email="user@example.com"
+        """
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token
         )

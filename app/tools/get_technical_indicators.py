@@ -137,6 +137,11 @@ def register(mcp: FastMCP):
           - Supports all documented functions (sma, ema, wma, macd, rsi, stochastic, stochrsi, dmi/dx, adx, atr, cci, sar, beta, bbands, volatility, avgvol, avgvolccy, splitadjusted, format_amibroker).
 
         Args mirror API docs; only provided params are passed through.
+
+        Examples:
+            "50-day SMA for Apple in 2025" → ticker="AAPL.US", function="sma", period=50, start_date="2025-01-01", end_date="2025-12-31"
+            "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
+            "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
         """
         # --- Required/typed validation ---
         if not ticker or not isinstance(ticker, str):

@@ -60,6 +60,10 @@ def register(mcp: FastMCP):
               If 'links.next' is not null, call that URL to get the next page.
             - Rate limits:
                 * 10 API calls per request (CBOE dataset rule of thumb).
+
+        Examples:
+            "List all CBOE indices" → get_cboe_indices_list()
+            "What CBOE European indices are available?" → get_cboe_indices_list()
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

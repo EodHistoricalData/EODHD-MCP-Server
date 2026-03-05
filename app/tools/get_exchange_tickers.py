@@ -27,6 +27,11 @@ def register(mcp: FastMCP):
         Notes:
             - By default, API returns tickers active in the last month.
             - For US, you can use 'US' (unified) or specific venues (NYSE, NASDAQ, etc.).
+
+        Examples:
+            "All tickers on London Stock Exchange" → get_exchange_tickers(exchange_code="LSE")
+            "Show me delisted US stocks" → get_exchange_tickers(exchange_code="US", delisted=True)
+            "ETFs trading on XETRA" → get_exchange_tickers(exchange_code="XETRA", type="etf")
         """
         if not exchange_code or not isinstance(exchange_code, str):
             raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")

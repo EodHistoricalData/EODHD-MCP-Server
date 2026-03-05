@@ -27,6 +27,10 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON string with user details or {"error": "..."} on failure.
+
+        Examples:
+            "What plan am I on?" → get_user_details()
+            "How many API calls have I used today?" → get_user_details()
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.

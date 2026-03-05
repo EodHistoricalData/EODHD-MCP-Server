@@ -78,6 +78,11 @@ def register(mcp: FastMCP):
 
         Filters, sorting, pagination and field selection per docs.
         Returns JSON: meta, data[], links.next (pagination).
+
+        Examples:
+            "AAPL options expiring this month" → underlying_symbol="AAPL", exp_date_from="2026-03-01", exp_date_to="2026-03-31"
+            "SPY puts with strike between 400 and 450" → underlying_symbol="SPY", type="put", strike_from=400, strike_to=450
+            "TSLA call contracts expiring in June 2026, sorted by strike" → underlying_symbol="TSLA", type="call", exp_date_from="2026-06-01", exp_date_to="2026-06-30", sort="strike"
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

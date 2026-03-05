@@ -300,6 +300,11 @@ def register(mcp: FastMCP):
           outside the window. Financials are fetched only for in-range period end dates (from outstandingShares).
         - For Indices: pass 'historical=1' and optional 'from'/'to' through `extra_params`.
         - Always returns JSON (fmt must be 'json').
+
+        Examples:
+            "Apple fundamentals" → ticker="AAPL.US"
+            "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
+            "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
         """
         # --- Validate basics
         if fmt != "json":

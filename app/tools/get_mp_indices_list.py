@@ -35,6 +35,10 @@ def register(mcp: FastMCP):
 
         Response:
           JSON string (pretty-printed) or {"error": "..."} on failure.
+
+        Examples:
+            "show all S&P and Dow Jones indices" → (no params)
+            "list available market indices with details" → (no params)
         """
         fmt = (fmt or "json").lower()
         if fmt != "json":

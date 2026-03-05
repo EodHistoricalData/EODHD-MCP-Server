@@ -47,6 +47,11 @@ def register(mcp: FastMCP):
         Returns:
             str: JSON string. If fmt='csv' and your `make_request` returns raw text,
                  this tool wraps CSV into {"csv": "..."}; otherwise returns JSON from API.
+
+        Examples:
+            "Current Apple price" → ticker="AAPL.US"
+            "Live quotes for Tesla, Google, and Amazon" → ticker="TSLA.US", additional_symbols=["GOOG.US", "AMZN.US"]
+            "Bitcoin and Ethereum prices right now" → ticker="BTC-USD.CC", additional_symbols=["ETH-USD.CC"]
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

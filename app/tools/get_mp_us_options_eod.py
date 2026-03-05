@@ -61,6 +61,11 @@ def register(mcp: FastMCP):
         Get end-of-day options data (mp/unicornbay/options/eod)
 
         Returns JSON: meta, data[], links.next; supports 'compact' mode.
+
+        Examples:
+            "AAPL end-of-day options for March 2026" → underlying_symbol="AAPL", tradetime_from="2026-03-01", tradetime_to="2026-03-31"
+            "MSFT puts EOD data, strike 300-400" → underlying_symbol="MSFT", type="put", strike_from=300, strike_to=400
+            "NVDA calls expiring 2026-06-20, compact" → underlying_symbol="NVDA", type="call", exp_date_eq="2026-06-20", compact=True
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

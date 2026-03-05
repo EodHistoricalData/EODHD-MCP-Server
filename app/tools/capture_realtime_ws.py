@@ -71,6 +71,11 @@ def register(mcp: FastMCP):
                   "message_count": N,
                   "messages": [ {parsed message dicts...} ]
                 }
+
+        Examples:
+            "Stream AAPL and TSLA trades for 10 seconds" → capture_realtime_ws(feed="us_trades", symbols="AAPL,TSLA", duration_seconds=10)
+            "Get live EUR/USD forex quotes" → capture_realtime_ws(feed="forex", symbols="EURUSD", duration_seconds=5)
+            "Capture BTC and ETH crypto prices, max 50 messages" → capture_realtime_ws(feed="crypto", symbols="BTC-USD,ETH-USD", duration_seconds=30, max_messages=50)
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")

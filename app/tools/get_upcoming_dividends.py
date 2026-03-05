@@ -37,6 +37,11 @@ def register(mcp: FastMCP):
           - You can combine 'symbol' with 'date_from'/'date_to' to narrow range.
           - Pagination: 'page_limit' (1..1000) and 'page_offset' (>=0).
           - API output is JSON only.
+
+        Examples:
+            "Apple dividends in 2025" → symbol="AAPL.US", date_from="2025-01-01", date_to="2025-12-31"
+            "All dividends on March 15" → date_eq="2026-03-15"
+            "Microsoft dividends this quarter" → symbol="MSFT.US", date_from="2026-01-01", date_to="2026-03-31"
         """
 
         # --- Validate basic args ---

@@ -40,6 +40,11 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON-formatted list of instruments or {"error": "..."}.
+
+        Examples:
+            "Find Apple stock" → get_stocks_from_search(query="Apple Inc", type="stock")
+            "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
+            "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

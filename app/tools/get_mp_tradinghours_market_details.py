@@ -39,6 +39,11 @@ def register(mcp: FastMCP):
               mic_extended, acronym, asset_type, memo, permanently_closed, timezone,
               weekend_definition, holidays_min_date, holidays_max_date.
             - Returns IANA timezone identifiers.
+
+        Examples:
+            "NYSE market details" → fin_id="us.nyse"
+            "London Stock Exchange info" → fin_id="gb.lse"
+            "Tokyo Stock Exchange details" → fin_id="jp.jpx"
         """
         if not fin_id or not isinstance(fin_id, str):
             raise ToolError(

@@ -33,6 +33,10 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            "List all ESG countries" → (no params needed)
+            "Which countries have ESG ratings?" → (no params needed)
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

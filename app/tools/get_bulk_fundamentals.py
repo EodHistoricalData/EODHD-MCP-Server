@@ -51,6 +51,11 @@ def register(mcp: FastMCP):
             - Stocks only (no ETFs or Mutual Funds).
             - Max pagination limit: 500.
             - Historical data limited to 4 quarters and 4 years.
+
+        Examples:
+            "Fundamentals for all NASDAQ stocks" → get_bulk_fundamentals(exchange="NASDAQ")
+            "AAPL and MSFT fundamentals from NYSE" → get_bulk_fundamentals(exchange="US", symbols="AAPL,MSFT")
+            "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(

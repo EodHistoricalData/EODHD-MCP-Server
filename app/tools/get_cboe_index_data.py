@@ -81,6 +81,10 @@ def register(mcp: FastMCP):
             - If required filters are missing, the API returns a JSON error
               under the "errors" key.
             - Rate limits: 10 API calls per request (dataset-specific rule of thumb).
+
+        Examples:
+            "BDE30P index on 2026-03-03" → get_cboe_index_data(index_code="BDE30P", feed_type="snapshot_official_closing", date="2026-03-03")
+            "BAT20N pro forma closing on 2026-02-28" → get_cboe_index_data(index_code="BAT20N", feed_type="snapshot_pro_forma_closing", date="2026-02-28")
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):

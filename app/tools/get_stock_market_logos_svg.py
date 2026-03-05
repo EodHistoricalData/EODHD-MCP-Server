@@ -32,6 +32,10 @@ def register(mcp: FastMCP):
             - Marketplace product: 10 API calls per request.
             - Response is SVG image data (XML text).
             - Limited to US and TO exchanges.
+
+        Examples:
+            "Apple SVG logo" → get_stock_market_logos_svg(symbol="AAPL.US")
+            "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(
