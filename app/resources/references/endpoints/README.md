@@ -2,6 +2,90 @@
 
 This folder contains one stub file per endpoint.
 
+## Using `retrieve_description_by_id` for Endpoints
+
+- **Type**: `2` (Endpoints)
+- **ID range**: `1` to `72`
+- **Get this README**: `type=2, id=0`
+- **Get global README**: `type=0`
+
+### Page Index
+
+| ID | Page |
+|----|------|
+| 1 | Bulk Fundamentals |
+| 2 | CBOE Index Data |
+| 3 | CBOE Indices List |
+| 4 | Company News |
+| 5 | Earnings Trends |
+| 6 | Economic Events |
+| 7 | Exchange Details |
+| 8 | Exchange Tickers |
+| 9 | Exchanges List |
+| 10 | Fundamentals Data |
+| 11 | Historical Market Cap |
+| 12 | Historical Stock Prices |
+| 13 | Illio Market Insights Best Worst |
+| 14 | Illio Market Insights Beta Bands |
+| 15 | Illio Market Insights Largest Volatility |
+| 16 | Illio Market Insights Performance |
+| 17 | Illio Market Insights Risk Return |
+| 18 | Illio Market Insights Volatility |
+| 19 | Illio Performance Insights |
+| 20 | Illio Risk Insights |
+| 21 | Index Components |
+| 22 | Indices List |
+| 23 | Insider Transactions |
+| 24 | Intraday Historical Data |
+| 25 | Investverte ESG List Companies |
+| 26 | Investverte ESG List Countries |
+| 27 | Investverte ESG List Sectors |
+| 28 | Investverte ESG View Company |
+| 29 | Investverte ESG View Country |
+| 30 | Investverte ESG View Sector |
+| 31 | Live Price Data |
+| 32 | Macro Indicator |
+| 33 | Marketplace Tick Data |
+| 34 | News Word Weights |
+| 35 | PRAAMS Bank Balance Sheet By ISIN |
+| 36 | PRAAMS Bank Balance Sheet By Ticker |
+| 37 | PRAAMS Bank Income Statement By ISIN |
+| 38 | PRAAMS Bank Income Statement By Ticker |
+| 39 | PRAAMS Bond Analyze By ISIN |
+| 40 | PRAAMS Report Bond By ISIN |
+| 41 | PRAAMS Report Equity By ISIN |
+| 42 | PRAAMS Report Equity By Ticker |
+| 43 | PRAAMS Risk Scoring By ISIN |
+| 44 | PRAAMS Risk Scoring By Ticker |
+| 45 | PRAAMS Smart Investment Screener Bond |
+| 46 | PRAAMS Smart Investment Screener Equity |
+| 47 | Sentiment Data |
+| 48 | Stock Market Logos |
+| 49 | Stock Market Logos SVG |
+| 50 | Stock Screener Data |
+| 51 | Stocks From Search |
+| 52 | Symbol Change History |
+| 53 | Technical Indicators |
+| 54 | TradingHours List Markets |
+| 55 | TradingHours Lookup Markets |
+| 56 | TradingHours Market Details |
+| 57 | TradingHours Market Status |
+| 58 | Upcoming Dividends |
+| 59 | Upcoming Earnings |
+| 60 | Upcoming IPOs |
+| 61 | Upcoming Splits |
+| 62 | US Live Extended Quotes |
+| 63 | US Options Contracts |
+| 64 | US Options EOD |
+| 65 | US Options Underlyings |
+| 66 | US Tick Data |
+| 67 | UST Bill Rates |
+| 68 | UST Long-Term Rates |
+| 69 | UST Real Yield Rates |
+| 70 | UST Yield Rates |
+| 71 | User Details |
+| 72 | WebSockets Realtime |
+
 ## Endpoints
 
 - US Treasury Bill Rates API (ust-bill-rates.md)

@@ -228,207 +228,245 @@ def _simplify(obj):
 
 
 _PAGE_REGISTRY: dict[int, dict[int, tuple[str, str]]] = {
-    # type 0 — subscription plans
-    0: {
-        0: ("subscriptions", "free.md"),
-        1: ("subscriptions", "eod-historical-data-all-world.md"),
-        2: ("subscriptions", "eod-intraday-all-world-extended.md"),
-        3: ("subscriptions", "fundamentals-data-feed.md"),
-        4: ("subscriptions", "all-in-one.md"),
-        5: ("subscriptions", "all-in-one-extended-fundamentals.md"),
-        6: ("subscriptions", "calendar-feed.md"),
-    },
-    # type 1 — endpoint documentation
+    # type 1 — subscription plans
     1: {
-        0: ("endpoints", "bulk-fundamentals.md"),
-        1: ("endpoints", "cboe-index-data.md"),
-        2: ("endpoints", "cboe-indices-list.md"),
-        3: ("endpoints", "company-news.md"),
-        4: ("endpoints", "earnings-trends.md"),
-        5: ("endpoints", "economic-events.md"),
-        6: ("endpoints", "exchange-details.md"),
-        7: ("endpoints", "exchange-tickers.md"),
-        8: ("endpoints", "exchanges-list.md"),
-        9: ("endpoints", "fundamentals-data.md"),
-        10: ("endpoints", "historical-market-cap.md"),
-        11: ("endpoints", "historical-stock-prices.md"),
-        12: ("endpoints", "illio-market-insights-best-worst.md"),
-        13: ("endpoints", "illio-market-insights-beta-bands.md"),
-        14: ("endpoints", "illio-market-insights-largest-volatility.md"),
-        15: ("endpoints", "illio-market-insights-performance.md"),
-        16: ("endpoints", "illio-market-insights-risk-return.md"),
-        17: ("endpoints", "illio-market-insights-volatility.md"),
-        18: ("endpoints", "illio-performance-insights.md"),
-        19: ("endpoints", "illio-risk-insights.md"),
-        20: ("endpoints", "index-components.md"),
-        21: ("endpoints", "indices-list.md"),
-        22: ("endpoints", "insider-transactions.md"),
-        23: ("endpoints", "intraday-historical-data.md"),
-        24: ("endpoints", "investverte-esg-list-companies.md"),
-        25: ("endpoints", "investverte-esg-list-countries.md"),
-        26: ("endpoints", "investverte-esg-list-sectors.md"),
-        27: ("endpoints", "investverte-esg-view-company.md"),
-        28: ("endpoints", "investverte-esg-view-country.md"),
-        29: ("endpoints", "investverte-esg-view-sector.md"),
-        30: ("endpoints", "live-price-data.md"),
-        31: ("endpoints", "macro-indicator.md"),
-        32: ("endpoints", "marketplace-tick-data.md"),
-        33: ("endpoints", "news-word-weights.md"),
-        34: ("endpoints", "praams-bank-balance-sheet-by-isin.md"),
-        35: ("endpoints", "praams-bank-balance-sheet-by-ticker.md"),
-        36: ("endpoints", "praams-bank-income-statement-by-isin.md"),
-        37: ("endpoints", "praams-bank-income-statement-by-ticker.md"),
-        38: ("endpoints", "praams-bond-analyze-by-isin.md"),
-        39: ("endpoints", "praams-report-bond-by-isin.md"),
-        40: ("endpoints", "praams-report-equity-by-isin.md"),
-        41: ("endpoints", "praams-report-equity-by-ticker.md"),
-        42: ("endpoints", "praams-risk-scoring-by-isin.md"),
-        43: ("endpoints", "praams-risk-scoring-by-ticker.md"),
-        44: ("endpoints", "praams-smart-investment-screener-bond.md"),
-        45: ("endpoints", "praams-smart-investment-screener-equity.md"),
-        46: ("endpoints", "sentiment-data.md"),
-        47: ("endpoints", "stock-market-logos.md"),
-        48: ("endpoints", "stock-market-logos-svg.md"),
-        49: ("endpoints", "stock-screener-data.md"),
-        50: ("endpoints", "stocks-from-search.md"),
-        51: ("endpoints", "symbol-change-history.md"),
-        52: ("endpoints", "technical-indicators.md"),
-        53: ("endpoints", "tradinghours-list-markets.md"),
-        54: ("endpoints", "tradinghours-lookup-markets.md"),
-        55: ("endpoints", "tradinghours-market-details.md"),
-        56: ("endpoints", "tradinghours-market-status.md"),
-        57: ("endpoints", "upcoming-dividends.md"),
-        58: ("endpoints", "upcoming-earnings.md"),
-        59: ("endpoints", "upcoming-ipos.md"),
-        60: ("endpoints", "upcoming-splits.md"),
-        61: ("endpoints", "us-live-extended-quotes.md"),
-        62: ("endpoints", "us-options-contracts.md"),
-        63: ("endpoints", "us-options-eod.md"),
-        64: ("endpoints", "us-options-underlyings.md"),
-        65: ("endpoints", "us-tick-data.md"),
-        66: ("endpoints", "ust-bill-rates.md"),
-        67: ("endpoints", "ust-long-term-rates.md"),
-        68: ("endpoints", "ust-real-yield-rates.md"),
-        69: ("endpoints", "ust-yield-rates.md"),
-        70: ("endpoints", "user-details.md"),
-        71: ("endpoints", "websockets-realtime.md"),
+        0: ("subscriptions", "README.md"),
+        1: ("subscriptions", "free.md"),
+        2: ("subscriptions", "eod-historical-data-all-world.md"),
+        3: ("subscriptions", "eod-intraday-all-world-extended.md"),
+        4: ("subscriptions", "fundamentals-data-feed.md"),
+        5: ("subscriptions", "all-in-one.md"),
+        6: ("subscriptions", "all-in-one-extended-fundamentals.md"),
+        7: ("subscriptions", "calendar-feed.md"),
     },
-    # type 2 — general reference
+    # type 2 — endpoint documentation
     2: {
-        0: ("general", "api-authentication-demo-access.md"),
-        1: ("general", "authentication.md"),
-        2: ("general", "crypto-data-notes.md"),
-        3: ("general", "data-adjustment-guide.md"),
-        4: ("general", "delisted-tickers-guide.md"),
-        5: ("general", "exchanges.md"),
-        6: ("general", "financial-ratios-calculation-guide.md"),
-        7: ("general", "forex-data-notes.md"),
-        8: ("general", "fundamentals-api.md"),
-        9: ("general", "fundamentals-common-stock.md"),
-        10: ("general", "fundamentals-crypto-currency.md"),
-        11: ("general", "fundamentals-etf.md"),
-        12: ("general", "fundamentals-etf-metrics.md"),
-        13: ("general", "fundamentals-faq.md"),
-        14: ("general", "fundamentals-fund.md"),
-        15: ("general", "fundamentals-ratios.md"),
-        16: ("general", "general-data-faq.md"),
-        17: ("general", "glossary.md"),
-        18: ("general", "indices-data-notes.md"),
-        19: ("general", "pricing-and-plans.md"),
-        20: ("general", "primary-tickers-guide.md"),
-        21: ("general", "rate-limits.md"),
-        22: ("general", "sdks-and-integrations.md"),
-        23: ("general", "special-exchanges-guide.md"),
-        24: ("general", "stock-types-ticker-suffixes-guide.md"),
-        25: ("general", "symbol-format.md"),
-        26: ("general", "update-times.md"),
-        27: ("general", "versioning.md"),
+        0: ("endpoints", "README.md"),
+        1: ("endpoints", "bulk-fundamentals.md"),
+        2: ("endpoints", "cboe-index-data.md"),
+        3: ("endpoints", "cboe-indices-list.md"),
+        4: ("endpoints", "company-news.md"),
+        5: ("endpoints", "earnings-trends.md"),
+        6: ("endpoints", "economic-events.md"),
+        7: ("endpoints", "exchange-details.md"),
+        8: ("endpoints", "exchange-tickers.md"),
+        9: ("endpoints", "exchanges-list.md"),
+        10: ("endpoints", "fundamentals-data.md"),
+        11: ("endpoints", "historical-market-cap.md"),
+        12: ("endpoints", "historical-stock-prices.md"),
+        13: ("endpoints", "illio-market-insights-best-worst.md"),
+        14: ("endpoints", "illio-market-insights-beta-bands.md"),
+        15: ("endpoints", "illio-market-insights-largest-volatility.md"),
+        16: ("endpoints", "illio-market-insights-performance.md"),
+        17: ("endpoints", "illio-market-insights-risk-return.md"),
+        18: ("endpoints", "illio-market-insights-volatility.md"),
+        19: ("endpoints", "illio-performance-insights.md"),
+        20: ("endpoints", "illio-risk-insights.md"),
+        21: ("endpoints", "index-components.md"),
+        22: ("endpoints", "indices-list.md"),
+        23: ("endpoints", "insider-transactions.md"),
+        24: ("endpoints", "intraday-historical-data.md"),
+        25: ("endpoints", "investverte-esg-list-companies.md"),
+        26: ("endpoints", "investverte-esg-list-countries.md"),
+        27: ("endpoints", "investverte-esg-list-sectors.md"),
+        28: ("endpoints", "investverte-esg-view-company.md"),
+        29: ("endpoints", "investverte-esg-view-country.md"),
+        30: ("endpoints", "investverte-esg-view-sector.md"),
+        31: ("endpoints", "live-price-data.md"),
+        32: ("endpoints", "macro-indicator.md"),
+        33: ("endpoints", "marketplace-tick-data.md"),
+        34: ("endpoints", "news-word-weights.md"),
+        35: ("endpoints", "praams-bank-balance-sheet-by-isin.md"),
+        36: ("endpoints", "praams-bank-balance-sheet-by-ticker.md"),
+        37: ("endpoints", "praams-bank-income-statement-by-isin.md"),
+        38: ("endpoints", "praams-bank-income-statement-by-ticker.md"),
+        39: ("endpoints", "praams-bond-analyze-by-isin.md"),
+        40: ("endpoints", "praams-report-bond-by-isin.md"),
+        41: ("endpoints", "praams-report-equity-by-isin.md"),
+        42: ("endpoints", "praams-report-equity-by-ticker.md"),
+        43: ("endpoints", "praams-risk-scoring-by-isin.md"),
+        44: ("endpoints", "praams-risk-scoring-by-ticker.md"),
+        45: ("endpoints", "praams-smart-investment-screener-bond.md"),
+        46: ("endpoints", "praams-smart-investment-screener-equity.md"),
+        47: ("endpoints", "sentiment-data.md"),
+        48: ("endpoints", "stock-market-logos.md"),
+        49: ("endpoints", "stock-market-logos-svg.md"),
+        50: ("endpoints", "stock-screener-data.md"),
+        51: ("endpoints", "stocks-from-search.md"),
+        52: ("endpoints", "symbol-change-history.md"),
+        53: ("endpoints", "technical-indicators.md"),
+        54: ("endpoints", "tradinghours-list-markets.md"),
+        55: ("endpoints", "tradinghours-lookup-markets.md"),
+        56: ("endpoints", "tradinghours-market-details.md"),
+        57: ("endpoints", "tradinghours-market-status.md"),
+        58: ("endpoints", "upcoming-dividends.md"),
+        59: ("endpoints", "upcoming-earnings.md"),
+        60: ("endpoints", "upcoming-ipos.md"),
+        61: ("endpoints", "upcoming-splits.md"),
+        62: ("endpoints", "us-live-extended-quotes.md"),
+        63: ("endpoints", "us-options-contracts.md"),
+        64: ("endpoints", "us-options-eod.md"),
+        65: ("endpoints", "us-options-underlyings.md"),
+        66: ("endpoints", "us-tick-data.md"),
+        67: ("endpoints", "ust-bill-rates.md"),
+        68: ("endpoints", "ust-long-term-rates.md"),
+        69: ("endpoints", "ust-real-yield-rates.md"),
+        70: ("endpoints", "ust-yield-rates.md"),
+        71: ("endpoints", "user-details.md"),
+        72: ("endpoints", "websockets-realtime.md"),
+    },
+    # type 3 — general reference
+    3: {
+        0: ("general", "README.md"),
+        1: ("general", "api-authentication-demo-access.md"),
+        2: ("general", "authentication.md"),
+        3: ("general", "crypto-data-notes.md"),
+        4: ("general", "data-adjustment-guide.md"),
+        5: ("general", "delisted-tickers-guide.md"),
+        6: ("general", "exchanges.md"),
+        7: ("general", "financial-ratios-calculation-guide.md"),
+        8: ("general", "forex-data-notes.md"),
+        9: ("general", "fundamentals-api.md"),
+        10: ("general", "fundamentals-common-stock.md"),
+        11: ("general", "fundamentals-crypto-currency.md"),
+        12: ("general", "fundamentals-etf.md"),
+        13: ("general", "fundamentals-etf-metrics.md"),
+        14: ("general", "fundamentals-faq.md"),
+        15: ("general", "fundamentals-fund.md"),
+        16: ("general", "fundamentals-ratios.md"),
+        17: ("general", "general-data-faq.md"),
+        18: ("general", "glossary.md"),
+        19: ("general", "indices-data-notes.md"),
+        20: ("general", "pricing-and-plans.md"),
+        21: ("general", "primary-tickers-guide.md"),
+        22: ("general", "rate-limits.md"),
+        23: ("general", "sdks-and-integrations.md"),
+        24: ("general", "special-exchanges-guide.md"),
+        25: ("general", "stock-types-ticker-suffixes-guide.md"),
+        26: ("general", "symbol-format.md"),
+        27: ("general", "update-times.md"),
+        28: ("general", "versioning.md"),
     },
 }
+
+
+def _serve_global_readme(fallback: bool = False) -> str:
+    """Return the global README, optionally flagged as a fallback."""
+    file_path = _RESOURCES_DIR / "README.md"
+    if not file_path.is_file():
+        return _err("Global README not found.")
+    try:
+        content = file_path.read_text(encoding="utf-8")
+    except OSError as e:
+        return _err(f"Failed to read global README: {e}")
+    try:
+        structured = _parse_markdown(content)
+    except Exception as e:
+        structured = {"parsing_error": str(e)}
+    result = {"type": 0, "id": 0, "title": "Global Readme",
+              "content": structured, "raw": content}
+    if fallback:
+        result["fallback"] = True
+    return json.dumps(result, indent=2)
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def retrieve_description_by_id(
-        id: Union[int, str],
-        type: Union[int, str] = 0,
+        type: Optional[Union[int, str]] = 0,
+        id: Optional[Union[int, str]] = None,
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Returns a predefined documentation page by numeric ID and type.
+        Returns a predefined documentation page by numeric type and id.
+
+        Call with no parameters or type=0 to get the global README with
+        full usage instructions. Call with type=X, id=0 to get the README
+        for that resource group. Invalid or missing parameters fall back to
+        the global README (with "fallback": true in the response).
 
         Types:
-          0 — Subscription plans (7 pages, ids 0-6)
-          1 — Endpoint documentation (72 pages, ids 0-71)
-          2 — General reference (28 pages, ids 0-27)
+          0 — Global README / help
+          1 — Subscription plans (ids 1-7; id 0 = subscriptions README)
+          2 — Endpoint documentation (ids 1-72; id 0 = endpoints README)
+          3 — General reference (ids 1-28; id 0 = general README)
 
-        Subscription plan pages (type=0):
-          0 — Free, 1 — EOD Historical Data All World,
-          2 — EOD Intraday All World Extended, 3 — Fundamentals Data Feed,
-          4 — All-In-One, 5 — All-In-One Extended Fundamentals,
-          6 — Calendar Feed
+        Subscription plan pages (type=1):
+          1 — Free, 2 — EOD Historical Data All World,
+          3 — EOD Intraday All World Extended, 4 — Fundamentals Data Feed,
+          5 — All-In-One, 6 — All-In-One Extended Fundamentals,
+          7 — Calendar Feed
 
-        Endpoint documentation pages (type=1):
-          0 — Bulk Fundamentals, 1 — CBOE Index Data, 2 — CBOE Indices List,
-          3 — Company News, 4 — Earnings Trends, 5 — Economic Events,
-          6 — Exchange Details, 7 — Exchange Tickers, 8 — Exchanges List,
-          9 — Fundamentals Data, 10 — Historical Market Cap,
-          11 — Historical Stock Prices, 12-19 — Illio insights,
-          20 — Index Components, 21 — Indices List, 22 — Insider Transactions,
-          23 — Intraday Historical Data, 24-29 — Investverte ESG,
-          30 — Live Price Data, 31 — Macro Indicator,
-          32 — Marketplace Tick Data, 33 — News Word Weights,
-          34-45 — PRAAMS endpoints, 46 — Sentiment Data,
-          47 — Stock Market Logos, 48 — Stock Market Logos SVG,
-          49 — Stock Screener Data, 50 — Stocks From Search,
-          51 — Symbol Change History, 52 — Technical Indicators,
-          53-56 — Trading Hours, 57 — Upcoming Dividends,
-          58 — Upcoming Earnings, 59 — Upcoming IPOs,
-          60 — Upcoming Splits, 61 — US Live Extended Quotes,
-          62-64 — US Options, 65 — US Tick Data, 66-69 — UST Rates,
-          70 — User Details, 71 — WebSockets Realtime
+        Endpoint documentation pages (type=2):
+          1 — Bulk Fundamentals, 2 — CBOE Index Data, 3 — CBOE Indices List,
+          4 — Company News, 5 — Earnings Trends, 6 — Economic Events,
+          7 — Exchange Details, 8 — Exchange Tickers, 9 — Exchanges List,
+          10 — Fundamentals Data, 11 — Historical Market Cap,
+          12 — Historical Stock Prices, 13-20 — Illio insights,
+          21 — Index Components, 22 — Indices List, 23 — Insider Transactions,
+          24 — Intraday Historical Data, 25-30 — Investverte ESG,
+          31 — Live Price Data, 32 — Macro Indicator,
+          33 — Marketplace Tick Data, 34 — News Word Weights,
+          35-46 — PRAAMS endpoints, 47 — Sentiment Data,
+          48 — Stock Market Logos, 49 — Stock Market Logos SVG,
+          50 — Stock Screener Data, 51 — Stocks From Search,
+          52 — Symbol Change History, 53 — Technical Indicators,
+          54-57 — Trading Hours, 58 — Upcoming Dividends,
+          59 — Upcoming Earnings, 60 — Upcoming IPOs,
+          61 — Upcoming Splits, 62 — US Live Extended Quotes,
+          63-65 — US Options, 66 — US Tick Data, 67-70 — UST Rates,
+          71 — User Details, 72 — WebSockets Realtime
 
-        General reference pages (type=2):
-          0 — API Authentication Demo Access, 1 — Authentication,
-          2 — Crypto Data Notes, 3 — Data Adjustment Guide,
-          4 — Delisted Tickers Guide, 5 — Exchanges,
-          6 — Financial Ratios Calculation Guide, 7 — Forex Data Notes,
-          8-15 — Fundamentals guides, 16 — General Data FAQ,
-          17 — Glossary, 18 — Indices Data Notes,
-          19 — Pricing And Plans, 20 — Primary Tickers Guide,
-          21 — Rate Limits, 22 — SDKs And Integrations,
-          23 — Special Exchanges Guide,
-          24 — Stock Types Ticker Suffixes Guide,
-          25 — Symbol Format, 26 — Update Times, 27 — Versioning
+        General reference pages (type=3):
+          1 — API Authentication Demo Access, 2 — Authentication,
+          3 — Crypto Data Notes, 4 — Data Adjustment Guide,
+          5 — Delisted Tickers Guide, 6 — Exchanges,
+          7 — Financial Ratios Calculation Guide, 8 — Forex Data Notes,
+          9-16 — Fundamentals guides, 17 — General Data FAQ,
+          18 — Glossary, 19 — Indices Data Notes,
+          20 — Pricing And Plans, 21 — Primary Tickers Guide,
+          22 — Rate Limits, 23 — SDKs And Integrations,
+          24 — Special Exchanges Guide,
+          25 — Stock Types Ticker Suffixes Guide,
+          26 — Symbol Format, 27 — Update Times, 28 — Versioning
 
         Args:
-            id: Numeric ID of the documentation page.
-            type: Page category (0 = subscriptions, 1 = endpoints, 2 = general). Default 0.
+            type: Page category (0 = global README, 1 = subscriptions,
+                  2 = endpoints, 3 = general). Default 0.
+            id: Numeric page ID within the type. Optional; defaults to 0
+                (README for the given type).
             api_token: Ignored (accepted for interface uniformity).
 
         Returns:
-            JSON string with "type", "id", "title", and "content" keys,
-            or {"error": "..."} on failure.
+            JSON string with "type", "id", "title", "content", and "raw" keys.
+            Invalid parameters return the global README with "fallback": true.
         """
-        try:
-            page_type = int(type)
-        except (ValueError, TypeError):
-            return _err(f"'type' must be an integer, got: {type!r}")
+        if type is None:
+            page_type = 0
+        else:
+            try:
+                page_type = int(type)
+            except (ValueError, TypeError):
+                return _serve_global_readme(fallback=True)
+
+        if page_type == 0:
+            return _serve_global_readme(fallback=False)
 
         pages = _PAGE_REGISTRY.get(page_type)
         if pages is None:
-            valid = sorted(_PAGE_REGISTRY.keys())
-            return _err(f"Unknown type {page_type}. Valid types: {valid}")
+            return _serve_global_readme(fallback=True)
 
-        try:
-            page_id = int(id)
-        except (ValueError, TypeError):
-            return _err(f"'id' must be an integer, got: {id!r}")
+        if id is None:
+            page_id = 0
+        else:
+            try:
+                page_id = int(id)
+            except (ValueError, TypeError):
+                return _serve_global_readme(fallback=True)
 
         entry = pages.get(page_id)
         if entry is None:
-            valid = sorted(pages.keys())
-            return _err(f"Unknown page id {page_id} for type {page_type}. Valid ids: {valid}")
+            return _serve_global_readme(fallback=True)
 
         subdir, filename = entry
         file_path = _RESOURCES_DIR / subdir / filename
