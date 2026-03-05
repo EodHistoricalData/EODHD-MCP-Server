@@ -79,6 +79,17 @@ def register(mcp: FastMCP):
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON object with report generation status:
+              - success (bool): whether the report request was accepted
+              - item (object|null): report metadata if available, including:
+                  - reportId (str): unique report identifier
+                  - status (str): generation status (e.g. "queued", "processing", "completed")
+                  - downloadUrl (str|null): URL to download the PDF when ready
+              - message (str): status message (e.g. "Report generation started")
+              - errors (array): list of error messages, empty on success
+            The actual report is a PDF sent to the provided email address.
+
         Notes:
             - Marketplace product: 10 API calls per request.
             - Response is a PDF file download (application/pdf).

@@ -52,8 +52,14 @@ def register(mcp: FastMCP):
             api_token (str, optional): Override API token for this call. If not provided, env token is used.
 
         Returns:
-            str: JSON string with data or {"error": "..."}.
-                 If fmt='csv', returns CSV text embedded as a JSON string for consistency.
+            Array of daily/weekly/monthly records, each with:
+            - date (str): YYYY-MM-DD
+            - open, high, low, close (float): OHLC prices (unadjusted)
+            - adjusted_close (float): split- and dividend-adjusted close
+            - volume (int): shares traded
+
+            Use adjusted_close for return calculations; close is raw exchange price.
+            If filter is set (e.g. 'last_close'), returns a single scalar value.
         """
         # --- Validate required/typed params ---
         if not ticker or not isinstance(ticker, str):

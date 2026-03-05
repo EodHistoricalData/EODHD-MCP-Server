@@ -39,7 +39,16 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call API token override (demo does NOT work for Search).
 
         Returns:
-            str: JSON-formatted list of instruments or {"error": "..."}.
+            Array of matching instruments, each with:
+            - Code (str): ticker symbol
+            - Exchange (str): exchange code
+            - Name (str): instrument name
+            - Type (str): instrument type (e.g. "Common Stock", "ETF")
+            - Country (str): country of listing
+            - Currency (str): trading currency
+            - ISIN (str): ISIN code
+            - previousClose (float): last closing price
+            - previousCloseDate (str): date of last close (YYYY-MM-DD)
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

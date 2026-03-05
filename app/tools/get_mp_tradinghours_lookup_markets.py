@@ -40,6 +40,20 @@ def register(mcp: FastMCP):
                 Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON array of matching market objects, each with:
+            - fin_id (str): Unique market identifier (e.g. 'us.nyse').
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - products (str): Traded product types.
+            - country (str): Country name.
+            - country_code (str): ISO country code.
+            - city (str): City where exchange is located.
+            - timezone (str): IANA timezone identifier.
+            - timezone_abbr (str): Timezone abbreviation.
+            - mic (str): Market Identifier Code (ISO 10383).
+            - mic_o (str): Operating MIC.
+
         Notes:
             - Marketplace product: 10 API calls per request.
             - Over 900 different trading schedules tracked.

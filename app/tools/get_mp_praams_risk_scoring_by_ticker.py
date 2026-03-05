@@ -91,6 +91,28 @@ def register(mcp: FastMCP):
           - Country risk, solvency, and descriptive risk narratives
           - Analyst view and price targets
 
+        Returns:
+          JSON object with Praams envelope:
+            - success (bool): whether the request succeeded
+            - item (object): equity analysis payload containing:
+                - praamsRatio (float): overall PRAAMS score
+                - totalReturnScore (int): aggregate return score (1-7 scale)
+                - totalRiskScore (int): aggregate risk score (1-7 scale)
+                - valuation (object): valuation metrics and score
+                - performance (object): performance metrics and score
+                - profitability (object): profitability metrics and score
+                - growthMomentum (object): growth & momentum metrics and score
+                - dividends (object): dividend yield, payout ratio, score
+                - analystView (object): consensus target price, recommendations, score
+                - volatility (object): historical volatility, VaR, score
+                - stressTest (object): stress-test scenarios and score
+                - liquidity (object): trading volume, bid-ask spread, score
+                - countryRisk (object): country-level risk assessment and score
+                - solvency (object): debt ratios, interest coverage, score
+                - descriptions (object|null): narrative risk/return explanations
+            - errors (array): list of error messages, empty on success
+            - message (str): status message
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

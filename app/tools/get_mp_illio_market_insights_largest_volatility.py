@@ -112,6 +112,17 @@ def register(mcp: FastMCP):
           - Top instruments by volatility increase.
           - Top instruments by volatility decrease.
 
+        Returns:
+          JSON object with largest volatility change chapter data:
+            - chapter (str): chapter identifier, e.g. "volume"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): volatility change analysis, including:
+                - summary (object): share of instruments with higher vs lower volatility
+                - increasers (array): top instruments by volatility increase, each with
+                    ticker, name, volatilityChange (float), currentVolatility (float)
+                - decreasers (array): top instruments by volatility decrease, same fields
+            - metadata (object|null): date range, lookback period
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

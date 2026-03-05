@@ -47,8 +47,14 @@ def register(mcp: FastMCP):
             - History starts from 2022-07-22; endpoint updated daily.
             - Only **US** exchanges are supported currently.
         Returns:
-            str: JSON array of changes with fields:
-                 exchange, old_symbol, new_symbol, company_name, effective
+            Array of symbol change records, each with:
+            - old_code (str): previous ticker symbol
+            - old_exchange (str): previous exchange code
+            - old_country (str): previous country code
+            - new_code (str): new ticker symbol
+            - new_exchange (str): new exchange code
+            - new_country (str): new country code
+            - date (str): effective date of change
         """
         # Validate inputs
         if fmt != "json":

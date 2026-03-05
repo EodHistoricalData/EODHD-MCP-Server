@@ -99,6 +99,16 @@ def register(mcp: FastMCP):
           - DJI    (Dow Jones Industrial Average)
           - NDX    (Nasdaq-100)
 
+        Returns:
+          JSON object with volatility bands chapter data:
+            - chapter (str): chapter identifier, e.g. "volatility"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): volatility and day-move distributions, including:
+                - bands (array): volatility band buckets with instrument counts
+                - instruments (array): per-instrument volatility metrics
+                - dailyMoves (object|null): distribution of daily price changes
+            - metadata (object|null): date range, calculation parameters
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

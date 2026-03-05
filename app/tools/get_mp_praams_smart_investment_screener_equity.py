@@ -298,13 +298,28 @@ def register(mcp: FastMCP):
           - Query params: skip, take, api_token
           - JSON body: filters (countries/sectors/etc) and ratio bounds.
 
-        Response shape:
-          {
-            "item": { "peers": [...], "totalCount": N },
-            "success": true,
-            "message": "",
-            "errors": []
-          }
+        Returns:
+          JSON object with Praams envelope:
+            - item (object):
+                - peers (array): matching equity instruments, each containing:
+                    - ticker (str): equity ticker symbol
+                    - isin (str): ISIN code
+                    - name (str): company name
+                    - praamsRatio (float): overall PRAAMS score
+                    - totalReturnScore (int): return score (1-7)
+                    - totalRiskScore (int): risk score (1-7)
+                    - valuation (int): valuation score (1-7)
+                    - performance (int): performance score (1-7)
+                    - profitability (int): profitability score (1-7)
+                    - dividends (int): dividends score (1-7)
+                    - country (str): company country
+                    - sector (str): company sector
+                    - capitalisation (int): market cap category (1=small, 2=mid, 3=large)
+                    - currency (str): trading currency
+                - totalCount (int): total matching instruments (for pagination)
+            - success (bool): whether the request succeeded
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
 
         Notes:
           - All *Min/*Max fields are 1..7 scale integers (nullable).

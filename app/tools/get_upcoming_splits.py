@@ -35,8 +35,14 @@ def register(mcp: FastMCP):
           - api_token: optional override for per-call token
 
         Returns:
-          - JSON string when fmt='json'
-          - CSV wrapped as {"fmt":"csv","data": "..."} when fmt='csv'
+            Array of split records, each with:
+            - code (str): ticker symbol
+            - exchange (str): exchange code
+            - optionable (str): whether options exist ('0' or '1')
+            - date (str): split effective date
+            - split (str): split ratio (e.g. '4/1')
+            - oldShares (int): pre-split share count
+            - newShares (int): post-split share count
         """
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):

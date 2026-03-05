@@ -435,8 +435,15 @@ def register(mcp: FastMCP):
             api_token: Ignored (accepted for interface uniformity).
 
         Returns:
-            JSON string with "type", "id", "title", "content", and "raw" keys.
-            Invalid parameters return the global README with "fallback": true.
+            JSON object with:
+            - type (int): Page category number (0-3).
+            - id (int): Page ID within the category.
+            - title (str): Human-readable page title derived from filename.
+            - content (dict): Structured parsed markdown (headings as nested dicts,
+              tables as list-of-dicts, lists as arrays, key-value pairs as dict entries).
+            - raw (str): Original markdown source text.
+            - fallback (bool, optional): Present and true when invalid/missing params
+              caused a fallback to the global README.
         """
         if type is None:
             page_type = 0

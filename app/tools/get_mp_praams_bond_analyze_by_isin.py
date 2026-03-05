@@ -93,6 +93,28 @@ def register(mcp: FastMCP):
           - Profitability, growth & momentum metrics at the issuer level
           - Market view (spreads, yield/price history where available)
 
+        Returns:
+          JSON object with Praams envelope:
+            - success (bool): whether the request succeeded
+            - item (object): bond analysis payload containing:
+                - praamsRatio (float): overall PRAAMS score
+                - totalReturnScore (int): aggregate return score (1-7 scale)
+                - totalRiskScore (int): aggregate risk score (1-7 scale)
+                - coupon (object): coupon profile (type, rate, frequency, structure notes)
+                - valuation (object): yield-to-maturity, spread, price metrics
+                - performance (object): price and total return performance
+                - profitability (object): issuer-level profitability metrics
+                - growthMomentum (object): issuer growth & momentum
+                - marketView (object): spread history, yield curve positioning
+                - volatility (object): price volatility, duration-adjusted risk
+                - stressTest (object): stress-test scenarios and score
+                - liquidity (object): trading volume, bid-ask spread, score
+                - countryRisk (object): country-level risk assessment and score
+                - solvency (object): issuer creditworthiness, leverage, coverage ratios
+                - descriptions (object|null): narrative risk/return explanations
+            - errors (array): list of error messages, empty on success
+            - message (str): status message
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

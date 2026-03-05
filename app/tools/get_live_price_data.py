@@ -45,8 +45,16 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override. If omitted, env token is used.
 
         Returns:
-            str: JSON string. If fmt='csv' and your `make_request` returns raw text,
-                 this tool wraps CSV into {"csv": "..."}; otherwise returns JSON from API.
+            Single object (one ticker) or array (multiple tickers), each with:
+            - code (str): ticker symbol
+            - timestamp (int): Unix epoch seconds of last trade
+            - open, high, low, close (float): session OHLC
+            - volume (int): session volume
+            - previousClose (float): prior session close
+            - change (float): absolute change from previousClose
+            - change_p (float): percent change from previousClose
+
+            Prices are delayed ~15-20 min depending on exchange.
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

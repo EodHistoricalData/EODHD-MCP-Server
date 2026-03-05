@@ -60,7 +60,26 @@ def register(mcp: FastMCP):
         """
         Get end-of-day options data (mp/unicornbay/options/eod)
 
-        Returns JSON: meta, data[], links.next; supports 'compact' mode.
+        Supports 'compact' mode for minimized payload.
+
+        Returns:
+            JSON object with:
+            - meta: Pagination metadata.
+            - data (array): EOD options records per date, each containing:
+              - options.CALLS (array): Call contracts with:
+                - contractName (str): Full OCC contract name.
+                - expirationDate (str): Expiration date YYYY-MM-DD.
+                - strike (float): Strike price.
+                - lastPrice (float): Last traded price.
+                - bid (float): Bid price.
+                - ask (float): Ask price.
+                - change (float): Price change.
+                - changePercent (float): Price change percentage.
+                - volume (int): Trading volume.
+                - openInterest (int): Open interest.
+                - impliedVolatility (float): Implied volatility.
+              - options.PUTS (array): Put contracts (same fields as CALLS).
+            - links.next (str|null): URL for next page, null if last page.
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

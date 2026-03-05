@@ -76,6 +76,19 @@ def register(mcp: FastMCP):
           - offset: 0..999
           - fmt: optional; Screener is JSON-only. If provided, must be "json".
           - api_token: optional override
+
+        Returns:
+            Array of matching stocks, each with:
+            - code (str): ticker symbol
+            - name (str): company name
+            - exchange (str): exchange code (e.g. 'US')
+            - sector (str): GICS sector
+            - industry (str): GICS industry
+            - market_capitalization (float): market cap in USD
+            Plus any fields relevant to applied filters/signals, e.g.:
+            - earnings_share, dividend_yield, price, change, volume, etc.
+
+            Max 100 results per page; use offset for pagination.
         """
 
         # --- fmt handling (for compatibility with callers passing fmt) ---

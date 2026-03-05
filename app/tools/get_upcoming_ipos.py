@@ -35,8 +35,20 @@ def register(mcp: FastMCP):
           - api_token: optional override for per-call token
 
         Returns:
-          - JSON (stringified) when fmt='json'
-          - CSV (raw text wrapped as JSON string if the upstream returns text)
+            Object with:
+            - ipos (list): array of IPO records, each with:
+              - code (str): ticker symbol
+              - name (str): company name
+              - exchange (str): exchange code
+              - currency (str): pricing currency
+              - start_date (str): expected IPO date
+              - filing_date (str): SEC filing date
+              - amended_date (str): last amendment date
+              - price_from (float|null): low end of price range
+              - price_to (float|null): high end of price range
+              - offer_price (float|null): final offer price
+              - shares (int|null): shares offered
+              - deal_type (str): type of offering (e.g. 'Priced')
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()

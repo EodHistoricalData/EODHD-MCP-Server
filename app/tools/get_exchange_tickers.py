@@ -27,6 +27,16 @@ def register(mcp: FastMCP):
         Notes:
             - By default, API returns tickers active in the last month.
             - For US, you can use 'US' (unified) or specific venues (NYSE, NASDAQ, etc.).
+
+        Returns:
+            Array of ticker objects, each with:
+            - Code (str): ticker symbol
+            - Name (str): instrument name
+            - Country (str): country of listing
+            - Exchange (str): exchange code
+            - Currency (str): trading currency
+            - Type (str): instrument type (e.g. "Common Stock", "ETF")
+            - Isin (str|null): ISIN code, if available
         """
         if not exchange_code or not isinstance(exchange_code, str):
             raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")

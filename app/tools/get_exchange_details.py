@@ -52,7 +52,21 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override (env token otherwise).
 
         Returns:
-            str: JSON string with exchange details or {"error": "..."} on failure.
+            Object with:
+            - Name (str): exchange full name
+            - Code (str): exchange code
+            - OperatingMIC (str): ISO 10383 operating MIC
+            - Country (str): country name
+            - Currency (str): primary currency code
+            - CountryISO2 (str): alpha-2 country code
+            - CountryISO3 (str): alpha-3 country code
+            - Timezone (str): IANA timezone (e.g. "America/New_York")
+            - isOpen (bool): whether the exchange is currently open
+            - tradingHours (object): open, close, UTC equivalents, working days, lunch hours
+            - ExchangeHolidays (array): holiday objects with Name, Date, Type (bank/official)
+            - ActiveTickers (int): tickers active in last 2 months
+            - UpdatedTickers (int): tickers updated today
+            - PreviousDayUpdatedTickers (int): tickers updated previous day
         """
         # --- Validate inputs ---
         if not exchange_code or not isinstance(exchange_code, str):

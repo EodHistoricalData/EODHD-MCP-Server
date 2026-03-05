@@ -42,6 +42,17 @@ def register(mcp: FastMCP):
           - 'symbols' is REQUIRED (one or more, comma-separated).
           - Response is JSON only (fmt kept to mirror other tools).
           - Each request consumes ~10 API calls under EODHD's system.
+
+        Returns:
+            Array of trend records, each with:
+            - code (str): ticker symbol
+            - date (str): report date
+            - period (str): fiscal period (e.g. '+1y', '0q')
+            - growth (float|null): expected growth rate
+            - earningsEstimate (object): avg, low, high, yearAgoEps, numberOfAnalysts, growth
+            - revenueEstimate (object): avg, low, high, yearAgoRevenue, numberOfAnalysts, growth
+            - epsTrend (object): current, 7daysAgo, 30daysAgo, 60daysAgo, 90daysAgo
+            - epsRevisions (object): upLast7days, upLast30days, downLast7days, downLast30days
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:

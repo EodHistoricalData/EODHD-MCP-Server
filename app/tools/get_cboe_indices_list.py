@@ -55,6 +55,21 @@ def register(mcp: FastMCP):
               }
             }
 
+        Returns:
+            Object with:
+            - meta (object): total (int) — total number of indices
+            - data (array): index objects, each with:
+              - id (str): CBOE index identifier
+              - type (str): always "cboe-index"
+              - attributes (object):
+                - region (str): geographic region (e.g. "Eurozone", "Germany")
+                - index_code (str): CBOE index code
+                - feed_type (str): feed type (e.g. "snapshot_official_closing")
+                - date (str): latest date (YYYY-MM-DD)
+                - index_close (float): latest closing value
+                - index_divisor (float): index divisor
+            - links (object): next (str|null) — URL for next page, null if last
+
         Notes:
             - Pagination:
               If 'links.next' is not null, call that URL to get the next page.

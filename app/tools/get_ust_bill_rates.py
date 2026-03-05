@@ -31,11 +31,25 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            Array of daily bill rate objects, each with:
+            - date (str): observation date (YYYY-MM-DD)
+            - 4WEEKS_BANK_DISCOUNT (float): 4-week bank discount rate
+            - 4WEEKS_COUPON_EQUIVALENT (float): 4-week coupon equivalent yield
+            - 8WEEKS_BANK_DISCOUNT (float): 8-week bank discount rate
+            - 8WEEKS_COUPON_EQUIVALENT (float): 8-week coupon equivalent yield
+            - 13WEEKS_BANK_DISCOUNT (float): 13-week bank discount rate
+            - 13WEEKS_COUPON_EQUIVALENT (float): 13-week coupon equivalent yield
+            - 17WEEKS_BANK_DISCOUNT (float): 17-week bank discount rate
+            - 17WEEKS_COUPON_EQUIVALENT (float): 17-week coupon equivalent yield
+            - 26WEEKS_BANK_DISCOUNT (float): 26-week bank discount rate
+            - 26WEEKS_COUPON_EQUIVALENT (float): 26-week coupon equivalent yield
+            - 52WEEKS_BANK_DISCOUNT (float): 52-week bank discount rate
+            - 52WEEKS_COUPON_EQUIVALENT (float): 52-week coupon equivalent yield
+
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, discount, coupon, avg_discount, avg_coupon,
-              maturity_date, cusip.
         """
         url = f"{EODHD_API_BASE}/ust/bill-rates?1=1"
 

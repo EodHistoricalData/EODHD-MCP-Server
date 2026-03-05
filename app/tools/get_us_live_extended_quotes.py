@@ -70,8 +70,25 @@ def register(mcp: FastMCP):
           api_token: Optional token; if omitted, env is used via make_request().
 
         Returns:
-          Pretty-printed JSON string on success, or {"error": "..."} on failure.
-          If fmt='csv' and your make_request() returns raw text, it's wrapped as {"csv": "..."}.
+            Array of extended quote snapshots, each with:
+            - code (str): ticker symbol
+            - timestamp (int): Unix epoch seconds of last trade
+            - open, high, low, close (float): session OHLC
+            - volume (int): session volume
+            - previousClose (float): prior session close
+            - change (float): absolute change from previousClose
+            - change_p (float): percent change
+            - 50day_ma, 200day_ma (float): rolling moving averages
+            - yearHigh, yearLow (float): 52-week high/low
+            - marketCapitalization (float): market cap in USD
+            - epsEstimateCurrentYear (float): consensus EPS estimate
+            - eps (float): trailing EPS
+            - pe (float): trailing P/E ratio
+            - dividend_yield_percent (float): indicated annual dividend yield %
+            - bid, ask (float): current bid/ask prices
+            - bidSize, askSize (int): bid/ask lot sizes
+
+            Prices are delayed ~15-20 min (exchange-compliant).
         """
         # --- Validate inputs ---
         syms = _normalize_symbols(symbols)

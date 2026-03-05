@@ -27,7 +27,11 @@ def register(mcp: FastMCP):
         """
         List all underlying symbols that have options (mp/unicornbay/options/underlying-symbols)
 
-        Returns JSON: meta {total, fields, compact}, data [symbols...], links.next
+        Returns:
+            JSON object with:
+            - meta (object): Contains total count, fields list, compact flag.
+            - data (array of str): Ticker symbols that have options available (e.g. ['AAPL','MSFT',...]).
+            - links.next (str|null): URL for next page, null if last page.
         """
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/underlying-symbols?1=1"
         base += _q("page[offset]", page_offset)

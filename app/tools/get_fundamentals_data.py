@@ -300,6 +300,34 @@ def register(mcp: FastMCP):
           outside the window. Financials are fetched only for in-range period end dates (from outstandingShares).
         - For Indices: pass 'historical=1' and optional 'from'/'to' through `extra_params`.
         - Always returns JSON (fmt must be 'json').
+
+        Returns:
+            Nested object; structure depends on asset Type:
+
+            Common Stock — top-level keys:
+            - General: name, exchange, currency, sector, industry, description, etc.
+            - Highlights: marketCap, EBITDA, PE, EPS, dividendYield, etc.
+            - Valuation: trailing/forward PE, PEG, price-to-sales/book, EV ratios
+            - SharesStats: shares outstanding, float, percent insiders/institutions
+            - Technicals: beta, 52wHigh/Low, moving averages, short ratio
+            - SplitsDividends: forward/trailing dividend rate & yield, payout ratio, split history
+            - AnalystRatings: target price, strong buy/buy/hold/sell/strong sell counts
+            - Holders: top institutional & fund holders with shares/weight
+            - InsiderTransactions: array of insider trades (date, name, shares, value)
+            - outstandingShares: quarterly & annual share counts by date
+            - Earnings: History (actual/estimate EPS), Trend, Annual
+            - Financials: Balance_Sheet, Cash_Flow, Income_Statement (quarterly & yearly)
+
+            ETF — top-level keys:
+            - General, Technicals
+            - ETF_Data: Holdings (top N positions), Sector_Weights, World_Regions,
+              Top_10_Holdings, Asset_Allocation, performance, fees
+
+            Mutual Fund — top-level keys:
+            - General
+            - MutualFund_Data: fund family, category, NAV, yield, holdings, sector weights
+
+            Index — General only (pass extra_params={'historical': 1} for components).
         """
         # --- Validate basics
         if fmt != "json":

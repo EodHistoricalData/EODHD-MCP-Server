@@ -37,6 +37,18 @@ def register(mcp: FastMCP):
         Returns past/future economic events with optional filters:
         date window, country (ISO2), comparison (mom|qoq|yoy), type text,
         and pagination (offset/limit).
+
+        Returns:
+            Array of events, each with:
+            - type (str): event category
+            - country (str): ISO-3166 alpha-2 country code
+            - date (str): event datetime
+            - actual (float|null): actual value
+            - previous (float|null): previous period value
+            - estimate (float|null): consensus estimate
+            - change (float|null): absolute change
+            - changePercentage (float|null): percentage change
+            - event (str): event name/description
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:

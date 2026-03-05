@@ -47,7 +47,15 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token; env token used if omitted.
 
         Returns:
-            str: JSON array of insider transactions or {"error": "..."} on failure.
+            Object with:
+            - code (str): ticker symbol
+            - transactions (list): array of transactions, each with:
+              - date (str): transaction date
+              - ownerName (str): insider name
+              - transactionType (str): 'P' (Purchase) or 'S' (Sale)
+              - sharesTraded (int): number of shares traded
+              - pricePerShare (float|null): price per share
+              - sharesOwned (int): total shares owned after transaction
 
         Notes:
             • Each request consumes 10 API calls (per docs).

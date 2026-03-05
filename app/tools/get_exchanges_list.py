@@ -20,8 +20,14 @@ def register(mcp: FastMCP):
         Get List of Exchanges (GET /api/exchanges-list/)
 
         Returns:
-            str: JSON array of exchanges, each with fields:
-                 Name, Code, OperatingMIC, Country, Currency, CountryISO2, CountryISO3
+            Array of exchange objects, each with:
+            - Name (str): exchange full name
+            - Code (str): exchange code (e.g. "US", "LSE")
+            - OperatingMIC (str): ISO 10383 operating MIC
+            - Country (str): country name
+            - Currency (str): primary currency code
+            - CountryISO2 (str): ISO 3166-1 alpha-2 country code
+            - CountryISO3 (str): ISO 3166-1 alpha-3 country code
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

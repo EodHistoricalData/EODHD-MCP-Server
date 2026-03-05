@@ -28,6 +28,10 @@ def register(mcp: FastMCP):
             symbol (str): Ticker in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'BMW.XETRA').
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            Binary PNG image data (200x200 with transparency).
+            When returned via JSON wrapper, base64-encoded image string.
+
         Notes:
             - Marketplace product: 10 API calls per request.
             - Response is a binary PNG image.

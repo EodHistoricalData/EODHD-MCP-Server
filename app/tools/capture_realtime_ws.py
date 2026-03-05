@@ -60,17 +60,19 @@ def register(mcp: FastMCP):
             connect_timeout (float): Overall timeout to establish connection (seconds).
 
         Returns:
-            str: JSON string with
-                {
-                  "feed": ...,
-                  "endpoint": ...,
-                  "symbols": [...],
-                  "duration_seconds": ...,
-                  "started_at": <epoch_ms>,
-                  "ended_at": <epoch_ms>,
-                  "message_count": N,
-                  "messages": [ {parsed message dicts...} ]
-                }
+            Object with:
+            - feed (str): feed name used
+            - endpoint (str): WS endpoint path
+            - symbols (array[str]): subscribed symbols
+            - duration_seconds (int): capture window length
+            - started_at (int): start epoch in ms
+            - ended_at (int): end epoch in ms
+            - message_count (int): total messages captured
+            - messages (array): captured messages, each varies by feed:
+              - us_trades: s (str, symbol), p (float, price), v (int, volume), t (int, timestamp ms), c (str, conditions)
+              - us_quotes: s (str, symbol), ap (float, ask price), as (int, ask size), bp (float, bid price), bs (int, bid size), t (int, timestamp ms)
+              - forex: s (str, symbol), a (float, ask), b (float, bid), t (int, timestamp ms)
+              - crypto: s (str, symbol), p (float, price), q (float, quantity), t (int, timestamp ms)
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")

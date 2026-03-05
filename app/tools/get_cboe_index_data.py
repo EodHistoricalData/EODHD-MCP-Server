@@ -35,47 +35,34 @@ def register(mcp: FastMCP):
             - date: Trading date in YYYY-MM-DD format.
 
         Returns:
-            JSON-formatted string of the raw API response, e.g.:
-
-            {
-              "meta": { "total": 1 },
-              "data": [
-                {
-                  "id": "BDE30P-2017-02-01-snapshot_official_closing",
-                  "type": "cboe-index",
-                  "attributes": {
-                    "region": "Germany",
-                    "index_code": "BDE30P",
-                    "feed_type": "snapshot_official_closing",
-                    "date": "2017-02-01",
-                    "index_close": 13915.57,
-                    "index_divisor": 68033376.886244,
-                    "effective_date": null,
-                    "review_date": null
-                  },
-                  "components": [
-                    {
-                      "id": "...-HEI.DU",
-                      "type": "cboe-index-component",
-                      "attributes": {
-                        "symbol": "HEI.DU",
-                        "isin": "DE0006047004",
-                        "name": "HEIDELBERGCEMENT AG",
-                        "closing_price": 90.15,
-                        "currency": "EUR",
-                        "total_shares": 198416477,
-                        "market_cap": 17887245401.55,
-                        "index_weighting": 1.360357,
-                        "index_value": 189.301447,
-                        "sector": "Non-Energy Materials",
-                        ...
-                      }
-                    },
-                    ...
-                  ]
-                }
-              ]
-            }
+            Object with:
+            - meta (object): total (int) — number of results
+            - data (array): index feed objects, each with:
+              - id (str): composite key (index_code-date-feed_type)
+              - type (str): "cboe-index"
+              - attributes (object):
+                - region (str): geographic region
+                - index_code (str): CBOE index code
+                - feed_type (str): feed type
+                - date (str): trading date (YYYY-MM-DD)
+                - index_close (float): index closing value
+                - index_divisor (float): index divisor
+                - effective_date (str|null): effective date
+                - review_date (str|null): review date
+              - components (array): index constituents, each with:
+                - id (str): component identifier
+                - type (str): "cboe-index-component"
+                - attributes (object):
+                  - symbol (str): ticker symbol
+                  - isin (str): ISIN code
+                  - name (str): company name
+                  - closing_price (float): component closing price
+                  - currency (str): trading currency
+                  - total_shares (int): total shares outstanding
+                  - market_cap (float): market capitalization
+                  - index_weighting (float): weight in index (%)
+                  - index_value (float): contributed index value
+                  - sector (str): industry sector
 
         Notes:
             - If required filters are missing, the API returns a JSON error

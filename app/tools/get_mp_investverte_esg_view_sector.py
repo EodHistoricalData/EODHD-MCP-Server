@@ -23,15 +23,21 @@ def register(mcp: FastMCP):
         Example:
             - /api/mp/investverte/sector/Airlines
 
-        Response example:
+        Returns:
+            A JSON-formatted string with a sector ESG object:
             {
               "find": true,
               "industry": {
-                "Airlines": [...],
-                "Transportation": [...]
+                "Airlines": [<ESG values per year>],
+                "Transportation": [<ESG values per year>]
               },
               "years": ["2015-FY", "2015-Q1", ...]
             }
+            Fields:
+              - find (bool): whether the sector was found
+              - industry (object): map of industry/sector names to arrays of ESG
+                values aligned with the "years" axis
+              - years (array of str): time axis labels in "YYYY-frequency" format
 
         Notes:
             - The 'industry' section contains sector/industry names mapped

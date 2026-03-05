@@ -45,6 +45,17 @@ def register(mcp: FastMCP):
             fmt (str): Response format: 'json' (default) or 'csv'.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            Dict of ticker -> fundamentals object, each with:
+            - General (object): Code, Type, Name, Exchange, CurrencyCode, CurrencyName, CountryName, ISIN, Sector, Industry
+            - Highlights (object): MarketCapitalization, EBITDA, PERatio, WallStreetTargetPrice, BookValue, EarningsShare, DividendYield
+            - Valuation (object): TrailingPE, ForwardPE, PriceSalesTTM, PriceBookMRQ, EnterpriseValue
+            - SharesStats (object): SharesOutstanding, SharesFloat, PercentInsiders, PercentInstitutions
+            - Technicals (object): Beta, 52WeekHigh, 52WeekLow, 50DayMA, 200DayMA
+            - SplitsDividends (object): ForwardAnnualDividendRate, ForwardAnnualDividendYield, ExDividendDate, LastSplitDate, LastSplitFactor
+            - Earnings (object): Last_4_Quarters (array), Annual_Earnings (array)
+            - Financials (object): Income_Statement, Balance_Sheet, Cash_Flow (quarterly + yearly)
+
         Notes:
             - Requires Extended Fundamentals subscription plan.
             - API cost: 100 calls per request (or 100 + number of symbols if using symbols param).

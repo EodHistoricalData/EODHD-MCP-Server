@@ -47,6 +47,15 @@ def register(mcp: FastMCP):
               /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
             • Each request costs 10 API calls (any history depth).
             • Response fields (arrays): mkt, price, seq, shares, sl, sub_mkt, ts (ms).
+
+        Returns:
+            Array of tick objects, each with:
+            - timestamp (int): UNIX timestamp in milliseconds
+            - datetime (str): human-readable datetime
+            - volume (int): tick volume (shares)
+            - price (float): trade price
+            - type (str): tick type (trade/quote)
+            - conditions (str): trade condition codes
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

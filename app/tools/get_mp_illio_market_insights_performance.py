@@ -96,6 +96,14 @@ def register(mcp: FastMCP):
           - DJI    (Dow Jones Industrial Average)
           - NDX    (Nasdaq-100)
 
+        Returns:
+          JSON object with performance-vs-market chapter data:
+            - chapter (str): chapter identifier, e.g. "performance"
+            - id (str): index identifier, e.g. "NDX"
+            - data (array): time-series or tabular entries with instrument-level
+              performance metrics vs the overall market (returns, relative strength)
+            - metadata (object|null): chart config, date range, benchmark info
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

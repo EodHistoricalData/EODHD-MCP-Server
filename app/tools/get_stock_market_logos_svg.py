@@ -28,6 +28,9 @@ def register(mcp: FastMCP):
             symbol (str): Ticker in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            SVG image data as XML string (vector logo, scalable).
+
         Notes:
             - Marketplace product: 10 API calls per request.
             - Response is SVG image data (XML text).

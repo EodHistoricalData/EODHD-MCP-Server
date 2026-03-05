@@ -77,7 +77,31 @@ def register(mcp: FastMCP):
         Get options contracts (mp/unicornbay/options/contracts)
 
         Filters, sorting, pagination and field selection per docs.
-        Returns JSON: meta, data[], links.next (pagination).
+
+        Returns:
+            JSON object with:
+            - meta: Pagination metadata.
+            - data (array): Options contracts, each with:
+              - contractName (str): Full OCC contract name.
+              - contractSize (int): Contract size (typically 100).
+              - currency (str): Currency code (e.g. 'USD').
+              - type (str): 'call' or 'put'.
+              - lastTradeDateTime (str): Last trade timestamp.
+              - strike (float): Strike price.
+              - lastPrice (float): Last traded price.
+              - bid (float): Current bid price.
+              - ask (float): Current ask price.
+              - volume (int): Trading volume.
+              - openInterest (int): Open interest.
+              - impliedVolatility (float): Implied volatility.
+              - delta (float): Option delta.
+              - gamma (float): Option gamma.
+              - theta (float): Option theta.
+              - vega (float): Option vega.
+              - expirationDate (str): Expiration date YYYY-MM-DD.
+              - daysBeforeExpiration (int): Days until expiration.
+              - intrinsicValue (float): Intrinsic value.
+            - links.next (str|null): URL for next page, null if last page.
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

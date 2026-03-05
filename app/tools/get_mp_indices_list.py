@@ -33,8 +33,12 @@ def register(mcp: FastMCP):
           - fmt: 'json' (default). (CSV is not documented; keep JSON only.)
           - api_token: optional override API token
 
-        Response:
-          JSON string (pretty-printed) or {"error": "..."} on failure.
+        Returns:
+            JSON array of objects, each with:
+            - code (str): Index ticker code (e.g. 'GSPC.INDX').
+            - name (str): Index name (e.g. 'S&P 500').
+            - exchange (str): Exchange identifier.
+            - currency (str): Currency code (e.g. 'USD').
         """
         fmt = (fmt or "json").lower()
         if fmt != "json":

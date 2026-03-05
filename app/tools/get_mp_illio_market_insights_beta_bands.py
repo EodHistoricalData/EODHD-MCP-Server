@@ -111,6 +111,17 @@ def register(mcp: FastMCP):
           - Distribution of instruments across Beta brackets.
           - Instruments with highest and lowest Beta (most / least sensitive to market moves).
 
+        Returns:
+          JSON object with beta bands chapter data:
+            - chapter (str): chapter identifier, e.g. "beta-bands"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): beta distribution analysis, including:
+                - bands (array): beta bracket ranges with instrument counts/percentages
+                - highest (array): instruments with highest beta (most market-sensitive)
+                - lowest (array): instruments with lowest beta (least market-sensitive)
+                Each instrument entry includes: ticker, name, beta (float)
+            - metadata (object|null): date range, calculation parameters
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

@@ -32,8 +32,16 @@ def register(mcp: FastMCP):
           - fmt: 'json' (only)
           - api_token: optional override API token
 
-        Response:
-          JSON string (pretty-printed) or {"error": "..."} on failure.
+        Returns:
+            JSON object with:
+            - Components (array): Current index constituents, each with:
+              - Code (str): Ticker symbol.
+              - Exchange (str): Exchange code.
+              - Name (str): Company name.
+              - Sector (str): GICS sector.
+              - Industry (str): GICS industry.
+              - Weight (float): Index weight.
+            - Historical changes (for major indices): additions/removals over time.
         """
         if not (symbol and symbol.strip()):
             raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")

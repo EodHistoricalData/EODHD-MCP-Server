@@ -31,10 +31,17 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON array of objects, each with:
+            - date (str): Rate date, YYYY-MM-DD.
+            - LT_COMPOSITE_RATE (str): Long-term composite rate.
+            - TREASURY_20YR (str): Treasury 20-year rate.
+            - BC_20YEAR (str): Bond-equivalent 20-year rate.
+            - EXTRAPOLATION_FACTOR_20YR (str): Extrapolation factor for 20-year maturity.
+
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, rate_type, rate, extrapolation_factor.
             - Combines "Daily Treasury Real Long-Term Rate Averages" and
               "Daily Treasury Long-Term Rates".
         """

@@ -37,6 +37,19 @@ def register(mcp: FastMCP):
           - You can combine 'symbol' with 'date_from'/'date_to' to narrow range.
           - Pagination: 'page_limit' (1..1000) and 'page_offset' (>=0).
           - API output is JSON only.
+
+        Returns:
+            Array of dividend records, each with:
+            - code (str): ticker symbol
+            - exchange (str): exchange code
+            - date (str): ex-dividend date
+            - declarationDate (str): declaration date
+            - recordDate (str): record date
+            - paymentDate (str): payment date
+            - period (str): frequency (e.g. 'Quarterly', 'Annual')
+            - value (float): adjusted dividend per share
+            - unadjustedValue (float): unadjusted dividend per share
+            - currency (str): dividend currency
         """
 
         # --- Validate basic args ---

@@ -72,7 +72,14 @@ def register(mcp: FastMCP):
           api_token: override token; otherwise picked from environment by make_request()
 
         Returns:
-          Pretty-printed JSON string or {"error": "..."} on failure.
+          JSON object with performance attributes for the selected index:
+            - category (str): category name, e.g. "performance"
+            - id (str): index identifier, e.g. "SnP500"
+            - attributes (array): list of performance attribute objects, each containing:
+                - name (str): attribute name (e.g. "1W Return", "1M Return", "YTD Return")
+                - value (float|null): current attribute value
+                - details (object|null): additional breakdown or metadata
+          On failure returns ToolError.
         """
         # Validate fmt
         fmt = (fmt or "json").lower()

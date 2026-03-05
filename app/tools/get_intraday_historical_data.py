@@ -168,6 +168,14 @@ def register(mcp: FastMCP):
             split_dt (bool, optional): If True, adds 'split-dt=1' to split date/time fields.
             api_token (str, optional): Per-call token override; env token used if omitted.
 
+        Returns:
+            Array of intraday bar records, each with:
+            - timestamp (int): Unix epoch seconds
+            - gmtoffset (int): GMT offset in seconds for the exchange
+            - datetime (str): human-readable datetime (YYYY-MM-DD HH:MM:SS)
+            - open, high, low, close (float): bar OHLC
+            - volume (int): shares traded in this bar
+
         Notes:
             - If no 'from'/'to' provided, API returns last 120 days by default (per docs).
             - Max span depends on interval:

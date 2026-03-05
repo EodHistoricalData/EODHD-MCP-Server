@@ -42,11 +42,19 @@ def register(mcp: FastMCP):
             limit (int, optional): Max ticks to return (1-10000). Default: all in range.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON array of tick objects, each with:
+            - timestamp (int): Trade timestamp in UNIX seconds.
+            - datetime (str): Human-readable UTC datetime.
+            - gmtoffset (int): GMT offset in seconds.
+            - type (str): Tick type identifier.
+            - price (float): Trade price.
+            - volume (int): Number of shares traded.
+            - conditions (str): Trade condition codes.
+
         Notes:
             - Marketplace product: 10 API calls per request.
-            - Columnar response format with fields: ts (milliseconds), price, shares,
-              mkt, seq, sl, sub_mkt.
-            - Timestamp params in seconds but response ts in milliseconds.
+            - Timestamp params in seconds but response timestamps may differ in precision.
             - US stocks only.
         """
         if not ticker or not isinstance(ticker, str):

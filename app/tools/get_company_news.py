@@ -52,7 +52,14 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used if omitted.
 
         Returns:
-            str: JSON string of articles (or {"xml": "..."} if fmt='xml' and your client returns text).
+            Array of articles, each with:
+            - date (str): publication datetime ISO 8601
+            - title (str): headline
+            - content (str): full article text
+            - link (str): source URL
+            - symbols (list[str]): related ticker symbols
+            - tags (list[str]): topic tags
+            - sentiment (object): title/content/ner polarity and neg/neu/pos scores
         """
         # --- Validate required conditions ---
         if not ticker and not tag:

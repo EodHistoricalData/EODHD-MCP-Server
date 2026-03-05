@@ -102,6 +102,29 @@ def register(mcp: FastMCP):
 
         This endpoint returns a time series of balance sheet entries under "items".
 
+        Returns:
+          JSON object with Praams envelope:
+            - success (bool): whether the request succeeded
+            - items (array): time-series of balance sheet entries, each containing:
+                - period (str): reporting period (e.g. "2023-Q4", "2023-FY")
+                - loansGross (float|null): gross loans
+                - loansProvisions (float|null): loan loss provisions
+                - loansNet (float|null): net loans
+                - cashEquivalents (float|null): cash & equivalents
+                - depositsWithBanks (float|null): deposits with other banks
+                - securitiesRepoAssets (float|null): securities REPO assets
+                - securitiesRepoLiabilities (float|null): securities REPO liabilities
+                - investmentPortfolio (float|null): investment portfolio
+                - totalAssets (float|null): total assets
+                - totalEquity (float|null): total equity
+                - shortTermDebt (float|null): short-term debt
+                - longTermDebt (float|null): long-term debt
+                - interestEarningAssets (float|null): interest-earning assets
+                - interestBearingLiabilities (float|null): interest-bearing liabilities
+                - Additional bank-specific balance sheet line items
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

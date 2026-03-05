@@ -412,6 +412,39 @@ def register(mcp: FastMCP):
         # auth
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        Marketplace: Praams Smart Investment Screener (Bond)
+        POST /api/mp/praams/explore/bond?skip={skip}&take={take}
+
+        Screens bonds by multi-factor filters (scoring, geography, yield, duration).
+        JSON body contains filter criteria; query params handle pagination.
+
+        Returns:
+          JSON object with Praams envelope:
+            - item (object):
+                - peers (array): matching bond instruments, each containing:
+                    - isin (str): bond ISIN
+                    - name (str): bond/issuer name
+                    - praamsRatio (float): overall PRAAMS score
+                    - totalReturnScore (int): return score (1-7)
+                    - totalRiskScore (int): risk score (1-7)
+                    - yield (float|null): current yield
+                    - duration (float|null): effective duration
+                    - couponRate (float|null): coupon rate
+                    - maturityDate (str|null): maturity date
+                    - currency (str): bond currency
+                    - country (str): issuer country
+                    - sector (str): issuer sector
+                - totalCount (int): total matching instruments (for pagination)
+            - success (bool): whether the request succeeded
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
+
+        Notes:
+          - All *Min/*Max fields are 1..7 scale integers (nullable).
+          - Bond-specific: yieldMin/Max, durationMin/Max, excludeSubordinated, excludePerpetuals.
+          - Provide at least one filter value in the JSON body.
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)

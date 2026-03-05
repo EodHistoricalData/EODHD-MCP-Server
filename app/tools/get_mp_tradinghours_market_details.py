@@ -33,11 +33,21 @@ def register(mcp: FastMCP):
             fin_id (str): Market FinID, case-insensitive (e.g. 'us.nyse', 'gb.lse').
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON object with:
+            - fin_id (str): Unique market identifier (e.g. 'us.nyse').
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - products (str): Traded product types.
+            - timezone (str): IANA timezone identifier.
+            - local_time (str): Current local time at the exchange.
+            - regular (object): Regular session hours with open/close times.
+            - pre_market (object|null): Pre-market session hours, if applicable.
+            - post_market (object|null): Post-market session hours, if applicable.
+            - holidays (array): Upcoming holidays with date, name, and schedule impact.
+
         Notes:
             - Marketplace product: 10 API calls per request.
-            - Response fields: fin_id, country_code, exchange, market, products, mic,
-              mic_extended, acronym, asset_type, memo, permanently_closed, timezone,
-              weekend_definition, holidays_min_date, holidays_max_date.
             - Returns IANA timezone identifiers.
         """
         if not fin_id or not isinstance(fin_id, str):

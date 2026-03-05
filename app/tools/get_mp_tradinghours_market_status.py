@@ -33,11 +33,19 @@ def register(mcp: FastMCP):
             fin_id (str): Market FinID, case-insensitive (e.g. 'us.nyse').
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON object with:
+            - fin_id (str): Unique market identifier.
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - status (str): Current status — 'Open' or 'Closed'.
+            - reason (str): Reason for current status (e.g. 'Primary Trading Session', 'After-Hours').
+            - local_time (str): Current local time at the exchange.
+            - next_bell_action (str): Next expected action ('open' or 'close').
+            - next_bell_time_utc (str): UTC timestamp of next bell event.
+
         Notes:
             - Marketplace product: 10 API calls per request.
-            - Status values: 'Open' or 'Closed'.
-            - Response fields: fin_id, exchange, market, products, timezone,
-              status, reason, until, next_bell.
             - Does NOT include circuit breakers or trading halts.
             - Cache-friendly: use the 'until' field to know when to re-check.
         """

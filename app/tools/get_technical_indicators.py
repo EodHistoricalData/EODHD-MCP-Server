@@ -137,6 +137,29 @@ def register(mcp: FastMCP):
           - Supports all documented functions (sma, ema, wma, macd, rsi, stochastic, stochrsi, dmi/dx, adx, atr, cci, sar, beta, bbands, volatility, avgvol, avgvolccy, splitadjusted, format_amibroker).
 
         Args mirror API docs; only provided params are passed through.
+
+        Returns:
+            Array of objects, each with 'date' (str, YYYY-MM-DD) plus indicator-specific fields:
+            - sma/ema/wma: {sma|ema|wma} (float)
+            - rsi: {rsi} (float, 0-100)
+            - macd: {macd, macd_signal, macd_hist} (float)
+            - stochastic: {slow_k, slow_d} (float)
+            - stochrsi: {stochrsi} (float)
+            - bbands: {uband, mband, lband} (float — upper/middle/lower)
+            - atr: {atr} (float)
+            - adx: {adx} (float)
+            - dmi: {dmi} (float)
+            - cci: {cci} (float)
+            - sar: {sar} (float)
+            - beta: {beta} (float)
+            - volatility: {volatility} (float)
+            - avgvol: {avgvol} (int)
+            - avgvolccy: {avgvolccy} (float — volume * close)
+            - splitadjusted: {open, high, low, close, volume} (split-adjusted OHLCV)
+            - stddev: {stddev} (float)
+            - slope: {slope} (float)
+
+            If filter is set (e.g. 'last_sma'), returns a single scalar value.
         """
         # --- Required/typed validation ---
         if not ticker or not isinstance(ticker, str):

@@ -47,7 +47,10 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
         Returns:
-            str: JSON like {"data": {...}, "meta": {...}, "links": {...}} or {"error": "..."}.
+            Object with:
+            - data (object): date-grouped records with word-weight mappings
+            - meta (object): pagination metadata
+            - links (object): pagination links (self, next, prev)
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")

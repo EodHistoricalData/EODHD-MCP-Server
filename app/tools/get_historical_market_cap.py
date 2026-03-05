@@ -44,8 +44,9 @@ def register(mcp: FastMCP):
             - Each symbol request costs 10 API calls (per docs).
 
         Returns:
-            str: JSON string with weekly market cap data
-                 (or {"csv": "..."} if you later adapt make_request to return text for csv).
+            Array of weekly data points, each with:
+            - date (str): observation date YYYY-MM-DD
+            - value (float): market capitalization in USD
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

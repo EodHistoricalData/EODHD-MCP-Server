@@ -74,8 +74,14 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
         Returns:
-            str: JSON with indicator timeseries or {"csv": "..."} wrapper if returning CSV text,
-                 or {"error": "..."} on validation/transport errors.
+            Array of indicator data points, each with:
+            - CountryCode (str): ISO-3 country code (e.g. "USA")
+            - Indicator (str): indicator key (e.g. "gdp_current_usd")
+            - Date (str): observation date (YYYY-MM-DD)
+            - Period (str): reporting period
+            - Value (float): indicator value
+            - Frequency (str): data frequency (e.g. "Annual")
+            - Unit (str): measurement unit
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

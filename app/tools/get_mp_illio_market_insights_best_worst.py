@@ -99,6 +99,17 @@ def register(mcp: FastMCP):
           - DJI    (Dow Jones Industrial Average)
           - NDX    (Nasdaq-100)
 
+        Returns:
+          JSON object with largest single-day moves chapter data:
+            - chapter (str): chapter identifier, e.g. "best-and-worst"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): contains best/worst day arrays, each entry with:
+                - ticker (str): instrument symbol
+                - name (str): instrument name
+                - date (str): date of the move
+                - change (float): percentage change on that day
+            - metadata (object|null): date range, benchmark info
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

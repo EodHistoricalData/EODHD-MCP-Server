@@ -31,10 +31,18 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON array of objects, each with:
+            - date (str): Rate date, YYYY-MM-DD.
+            - 5YR (str): 5-year real yield rate.
+            - 7YR (str): 7-year real yield rate.
+            - 10YR (str): 10-year real yield rate.
+            - 20YR (str): 20-year real yield rate.
+            - 30YR (str): 30-year real yield rate.
+
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, rate.
             - Compare with nominal yields for implied inflation expectations.
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"

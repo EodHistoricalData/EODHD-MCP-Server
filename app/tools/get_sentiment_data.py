@@ -49,7 +49,12 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call override; env token used if omitted.
 
         Returns:
-            str: JSON with sentiment grouped by ticker or {"error": "..."}.
+            Object keyed by ticker, each value with:
+            - date (str): sentiment date
+            - count (int): number of articles analyzed
+            - normalized (float): normalized sentiment score
+            - buzz (object): articlesInLastWeek, weeklyAverage, buzz
+            - sentiment (object): bearishPercent, bullishPercent
         """
         # Validate required
         if not symbols or not isinstance(symbols, str):

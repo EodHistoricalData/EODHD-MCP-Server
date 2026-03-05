@@ -37,10 +37,22 @@ def register(mcp: FastMCP):
                 'all' (equities + derivatives), 'allowed' (your tier). Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+        Returns:
+            JSON array of market objects, each with:
+            - fin_id (str): Unique market identifier (e.g. 'us.nyse').
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - products (str): Traded product types.
+            - country (str): Country name.
+            - country_code (str): ISO country code.
+            - city (str): City where exchange is located.
+            - timezone (str): IANA timezone identifier.
+            - timezone_abbr (str): Timezone abbreviation.
+            - mic (str): Market Identifier Code (ISO 10383).
+            - mic_o (str): Operating MIC.
+
         Notes:
             - Marketplace product: 10 API calls per request.
-            - Response fields: fin_id, exchange, market, products, mic, asset_type,
-              group, permanently_closed, holidays_min_date, holidays_max_date.
             - Core tier: 24 G20+ markets.
         """
         if group is not None:

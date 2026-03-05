@@ -43,6 +43,19 @@ def register(mcp: FastMCP):
 
         If 'symbols' is provided, API ignores 'from'/'to' (per docs).
         Otherwise, optional date window defaults server-side to [today, today+7d].
+
+        Returns:
+            Object with:
+            - earnings (list): array of earning records, each with:
+              - code (str): ticker symbol
+              - report_date (str): report filing date
+              - date (str): earnings date
+              - before_after_market (str|null): 'BeforeMarket' or 'AfterMarket'
+              - currency (str): reporting currency
+              - actual (float|null): actual EPS
+              - estimate (float|null): consensus EPS estimate
+              - difference (float|null): actual minus estimate
+              - surprise_prc (float|null): surprise percentage
         """
         sym_param = _normalize_symbols(symbols)
 

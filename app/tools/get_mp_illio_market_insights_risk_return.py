@@ -99,6 +99,16 @@ def register(mcp: FastMCP):
           - DJI    (Dow Jones Industrial Average)
           - NDX    (Nasdaq-100)
 
+        Returns:
+          JSON object with risk-return insight chapter data:
+            - chapter (str): chapter identifier, e.g. "risk"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): risk-return analysis, including:
+                - scatter (array): instruments plotted by risk vs return
+                - quadrants (object): classification into high/low risk-return quadrants
+                - summary (object|null): aggregate risk-return statistics
+            - metadata (object|null): date range, benchmark info
+
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute

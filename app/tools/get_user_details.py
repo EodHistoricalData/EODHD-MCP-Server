@@ -26,7 +26,18 @@ def register(mcp: FastMCP):
                                        env var EODHD_API_KEY (via make_request) will be used.
 
         Returns:
-            str: JSON string with user details or {"error": "..."} on failure.
+            Object with:
+            - name (str): account holder name
+            - email (str): account email
+            - subscriptionType (str): plan name (e.g. "allworld")
+            - paymentMethod (str): payment method type
+            - apiRequests (int): API calls used in current period
+            - apiRequestsDate (str): current billing period date
+            - dailyRateLimit (int): daily API call limit
+            - extraLimit (int): extra API calls available
+            - inviteToken (str): referral invite token
+            - inviteTokenClicked (int): invite link click count
+            - subscriptionMode (str): subscription billing mode
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.
