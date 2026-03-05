@@ -63,10 +63,13 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,         # per-call override (else env)
     ) -> str:
         """
-        Stock Market Screener API
-        GET /api/screener
-
-        Each request consumes 5 API calls.
+        Screen and filter stocks by fundamental and technical criteria.
+        Build custom queries using filters (e.g., market_cap > 1B, sector = Technology, P/E < 20)
+        and signals (e.g., 200d_new_hi, 50d_new_lo, bookvalue_neg, wallstreetbull).
+        Returns matching tickers with key metrics. Supports sorting, pagination (limit up to 100).
+        Consumes 5 API calls per request.
+        Use this tool for stock discovery, screening by fundamentals/technicals, and building watchlists.
+        For detailed data on a specific ticker, use get_fundamentals_data instead.
 
         Args:
           - filters: list-of-lists or JSON string

@@ -130,13 +130,13 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Technical Indicators API (spec-aligned)
-
-        Notes:
-          - Each request consumes 5 API calls (Marketplace accounting).
-          - Supports all documented functions (sma, ema, wma, macd, rsi, stochastic, stochrsi, dmi/dx, adx, atr, cci, sar, beta, bbands, volatility, avgvol, avgvolccy, splitadjusted, format_amibroker).
-
-        Args mirror API docs; only provided params are passed through.
+        Compute technical indicators for any ticker over a date range.
+        Supported indicators: SMA, EMA, WMA, MACD, RSI, Stochastic, StochRSI, DMI/ADX, ATR,
+        CCI, Parabolic SAR, Beta, Bollinger Bands, Volatility, Average Volume, and split-adjusted prices.
+        Each indicator has configurable periods, and results include a time series of computed values.
+        Consumes 5 API calls per request.
+        For raw OHLCV price data, use get_historical_stock_prices instead.
+        For fundamental analysis, use get_fundamentals_data instead.
         """
         # --- Required/typed validation ---
         if not ticker or not isinstance(ticker, str):

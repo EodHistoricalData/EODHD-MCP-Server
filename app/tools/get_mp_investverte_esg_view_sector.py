@@ -17,29 +17,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
-        View ESG sector data for a specific sector
-        (GET /api/mp/investverte/sector/{SYMBOL})
-
-        Example:
-            - /api/mp/investverte/sector/Airlines
-
-        Response example:
-            {
-              "find": true,
-              "industry": {
-                "Airlines": [...],
-                "Transportation": [...]
-              },
-              "years": ["2015-FY", "2015-Q1", ...]
-            }
-
-        Notes:
-            - The 'industry' section contains sector/industry names mapped
-              to ESG values over the 'years' axis.
-            - Rate limits (Marketplace product):
-                * 100,000 API calls per 24 hours
-                * 1,000 API requests per minute
-                * 1 API request = 10 API calls
+        [InvestVerte] Get detailed ESG time-series data for a specific sector by name.
+        Returns ESG values mapped by industry/sub-sector across all available year-frequency
+        combinations (e.g., "2015-FY", "2021-Q3"). Consumes 10 API calls per request.
+        Use get_mp_investverte_esg_list_sectors first to discover available sector names.
+        For company-level ESG, use get_mp_investverte_esg_view_company.
+        For country-level ESG, use get_mp_investverte_esg_view_country.
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")

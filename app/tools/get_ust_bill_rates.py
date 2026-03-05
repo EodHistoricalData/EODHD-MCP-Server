@@ -19,23 +19,21 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
-        US Treasury Bill Rates API
-        GET /api/ust/bill-rates
+        Fetch daily US Treasury Bill rates (discount and coupon-equivalent yields). Use when the
+        user asks about T-bill rates, short-term government borrowing costs, or discount rates
+        for Treasury bills.
 
-        Returns Daily Treasury Bill Rates (discount and coupon-equivalent).
-        Tenors: 4WK, 8WK, 13WK, 17WK, 26WK, 52WK.
+        Returns daily rates for tenors: 4WK, 8WK, 13WK, 17WK, 26WK, 52WK. Fields include
+        date, tenor, discount rate, coupon-equivalent yield, averages, maturity date, and CUSIP.
+        Filterable by year. Costs 1 API call per request.
+
+        For Treasury par yield curve rates (longer maturities up to 30Y), use get_ust_yield_rates.
 
         Args:
-            year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
+            year (int, optional): Filter by year (1900+). Defaults to current year.
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - 1 API call per request.
-            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, discount, coupon, avg_discount, avg_coupon,
-              maturity_date, cusip.
+            api_token (str, optional): Per-call token override.
         """
         url = f"{EODHD_API_BASE}/ust/bill-rates?1=1"
 

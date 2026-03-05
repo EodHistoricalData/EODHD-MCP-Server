@@ -24,16 +24,17 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call override
     ) -> str:
         """
-        Marketplace: Index Components (+ historical changes for major indices)
-        GET /api/mp/unicornbay/spglobal/comp/{symbol}
+        [Marketplace] Get constituent stocks of a specific S&P or Dow Jones index, including
+        historical component changes for major indices. Use when asked which stocks are in an
+        index, or to track index rebalancing history.
+        Requires the index symbol from mp_indices_list (e.g. GSPC.INDX for S&P 500).
+        To browse available indices first, use mp_indices_list.
+        Consumes 10 API calls per request.
 
         Args:
           - symbol: index ID from the list endpoint (e.g., GSPC.INDX)
           - fmt: 'json' (only)
           - api_token: optional override API token
-
-        Response:
-          JSON string (pretty-printed) or {"error": "..."} on failure.
         """
         if not (symbol and symbol.strip()):
             raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")

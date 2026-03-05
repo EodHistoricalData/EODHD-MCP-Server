@@ -79,24 +79,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Bond Risk & Return Analysis by ISIN
-        GET /api/mp/praams/analyse/bond/{isin}
-
-        Retrieves Praams' detailed bond analytics for a single instrument,
-        identified by its ISIN (e.g., 'US7593518852').
-
-        The response includes, among others:
-          - PRAAMS ratio & summarized risk/return assessment
-          - Coupon profile (fixed / floating, structure, notes)
-          - Credit / solvency, stress test, volatility & liquidity narratives
-          - Country and other risk descriptions
-          - Profitability, growth & momentum metrics at the issuer level
-          - Market view (spreads, yield/price history where available)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
+        Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-test results,
+        volatility, liquidity, country risk narratives, and issuer-level fundamentals.
+        Use for detailed bond-specific due diligence. Consumes 10 API calls per request.
+        For bond screening across multiple instruments, use get_mp_praams_smart_screener_bond.
+        For a full PDF bond report, use get_mp_praams_report_bond_by_isin.
         """
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)
 

@@ -35,24 +35,23 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call token override
     ) -> str:
         """
-        Get Exchange Details & Trading Hours (GET /api/exchange-details/{EXCHANGE_CODE})
+        Retrieve detailed metadata for a single exchange: trading hours, timezone, open/closed
+        status, holidays, and ticker counts. Use when the user asks about exchange schedules,
+        market holidays, or whether an exchange is currently open.
 
-        Returns metadata for the exchange, including:
-          - Timezone
-          - isOpen (boolean)
-          - TradingHours (open/close, UTC equivalents, working days, lunch hours if present)
-          - ExchangeHolidays (bank/official; ~6 months back & forward; supports 'from'/'to')
-          - ActiveTickers (last 2 months), UpdatedTickers (today), PreviousDayUpdatedTickers
+        Returns timezone, isOpen flag, trading hours (open/close with UTC equivalents, working
+        days, lunch breaks), exchange holidays (bank and official, ~6 months window), and
+        ticker statistics (active, updated today, previous day).
+
+        For the list of all exchanges, use get_exchanges_list.
+        For tickers on an exchange, use get_exchange_tickers.
 
         Args:
             exchange_code (str): Exchange code (e.g., 'US', 'LSE', 'XETRA').
-            start_date (str, optional): YYYY-MM-DD; mapped to 'from' for holidays filter.
-            end_date (str, optional):   YYYY-MM-DD; mapped to 'to'   for holidays filter.
+            start_date (str, optional): YYYY-MM-DD; filter holidays from this date.
+            end_date (str, optional): YYYY-MM-DD; filter holidays up to this date.
             fmt (str): 'json' only (default).
             api_token (str, optional): Per-call token override (env token otherwise).
-
-        Returns:
-            str: JSON string with exchange details or {"error": "..."} on failure.
         """
         # --- Validate inputs ---
         if not exchange_code or not isinstance(exchange_code, str):

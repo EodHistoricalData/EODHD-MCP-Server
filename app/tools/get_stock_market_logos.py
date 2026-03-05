@@ -18,23 +18,17 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,        # per-call override
     ) -> str:
         """
-        Stock Market Logos API (PNG)
-        GET /api/logo/{symbol}
+        Get a company logo in PNG format (200x200 with transparency). Use when the user needs
+        a raster logo image for a stock or company for display, reports, or UI.
 
-        Returns a 200x200 PNG logo with transparency for the given symbol.
-        Coverage: 40,000+ logos across 60+ exchanges.
+        Covers 40,000+ logos across 60+ exchanges. Costs 10 API calls per request.
+        Symbol must be in TICKER.EXCHANGE format (e.g., 'AAPL.US', 'BMW.XETRA').
+
+        For vector/SVG logos (US and Toronto only), use get_stock_market_logos_svg instead.
 
         Args:
-            symbol (str): Ticker in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'BMW.XETRA').
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Marketplace product: 10 API calls per request.
-            - Response is a binary PNG image.
-            - Supported exchanges include: AS, AT, AU, BA, BK, BR, BSE, CN, CO, CSE,
-              DU, F, HE, HK, HM, IC, IR, IS, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
-              MCX, MI, MU, MX, NEO, NSE, NZ, OL, PA, RG, SA, SG, SHE, SHG, SN, SR,
-              ST, STU, SW, TA, TO, TSE, TW, TWO, US, V, VI, VS, VX, XETRA.
+            symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'BMW.XETRA').
+            api_token (str, optional): Per-call token override.
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(

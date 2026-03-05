@@ -65,17 +65,21 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override; env otherwise
     ) -> str:
         """
-        Macro Indicators API (GET /api/macro-indicator/{COUNTRY})
+        Fetch macroeconomic indicators for a country over time. Use when the user asks about
+        country-level economic data: GDP, inflation, CPI, unemployment, population, trade
+        balance, debt-to-GDP, life expectancy, and 30+ other World Bank-style indicators.
+
+        Returns a historical time series for one indicator in one country. Country is specified
+        by ISO-3 alpha code (e.g., USA, DEU, FRA). Defaults to GDP if no indicator specified.
+
+        This is for country-level macro data only. For company fundamentals, use
+        get_fundamentals_data (single ticker) or get_bulk_fundamentals (entire exchange).
 
         Args:
             country (str): Alpha-3 ISO country code (e.g., 'USA', 'FRA', 'DEU').
             indicator (str, optional): One of documented indicators. Defaults to 'gdp_current_usd'.
             fmt (str): 'json' or 'csv'. Default 'json'.
             api_token (str, optional): Per-call token override.
-
-        Returns:
-            str: JSON with indicator timeseries or {"csv": "..."} wrapper if returning CSV text,
-                 or {"error": "..."} on validation/transport errors.
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

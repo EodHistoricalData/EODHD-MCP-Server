@@ -74,10 +74,12 @@ def register(mcp: FastMCP):
         fmt: Optional[str] = "json",
     ) -> str:
         """
-        Get options contracts (mp/unicornbay/options/contracts)
-
-        Filters, sorting, pagination and field selection per docs.
-        Returns JSON: meta, data[], links.next (pagination).
+        [Marketplace] Get available US options contracts (calls and puts) for a stock or ETF.
+        Returns strike prices, expiration dates, and contract symbols for the specified underlying ticker.
+        Supports filtering by expiration date range, strike range, trade time, and option type (put/call).
+        Use to discover which options exist before fetching pricing with get_us_options_eod.
+        For the list of all tickers that have options, use get_us_options_underlyings.
+        Consumes 10 API calls per request.
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

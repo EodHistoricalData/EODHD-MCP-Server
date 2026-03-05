@@ -39,7 +39,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,        # per-call override
     ) -> str:
         """
-        End-Of-Day Historical Stock Market Data (EOD) — spec-aligned.
+        Get historical daily, weekly, or monthly OHLCV price data for any stock, ETF, index, or crypto.
+        Covers open, high, low, close, adjusted close, and volume for a date range.
+        Use for price history, charting, backtesting, and performance analysis.
+        For intraday candles (1min-1h), use get_intraday_historical_data instead.
+        For current/live prices, use get_live_price_data instead.
 
         Args:
             ticker (str): Symbol in SYMBOL.EXCHANGE format, e.g. 'AAPL.US'.

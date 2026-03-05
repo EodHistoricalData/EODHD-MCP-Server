@@ -37,11 +37,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override (else uses env EODHD_API_KEY)
     ) -> str:
         """
-        Earnings Trends API (/calendar/trends)
-        Notes:
-          - 'symbols' is REQUIRED (one or more, comma-separated).
-          - Response is JSON only (fmt kept to mirror other tools).
-          - Each request consumes ~10 API calls under EODHD's system.
+        Get earnings trend data including EPS/revenue estimates, analyst revisions, and growth projections for specific stocks.
+        Returns quarterly and annual consensus estimates, number of analysts, and revision history.
+        Requires explicit symbol(s). Each request consumes ~10 API calls.
+        Use when the user asks about earnings expectations, analyst estimate changes, or EPS growth trends.
+        For earnings report dates and calendar, use get_upcoming_earnings instead.
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:

@@ -25,21 +25,25 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,         # per-call override
     ) -> str:
         """
-        Search API for Stocks, ETFs, Mutual Funds, Bonds, and Indices.
+        Search for financial instruments by name, ticker, or ISIN. Use when the user wants to
+        find a ticker symbol, look up a company by name, resolve an ISIN, or discover instruments
+        matching a keyword.
+
+        Searches across stocks, ETFs, mutual funds, bonds, indices, and crypto. Returns matching
+        instruments with their ticker codes, exchange, type, and ISIN. Filterable by exchange
+        and instrument type.
+
+        This is the discovery/lookup tool. Once you have a ticker, use other tools (e.g.,
+        get_eod_historical_data, get_fundamentals_data) to fetch actual data.
 
         Args:
-            query (str): Ticker/company/ISIN to search (e.g., 'AAPL', 'Apple Inc', 'US0378331005').
+            query (str): Ticker, company name, or ISIN to search (e.g., 'AAPL', 'Apple Inc', 'US0378331005').
             limit (int): Number of results (default 15, max 500).
-            bonds_only (bool, optional): If True, include only bonds (bonds_only=1).
+            bonds_only (bool, optional): If True, return only bonds.
             exchange (str, optional): Exchange code filter (e.g., 'US', 'PA', 'FOREX', 'NYSE').
             type (str, optional): One of {'all','stock','etf','fund','bond','index','crypto'}.
-                                  Note: when using 'all', bonds are excluded by default; use type='bond'
-                                  or bonds_only=True to include bonds.
             fmt (str): Must be 'json'.
-            api_token (str, optional): Per-call API token override (demo does NOT work for Search).
-
-        Returns:
-            str: JSON-formatted list of instruments or {"error": "..."}.
+            api_token (str, optional): Per-call API token override (demo token does NOT work for Search).
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

@@ -58,9 +58,13 @@ def register(mcp: FastMCP):
         fmt: Optional[str] = "json",
     ) -> str:
         """
-        Get end-of-day options data (mp/unicornbay/options/eod)
-
-        Returns JSON: meta, data[], links.next; supports 'compact' mode.
+        [Marketplace] Fetch end-of-day pricing data for US options contracts. Use when asked about
+        options prices, Greeks, open interest, volume, or implied volatility for stock/ETF options.
+        Returns OHLC, volume, open interest, and Greeks per contract per trading day.
+        Supports filtering by underlying symbol, expiration, strike, type (put/call), and trade date range.
+        First find available contracts with get_us_options_contracts, then fetch pricing here.
+        For the list of optionable tickers, use get_us_options_underlyings.
+        Consumes 10 API calls per request.
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

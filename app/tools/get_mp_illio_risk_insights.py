@@ -53,18 +53,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Risk Insights (v1.0.0)
-        GET /api/mp/illio/categories/risk/{id}
-
-        Returns risk attributes for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Notes & Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Retrieve portfolio-level risk attributes for a major US index.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns risk metrics, drawdown analysis,
+        and risk decomposition at the index-portfolio level. Consumes 10 API calls per request.
+        For performance attributes of the same indices, use mp_illio_performance_insights.
+        For market-level risk-return analysis, use get_mp_illio_market_insights_risk_return.
 
         Args:
           id: 'SnP500' | 'DJI' | 'NDX'  (common aliases like 'SP500', 'SPX', 'NASDAQ100' accepted)

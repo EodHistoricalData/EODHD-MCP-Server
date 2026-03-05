@@ -91,18 +91,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Volatility Bands vs Market (v1.0.0)
-        GET /api/mp/illio/chapters/volatility/{id}
-
-        Returns chapter: Volatility and Day moves for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Get volatility bands and daily move distribution for index constituents.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns volatility levels, daily move
+        ranges, and constituent volatility distribution versus market. Consumes 10 API calls per request.
+        For largest year-over-year volatility changes, use get_mp_illio_market_insights_largest_volatility.
+        For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
         """
         return await _run_volatility(id=id, fmt=fmt, api_token=api_token)
 

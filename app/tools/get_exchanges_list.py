@@ -17,11 +17,14 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override (env token otherwise)
     ) -> str:
         """
-        Get List of Exchanges (GET /api/exchanges-list/)
+        List all available stock exchanges worldwide. Use when the user asks which exchanges
+        are supported, needs exchange codes, or wants to browse markets by country.
 
-        Returns:
-            str: JSON array of exchanges, each with fields:
-                 Name, Code, OperatingMIC, Country, Currency, CountryISO2, CountryISO3
+        Covers 60+ global exchanges. Returns Name, Code, OperatingMIC, Country, Currency,
+        and ISO country codes for each exchange.
+
+        For tickers listed on a specific exchange, use get_exchange_tickers.
+        For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
