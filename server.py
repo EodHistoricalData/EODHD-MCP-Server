@@ -146,6 +146,14 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         logger.exception("Fatal error while running MCP server.")
         return 1
+    finally:
+        # Best-effort: close the shared HTTP client
+        from app.api_client import close_client
+        import asyncio
+        try:
+            asyncio.get_event_loop().run_until_complete(close_client())
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

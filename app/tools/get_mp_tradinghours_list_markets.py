@@ -5,16 +5,13 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -49,7 +46,7 @@ def register(mcp: FastMCP):
         if group is not None:
             group = group.strip().lower()
             if group not in ALLOWED_GROUPS:
-                return _err(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
+                raise ToolError(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
 
         url = f"{EODHD_API_BASE}/mp/tradinghours/markets?1=1"
         if group:
@@ -60,11 +57,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

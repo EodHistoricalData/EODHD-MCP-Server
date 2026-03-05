@@ -6,15 +6,13 @@ from datetime import datetime
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _valid_date(d: Optional[str]) -> bool:
     if d is None:
@@ -52,22 +50,22 @@ def register(mcp: FastMCP):
             str: JSON like {"data": {...}, "meta": {...}, "links": {...}} or {"error": "..."}.
         """
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
 
         if fmt != "json":
-            return _err("Only 'json' is supported for this endpoint.")
+            raise ToolError("Only 'json' is supported for this endpoint.")
 
         if not _valid_date(start_date):
-            return _err("'start_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
         if not _valid_date(end_date):
-            return _err("'end_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+                raise ToolError("'start_date' cannot be after 'end_date'.")
 
         if limit is not None:
             if not isinstance(limit, int) or limit <= 0:
-                return _err("'limit' must be a positive integer when provided.")
+                raise ToolError("'limit' must be a positive integer when provided.")
 
         # Build URL with nested filter/page params
         # Example:
@@ -85,11 +83,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

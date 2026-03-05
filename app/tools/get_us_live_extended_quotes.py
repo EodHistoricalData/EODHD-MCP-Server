@@ -4,6 +4,7 @@ import json
 from typing import Iterable, Optional, Sequence, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -12,10 +13,6 @@ from mcp.types import ToolAnnotations
 ALLOWED_FMT = {"json", "csv"}
 MAX_PAGE_LIMIT = 100  # per spec
 DEFAULT_FMT = "json"
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _normalize_symbols(symbols: Optional[Union[str, Iterable[str]]]) -> list[str]:
@@ -79,19 +76,19 @@ def register(mcp: FastMCP):
         # --- Validate inputs ---
         syms = _normalize_symbols(symbols)
         if not syms:
-            return _err("Parameter 'symbols' must contain at least one ticker (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'symbols' must contain at least one ticker (e.g., 'AAPL.US').")
 
         fmt = (fmt or DEFAULT_FMT).lower()
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         if page_limit is not None:
             if not isinstance(page_limit, int) or page_limit <= 0 or page_limit > MAX_PAGE_LIMIT:
-                return _err(f"'page_limit' must be an integer between 1 and {MAX_PAGE_LIMIT}.")
+                raise ToolError(f"'page_limit' must be an integer between 1 and {MAX_PAGE_LIMIT}.")
 
         if page_offset is not None:
             if not isinstance(page_offset, int) or page_offset < 0:
-                return _err("'page_offset' must be an integer >= 0.")
+                raise ToolError("'page_offset' must be an integer >= 0.")
 
         # --- Build URL ---
         # Example:
@@ -113,9 +110,9 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
@@ -123,5 +120,5 @@ def register(mcp: FastMCP):
             # If make_request() was adapted to return raw text for CSV:
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")
 

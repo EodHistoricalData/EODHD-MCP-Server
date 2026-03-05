@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -51,7 +48,7 @@ async def _run_praams_bank_income_statement_by_ticker(
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)
     if ct is None:
-        return _err("Invalid 'ticker'. It must be a non-empty string (e.g., 'JPM').")
+        raise ToolError("Invalid 'ticker'. It must be a non-empty string (e.g., 'JPM').")
 
     # Build URL
     # Example:
@@ -63,8 +60,11 @@ async def _run_praams_bank_income_statement_by_ticker(
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The API responds with:
     #   {"success": ..., "items": [...], "message": "...", "errors": [...]}
@@ -72,7 +72,7 @@ async def _run_praams_bank_income_statement_by_ticker(
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):

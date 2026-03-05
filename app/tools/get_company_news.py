@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -13,9 +14,6 @@ from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_FMT = {"json", "xml"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _valid_date(d: Optional[str]) -> bool:
     if d is None:
@@ -58,23 +56,23 @@ def register(mcp: FastMCP):
         """
         # --- Validate required conditions ---
         if not ticker and not tag:
-            return _err("Provide at least one of 'ticker' (s) or 'tag' (t).")
+            raise ToolError("Provide at least one of 'ticker' (s) or 'tag' (t).")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         if not _valid_date(start_date):
-            return _err("'start_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
         if not _valid_date(end_date):
-            return _err("'end_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+                raise ToolError("'start_date' cannot be after 'end_date'.")
 
         if not isinstance(limit, int) or not (1 <= limit <= 1000):
-            return _err("'limit' must be an integer between 1 and 1000.")
+            raise ToolError("'limit' must be an integer between 1 and 1000.")
         if not isinstance(offset, int) or offset < 0:
-            return _err("'offset' must be a non-negative integer.")
+            raise ToolError("'offset' must be a non-negative integer.")
 
         # --- Build URL per docs ---
         url = f"{EODHD_API_BASE}/news?fmt={fmt}&limit={limit}&offset={offset}"
@@ -94,10 +92,10 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # Typical 'json' path: API returns a list of articles (or an object).
         try:
@@ -106,5 +104,5 @@ def register(mcp: FastMCP):
             # If you adapt make_request to return raw text for 'xml', we wrap it.
             if isinstance(data, str):
                 return json.dumps({"xml": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")
 
