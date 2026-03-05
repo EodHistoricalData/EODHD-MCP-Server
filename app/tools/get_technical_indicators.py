@@ -136,6 +136,7 @@ def register(mcp: FastMCP):
           - Each request consumes 5 API calls (Marketplace accounting).
           - Supports all documented functions (sma, ema, wma, macd, rsi, stochastic, stochrsi, dmi/dx, adx, atr, cci, sar, beta, bbands, volatility, avgvol, avgvolccy, splitadjusted, format_amibroker).
 
+        ticker: If you only have a company name, call resolve_ticker first.
         Args mirror API docs; only provided params are passed through.
         """
         # --- Required/typed validation ---

@@ -38,6 +38,7 @@ def register(mcp: FastMCP):
         Args:
             ticker (str): Primary symbol in SYMBOL.EXCHANGE format (e.g., 'AAPL.US').
                           Required and placed in the path, per API spec.
+                          If you only have a company name, call resolve_ticker first.
             additional_symbols (Sequence[str], optional): Extra symbols for 's=' query param,
                           comma-separated by the tool (e.g., ['VTI', 'EUR.FOREX']).
                           Docs recommend <= 15–20 total.

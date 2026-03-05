@@ -295,6 +295,7 @@ def register(mcp: FastMCP):
             api_token (preferred) or api_key (alias).
           If neither is provided, make_request() will inject the token from the MCP request or env.
 
+        - ticker: If you only have a company name, call resolve_ticker first.
         - Auto-detects asset Type via 'General'.
         - For Common Stock: if from/to are provided, prunes `outstandingShares`, `Earnings`, and `Financials`
           outside the window. Financials are fetched only for in-range period end dates (from outstandingShares).

@@ -40,6 +40,7 @@ def register(mcp: FastMCP):
         Notes:
             - Covers US stocks on NYSE/NASDAQ from 2020 (weekly points).
             - 'ticker' can be SYMBOL or SYMBOL.EXCHANGE (e.g., 'AAPL' or 'AAPL.US').
+              If you only have a company name, call resolve_ticker first.
             - Optional 'from'/'to' filter by YYYY-MM-DD.
             - Each symbol request costs 10 API calls (per docs).
 
