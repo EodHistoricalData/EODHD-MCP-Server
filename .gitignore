@@ -165,3 +165,4 @@ sandbox.py
 
 # MCP bundle artifacts (built for releases, not source)
 *.mcpb
+.worktrees
