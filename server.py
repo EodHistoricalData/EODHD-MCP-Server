@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 from fastmcp import FastMCP
 from app.tools import register_all as register_all_tools
 from app.resources import register_all as register_all_resources
+from app.prompts import register_all as register_all_prompts
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -87,6 +88,7 @@ def main(argv: list[str] | None = None) -> int:
     mcp = FastMCP("eodhd-datasets")
     register_all_tools(mcp)
     register_all_resources(mcp)
+    register_all_prompts(mcp)
 
     # Determine transport:
     # - If --stdio: stdio
@@ -144,6 +146,14 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         logger.exception("Fatal error while running MCP server.")
         return 1
+    finally:
+        # Best-effort: close the shared HTTP client
+        from app.api_client import close_client
+        import asyncio
+        try:
+            asyncio.get_event_loop().run_until_complete(close_client())
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

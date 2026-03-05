@@ -5,6 +5,7 @@ import re
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -55,9 +56,6 @@ ALLOWED_INDICATORS = {
     "unemployment_total_percent",
 }
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_macro_indicator(
@@ -81,14 +79,14 @@ def register(mcp: FastMCP):
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):
-            return _err("Parameter 'country' must be an Alpha-3 ISO code (e.g., 'USA', 'FRA', 'DEU').")
+            raise ToolError("Parameter 'country' must be an Alpha-3 ISO code (e.g., 'USA', 'FRA', 'DEU').")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         use_indicator = indicator or "gdp_current_usd"
         if use_indicator not in ALLOWED_INDICATORS:
-            return _err(
+            raise ToolError(
                 "Invalid 'indicator'. Provide one of the documented indicators "
                 f"or omit it to use 'gdp_current_usd'."
             )
@@ -107,9 +105,9 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # If fmt=json, API returns JSON -> dump.
         # If you adapt make_request to return text for fmt='csv', we'll wrap it.
@@ -118,4 +116,4 @@ def register(mcp: FastMCP):
         except Exception:
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

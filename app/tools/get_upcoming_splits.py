@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str]) -> str:
@@ -43,7 +40,7 @@ def register(mcp: FastMCP):
         """
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):
-            return _err("Invalid 'fmt'. Allowed values: 'json', 'csv'.")
+            raise ToolError("Invalid 'fmt'. Allowed values: 'json', 'csv'.")
 
         # Build URL
         url = f"{EODHD_API_BASE}/calendar/splits?1=1"
@@ -59,16 +56,19 @@ def register(mcp: FastMCP):
         # Call upstream
         data = await make_request(url)
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
+
+        if isinstance(data, dict) and data.get("error"):
+            raise ToolError(str(data["error"]))
         # Format handling
         if fmt == "csv":
             if isinstance(data, str):
                 return json.dumps({"fmt": "csv", "data": data}, indent=2)
-            return _err("Unexpected CSV response format from API.")
+            raise ToolError("Unexpected CSV response format from API.")
 
         # fmt == json
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected JSON response format from API.")
+            raise ToolError("Unexpected JSON response format from API.")

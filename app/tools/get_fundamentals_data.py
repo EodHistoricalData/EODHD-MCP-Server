@@ -5,6 +5,7 @@ import datetime as dt
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -13,9 +14,6 @@ from mcp.types import ToolAnnotations
 # --------------------------------
 # Utilities & small helpers
 # --------------------------------
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _to_date(s: Optional[str]) -> Optional[dt.date]:
     if not s:
@@ -305,26 +303,26 @@ def register(mcp: FastMCP):
         """
         # --- Validate basics
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         if not ticker or "." not in ticker:
-            return _err("Parameter 'ticker' must be in 'SYMBOL.EXCHANGE' format (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' must be in 'SYMBOL.EXCHANGE' format (e.g., 'AAPL.US').")
 
         token = _token_override(api_token, api_key)
         start = _to_date(from_date)
         end = _to_date(to_date)
         if to_date and from_date and start and end and end < start:
-            return _err("'to_date' must be >= 'from_date'.")
+            raise ToolError("'to_date' must be >= 'from_date'.")
 
         # --- 1) Detect Type (via General)
         try:
             general = await _fetch_general(ticker, token)
         except Exception as e:
-            return _err(f"Failed to get General: {e}")
+            raise ToolError(f"Failed to get General: {e}")
 
         asset_type = str(general.get("Type") or "").strip()
         if not asset_type:
-            return _err("Unable to determine asset Type from General section.")
+            raise ToolError("Unable to determine asset Type from General section.")
 
         # --- 2) Decide sections to pull (excluding 'General' which we already have)
         chosen_sections = sections if sections else _default_sections_for_type(asset_type)
@@ -348,7 +346,7 @@ def register(mcp: FastMCP):
                 )
                 _merge_tree(assembled, bulk)
         except Exception as e:
-            return _err("Failed to fetch sections " + repr(non_financial_sections) + ": " + repr(e))
+            raise ToolError("Failed to fetch sections " + repr(non_financial_sections) + ": " + repr(e))
 
         # --- 4) Financials handling for Common Stock
         if asset_type.lower() == "common stock" and include_financials:
@@ -375,7 +373,7 @@ def register(mcp: FastMCP):
                             fin_full["Financials"][stmt][period] = block
                     _merge_tree(assembled, fin_full)
             except Exception as e:
-                return _err(f"Failed to fetch Financials: {e}")
+                raise ToolError(f"Failed to fetch Financials: {e}")
 
         # --- 5) Apply pruning if Common Stock and a date window was provided
         if asset_type.lower() == "common stock" and (start or end):
@@ -385,4 +383,4 @@ def register(mcp: FastMCP):
         try:
             return json.dumps(assembled, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

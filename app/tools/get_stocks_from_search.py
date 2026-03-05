@@ -5,15 +5,13 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -45,13 +43,13 @@ def register(mcp: FastMCP):
         """
         # --- Validate ---
         if not query or not isinstance(query, str):
-            return _err("Parameter 'query' is required and must be a string.")
+            raise ToolError("Parameter 'query' is required and must be a string.")
         if fmt != "json":
-            return _err("Only 'json' is supported for the Search API.")
+            raise ToolError("Only 'json' is supported for the Search API.")
         if not isinstance(limit, int) or not (1 <= limit <= 500):
-            return _err("'limit' must be an integer between 1 and 500.")
+            raise ToolError("'limit' must be an integer between 1 and 500.")
         if type is not None and type not in ALLOWED_TYPES:
-            return _err(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
+            raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
 
         # --- Build URL ---
         # Endpoint shape: /api/search/{query_string}?fmt=json&limit=...&bonds_only=1&exchange=...&type=...
@@ -74,11 +72,11 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

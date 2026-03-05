@@ -4,13 +4,10 @@ import json
 from typing import Optional, Any, Dict, Tuple
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _is_int(v: Any) -> bool:
@@ -236,12 +233,15 @@ async def _run_explore_equity(
     )
 
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -312,7 +312,7 @@ def register(mcp: FastMCP):
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
-            return _err(st_err)
+            raise ToolError(st_err)
 
         body, b_err = _build_body(
             main_ratio_min=mainRatioMin,
@@ -350,7 +350,7 @@ def register(mcp: FastMCP):
             order_by=orderBy,
         )
         if b_err:
-            return _err(b_err)
+            raise ToolError(b_err)
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)
 
@@ -372,7 +372,7 @@ def register(mcp: FastMCP):
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
-            return _err(st_err)
+            raise ToolError(st_err)
 
         body, b_err = _build_body(
             countries=countries,
@@ -383,6 +383,6 @@ def register(mcp: FastMCP):
             solvency_max=solvencyMax,
         )
         if b_err:
-            return _err(b_err)
+            raise ToolError(b_err)
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)

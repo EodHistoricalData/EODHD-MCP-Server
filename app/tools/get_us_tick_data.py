@@ -3,15 +3,13 @@ import json
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_FMT = {"json", "csv"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
     if v is None:
@@ -52,26 +50,26 @@ def register(mcp: FastMCP):
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g., 'AAPL' or 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL' or 'AAPL.US').")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         try:
             f_ts = _to_int("from_timestamp", from_timestamp)
             t_ts = _to_int("to_timestamp", to_timestamp)
         except ValueError as ve:
-            return _err(str(ve))
+            raise ToolError(str(ve))
 
         if f_ts is None or t_ts is None:
-            return _err("'from_timestamp' and 'to_timestamp' are required (UNIX seconds).")
+            raise ToolError("'from_timestamp' and 'to_timestamp' are required (UNIX seconds).")
         if f_ts < 0 or t_ts < 0:
-            return _err("Timestamps must be non-negative UNIX seconds.")
+            raise ToolError("Timestamps must be non-negative UNIX seconds.")
         if f_ts > t_ts:
-            return _err("'from_timestamp' cannot be greater than 'to_timestamp'.")
+            raise ToolError("'from_timestamp' cannot be greater than 'to_timestamp'.")
 
         if not isinstance(limit, int) or limit <= 0:
-            return _err("'limit' must be a positive integer.")
+            raise ToolError("'limit' must be a positive integer.")
 
         # --- Build URL per docs ---
         # Example:
@@ -92,9 +90,9 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # For CSV, make_request may return text; wrap if needed. JSON is passed through.
         try:
@@ -102,4 +100,4 @@ def register(mcp: FastMCP):
         except Exception:
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")
