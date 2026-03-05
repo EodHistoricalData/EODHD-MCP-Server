@@ -2,6 +2,46 @@
 
 This directory contains general information about working with the EODHD API, including setup, authentication, rate limits, and best practices.
 
+## Using `retrieve_description_by_id` for General Reference
+
+- **Type**: `3` (General)
+- **ID range**: `1` to `28`
+- **Get this README**: `type=3, id=0`
+- **Get global README**: `type=0`
+
+### Page Index
+
+| ID | Page |
+|----|------|
+| 1 | API Authentication Demo Access |
+| 2 | Authentication |
+| 3 | Crypto Data Notes |
+| 4 | Data Adjustment Guide |
+| 5 | Delisted Tickers Guide |
+| 6 | Exchanges |
+| 7 | Financial Ratios Calculation Guide |
+| 8 | Forex Data Notes |
+| 9 | Fundamentals API |
+| 10 | Fundamentals Common Stock |
+| 11 | Fundamentals Crypto Currency |
+| 12 | Fundamentals ETF |
+| 13 | Fundamentals ETF Metrics |
+| 14 | Fundamentals FAQ |
+| 15 | Fundamentals Fund |
+| 16 | Fundamentals Ratios |
+| 17 | General Data FAQ |
+| 18 | Glossary |
+| 19 | Indices Data Notes |
+| 20 | Pricing And Plans |
+| 21 | Primary Tickers Guide |
+| 22 | Rate Limits |
+| 23 | SDKs And Integrations |
+| 24 | Special Exchanges Guide |
+| 25 | Stock Types Ticker Suffixes Guide |
+| 26 | Symbol Format |
+| 27 | Update Times |
+| 28 | Versioning |
+
 ## Quick Links
 
 ### Essential Reading

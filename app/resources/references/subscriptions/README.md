@@ -4,6 +4,25 @@ This directory contains detailed documentation for each EODHD subscription plan,
 
 > **Note**: Prices listed are indicative. See the [actual pricing page](https://eodhd.com/pricing) for current rates.
 
+## Using `retrieve_description_by_id` for Subscriptions
+
+- **Type**: `1` (Subscriptions)
+- **ID range**: `1` to `7`
+- **Get this README**: `type=1, id=0`
+- **Get global README**: `type=0`
+
+### Page Index
+
+| ID | Page |
+|----|------|
+| 1 | Free |
+| 2 | EOD Historical Data All World |
+| 3 | EOD Intraday All World Extended |
+| 4 | Fundamentals Data Feed |
+| 5 | All-In-One |
+| 6 | All-In-One Extended Fundamentals |
+| 7 | Calendar Feed |
+
 ## Plans
 
 | Plan | Price | API Calls/Day | Key Focus |
