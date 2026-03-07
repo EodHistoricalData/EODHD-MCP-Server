@@ -29,13 +29,33 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override; else env EODHD_API_KEY
     ) -> str:
         """
-        Historical & Upcoming Dividends API (/calendar/dividends)
 
-        Notes:
-          - At least one of 'symbol' or 'date_eq' must be provided.
-          - You can combine 'symbol' with 'date_from'/'date_to' to narrow range.
-          - Pagination: 'page_limit' (1..1000) and 'page_offset' (>=0).
-          - API output is JSON only.
+        Get historical and upcoming dividend payments for stocks.
+        Returns ex-dividend dates, payment dates, dividend amounts, and currency for a given symbol or date.
+        Requires at least one of 'symbol' or 'date_eq'. Supports date range filtering and pagination.
+        Use when the user asks about dividend dates, payout history, yield data, or ex-dividend calendars.
+        For IPO calendar, use get_upcoming_ipos. For stock splits calendar, use get_upcoming_splits.
+
+
+        Returns:
+            Array of dividend records, each with:
+            - code (str): ticker symbol
+            - exchange (str): exchange code
+            - date (str): ex-dividend date
+            - declarationDate (str): declaration date
+            - recordDate (str): record date
+            - paymentDate (str): payment date
+            - period (str): frequency (e.g. 'Quarterly', 'Annual')
+            - value (float): adjusted dividend per share
+            - unadjustedValue (float): unadjusted dividend per share
+            - currency (str): dividend currency
+
+        Examples:
+            "Apple dividends in 2025" → symbol="AAPL.US", date_from="2025-01-01", date_to="2025-12-31"
+            "All dividends on March 15" → date_eq="2026-03-15"
+            "Microsoft dividends this quarter" → symbol="MSFT.US", date_from="2026-01-01", date_to="2026-03-31"
+
+        
         """
 
         # --- Validate basic args ---

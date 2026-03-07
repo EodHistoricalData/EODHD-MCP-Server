@@ -16,8 +16,13 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Get List of Sectors available in Investverte ESG dataset
-        (GET /api/mp/investverte/sectors)
+
+        [InvestVerte] List all sectors available in the ESG dataset.
+        Returns an array of sector names with ESG coverage (e.g., "Airlines", "Aerospace & Defense").
+        Use as a reference lookup before calling get_mp_investverte_esg_view_sector for detailed ESG data.
+        Consumes 10 API calls per request.
+        For company or country reference lists, use get_mp_investverte_esg_list_companies or list_countries.
+
 
         Returns:
             A JSON-formatted string containing an array of objects:
@@ -33,6 +38,12 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            "List all ESG sectors" → (no params needed)
+            "What sectors have ESG coverage?" → (no params needed)
+
+        
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

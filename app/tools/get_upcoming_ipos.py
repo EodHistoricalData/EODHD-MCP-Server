@@ -25,17 +25,35 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override; otherwise env EODHD_API_KEY is used
     ) -> str:
         """
-        Upcoming IPOs API (/calendar/ipos)
 
-        Parameters:
-          - from_date (YYYY-MM-DD): start date (maps to 'from'); default = today if omitted by server
-          - to_date   (YYYY-MM-DD): end date   (maps to 'to');   default = today+7d if omitted by server
-          - fmt: 'json' or 'csv' (API default is csv). We default to 'json' for easier consumption.
-          - api_token: optional override for per-call token
+        Get upcoming and recent IPO (Initial Public Offering) listings.
+        Returns IPO dates, company names, exchanges, share prices, and deal details within a date range (defaults to next 7 days).
+        Use when the user asks about new stock listings, companies going public, or IPO calendar.
+        For stock splits calendar, use get_upcoming_splits. For dividend calendar, use get_upcoming_dividends.
+
 
         Returns:
-          - JSON (stringified) when fmt='json'
-          - CSV (raw text wrapped as JSON string if the upstream returns text)
+            Object with:
+            - ipos (list): array of IPO records, each with:
+              - code (str): ticker symbol
+              - name (str): company name
+              - exchange (str): exchange code
+              - currency (str): pricing currency
+              - start_date (str): expected IPO date
+              - filing_date (str): SEC filing date
+              - amended_date (str): last amendment date
+              - price_from (float|null): low end of price range
+              - price_to (float|null): high end of price range
+              - offer_price (float|null): final offer price
+              - shares (int|null): shares offered
+              - deal_type (str): type of offering (e.g. 'Priced')
+
+        Examples:
+            "IPOs this week" → from_date="2026-03-02", to_date="2026-03-06"
+            "IPOs in March 2026" → from_date="2026-03-01", to_date="2026-03-31"
+            "Upcoming IPOs next 30 days" → from_date="2026-03-06", to_date="2026-04-05"
+
+        
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()

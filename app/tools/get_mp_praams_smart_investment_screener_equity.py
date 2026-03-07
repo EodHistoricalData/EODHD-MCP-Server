@@ -290,24 +290,47 @@ def register(mcp: FastMCP):
         api_token: str | None = None,
     ) -> str:
         """
-        Marketplace: Praams Smart Investment Screener (Equity)
-        POST /api/mp/praams/explore/equity?skip={skip}&take={take}
 
-        Matches curl:
-          - Query params: skip, take, api_token
-          - JSON body: filters (countries/sectors/etc) and ratio bounds.
+        [PRAAMS] Screen and filter equities using multi-factor risk-return criteria.
+        Filter by region, country, sector, industry, market cap, currency, and PRAAMS score ranges (1-7)
+        for valuation, performance, profitability, growth, dividends, analyst view, and risk factors.
+        Returns paginated matching equities with scores. Consumes 10 API calls per request.
+        For bond screening, use get_mp_praams_smart_screener_bond.
+        For deep analysis of a single equity, use get_mp_praams_risk_scoring_by_ticker.
 
-        Response shape:
-          {
-            "item": { "peers": [...], "totalCount": N },
-            "success": true,
-            "message": "",
-            "errors": []
-          }
+
+        Returns:
+          JSON object with Praams envelope:
+            - item (object):
+                - peers (array): matching equity instruments, each containing:
+                    - ticker (str): equity ticker symbol
+                    - isin (str): ISIN code
+                    - name (str): company name
+                    - praamsRatio (float): overall PRAAMS score
+                    - totalReturnScore (int): return score (1-7)
+                    - totalRiskScore (int): risk score (1-7)
+                    - valuation (int): valuation score (1-7)
+                    - performance (int): performance score (1-7)
+                    - profitability (int): profitability score (1-7)
+                    - dividends (int): dividends score (1-7)
+                    - country (str): company country
+                    - sector (str): company sector
+                    - capitalisation (int): market cap category (1=small, 2=mid, 3=large)
+                    - currency (str): trading currency
+                - totalCount (int): total matching instruments (for pagination)
+            - success (bool): whether the request succeeded
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
 
         Notes:
           - All *Min/*Max fields are 1..7 scale integers (nullable).
           - Provide at least one filter value in the JSON body.
+
+        Examples:
+            "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
+            "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
+
+        
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
@@ -367,7 +390,9 @@ def register(mcp: FastMCP):
         api_token: str | None = None,
     ) -> str:
         """
-        Convenience alias for the common equity filters shown in docs/examples.
+        [PRAAMS] Convenience alias for equity screening with common filters.
+        Screen equities by country, sector, dividends, and solvency scores.
+        For full filter set, use get_mp_praams_smart_screener_equity.
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:

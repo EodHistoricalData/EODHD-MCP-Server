@@ -39,7 +39,12 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Financial News API (spec-aligned).
+
+        Fetch financial news articles for a stock ticker or topic tag within a date range.
+        Returns full article objects with title, content, URL, date, and related tickers.
+        Use when the user asks for news headlines, recent articles, or press coverage about a company or sector.
+        For aggregated sentiment scores derived from news, use get_sentiment_data instead.
+        For keyword frequency analysis in news, use get_news_word_weights instead.
 
         Args:
             ticker (str, optional): SYMBOL.EXCHANGE_ID (e.g., 'AAPL.US'). Mapped to 's'.
@@ -52,7 +57,21 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used if omitted.
 
         Returns:
-            str: JSON string of articles (or {"xml": "..."} if fmt='xml' and your client returns text).
+            Array of articles, each with:
+            - date (str): publication datetime ISO 8601
+            - title (str): headline
+            - content (str): full article text
+            - link (str): source URL
+            - symbols (list[str]): related ticker symbols
+            - tags (list[str]): topic tags
+            - sentiment (object): title/content/ner polarity and neg/neu/pos scores
+
+        Examples:
+            "Apple news last week" → ticker="AAPL.US", start_date="2026-02-27", end_date="2026-03-06"
+            "Crypto news, 50 results" → tag="crypto", limit=50
+            "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
+
+        
         """
         # --- Validate required conditions ---
         if not ticker and not tag:

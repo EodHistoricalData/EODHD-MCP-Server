@@ -41,6 +41,12 @@ def _canon_ticker(v: str) -> str | None:
 async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> str:
     """
     Core runner for Praams Equity Risk & Return Scoring by ticker.
+
+
+        Examples:
+            "Apple risk score" → ticker="AAPL"
+            "Tesla risk and return scoring" → ticker="TSLA"
+
     """
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)
@@ -76,24 +82,41 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Equity Risk & Return Scoring by Ticker
-        GET /api/mp/praams/analyse/equity/ticker/{ticker}
 
-        Retrieves Praams' equity risk & return scoring for a single asset,
-        identified by its ticker (e.g., 'AAPL').
+        [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ticker symbol.
+        Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
+        growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        Use when assessing investment risk for a specific stock or ETF. Consumes 10 API calls per request.
+        For lookup by ISIN instead of ticker, use get_mp_praams_risk_scoring_by_isin.
+        For a full PDF report, use get_mp_praams_report_equity_by_ticker.
 
-        The response includes, among others:
-          - PRAAMS Ratio and total risk/return scores
-          - Valuation, performance, profitability, growth & momentum
-          - Dividend metrics and yields
-          - Volatility, stress-testing and liquidity assessment
-          - Country risk, solvency, and descriptive risk narratives
-          - Analyst view and price targets
+        Returns:
+          JSON object with Praams envelope:
+            - success (bool): whether the request succeeded
+            - item (object): equity analysis payload containing:
+                - praamsRatio (float): overall PRAAMS score
+                - totalReturnScore (int): aggregate return score (1-7 scale)
+                - totalRiskScore (int): aggregate risk score (1-7 scale)
+                - valuation (object): valuation metrics and score
+                - performance (object): performance metrics and score
+                - profitability (object): profitability metrics and score
+                - growthMomentum (object): growth & momentum metrics and score
+                - dividends (object): dividend yield, payout ratio, score
+                - analystView (object): consensus target price, recommendations, score
+                - volatility (object): historical volatility, VaR, score
+                - stressTest (object): stress-test scenarios and score
+                - liquidity (object): trading volume, bid-ask spread, score
+                - countryRisk (object): country-level risk assessment and score
+                - solvency (object): debt ratios, interest coverage, score
+                - descriptions (object|null): narrative risk/return explanations
+            - errors (array): list of error messages, empty on success
+            - message (str): status message
 
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
         """
         return await _run_praams_equity_by_ticker(ticker=ticker, api_token=api_token)
 

@@ -34,8 +34,11 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call token override
     ) -> str:
         """
-        Symbol Change History (US-only for now)
-        GET /api/symbol-change-history
+
+        Get ticker symbol change history -- tracks when US stocks changed their ticker symbol or company name.
+        Returns old symbol, new symbol, company name, exchange, and effective date. Data available from 2022-07-22, US exchanges only.
+        Use when the user asks about ticker renames, symbol changes, rebranding events, or needs to map old tickers to new ones.
+        This is the only tool for symbol/ticker change tracking.
 
         Args:
             start_date (str, optional): 'from' in YYYY-MM-DD (e.g., '2022-10-01').
@@ -43,12 +46,23 @@ def register(mcp: FastMCP):
             fmt (str): 'json' (default).
             api_token (str, optional): Per-call token override; env token used if omitted.
 
-        Notes:
-            - History starts from 2022-07-22; endpoint updated daily.
-            - Only **US** exchanges are supported currently.
+
         Returns:
-            str: JSON array of changes with fields:
-                 exchange, old_symbol, new_symbol, company_name, effective
+            Array of symbol change records, each with:
+            - old_code (str): previous ticker symbol
+            - old_exchange (str): previous exchange code
+            - old_country (str): previous country code
+            - new_code (str): new ticker symbol
+            - new_exchange (str): new exchange code
+            - new_country (str): new country code
+            - date (str): effective date of change
+
+        Examples:
+            "Symbol changes this month" → start_date="2026-03-01", end_date="2026-03-06"
+            "Ticker renames in 2025" → start_date="2025-01-01", end_date="2025-12-31"
+            "Recent symbol changes last 90 days" → start_date="2025-12-06", end_date="2026-03-06"
+
+        
         """
         # Validate inputs
         if fmt != "json":

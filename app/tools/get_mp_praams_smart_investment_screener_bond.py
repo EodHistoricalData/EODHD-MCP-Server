@@ -411,6 +411,48 @@ def register(mcp: FastMCP):
         # auth
         api_token: str | None = None,
     ) -> str:
+        """
+
+        [PRAAMS] Screen and filter bonds using multi-factor risk-return criteria.
+        Filter by region, country, sector, currency, yield range, duration range, PRAAMS score ranges (1-7),
+        and exclude subordinated or perpetual bonds. Returns paginated matching bonds with scores.
+        Consumes 10 API calls per request.
+        For equity screening, use get_mp_praams_smart_screener_equity.
+        For deep analysis of a single bond, use get_mp_praams_bond_analyze_by_isin.
+
+
+        Returns:
+          JSON object with Praams envelope:
+            - item (object):
+                - peers (array): matching bond instruments, each containing:
+                    - isin (str): bond ISIN
+                    - name (str): bond/issuer name
+                    - praamsRatio (float): overall PRAAMS score
+                    - totalReturnScore (int): return score (1-7)
+                    - totalRiskScore (int): risk score (1-7)
+                    - yield (float|null): current yield
+                    - duration (float|null): effective duration
+                    - couponRate (float|null): coupon rate
+                    - maturityDate (str|null): maturity date
+                    - currency (str): bond currency
+                    - country (str): issuer country
+                    - sector (str): issuer sector
+                - totalCount (int): total matching instruments (for pagination)
+            - success (bool): whether the request succeeded
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
+
+        Notes:
+          - All *Min/*Max fields are 1..7 scale integers (nullable).
+          - Bond-specific: yieldMin/Max, durationMin/Max, excludeSubordinated, excludePerpetuals.
+          - Provide at least one filter value in the JSON body.
+
+        Examples:
+            "High-yield EUR bonds low risk" → currency=["EUR"], yieldMin=5, countryRiskMax=3
+            "US investment-grade bonds short duration" → regions=[1], durationMax=3, solvencyMin=5
+
+        
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)
@@ -484,6 +526,11 @@ def register(mcp: FastMCP):
         excludePerpetuals: bool | None = None,
         api_token: str | None = None,
     ) -> str:
+        """
+        [PRAAMS] Convenience alias for bond screening with common filters.
+        Screen bonds by region, sector, currency, yield, duration, and growth/market-view scores.
+        For full filter set, use get_mp_praams_smart_screener_bond.
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)

@@ -24,21 +24,46 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Search API for Stocks, ETFs, Mutual Funds, Bonds, and Indices.
+
+        Search for financial instruments by name, ticker, or ISIN. Use when the user wants to
+        find a ticker symbol, look up a company by name, resolve an ISIN, or discover instruments
+        matching a keyword.
+
+        Searches across stocks, ETFs, mutual funds, bonds, indices, and crypto. Returns matching
+        instruments with their ticker codes, exchange, type, and ISIN. Filterable by exchange
+        and instrument type.
+
+        This is the discovery/lookup tool. Once you have a ticker, use other tools (e.g.,
+        get_eod_historical_data, get_fundamentals_data) to fetch actual data.
 
         Args:
-            query (str): Ticker/company/ISIN to search (e.g., 'AAPL', 'Apple Inc', 'US0378331005').
+            query (str): Ticker, company name, or ISIN to search (e.g., 'AAPL', 'Apple Inc', 'US0378331005').
             limit (int): Number of results (default 15, max 500).
-            bonds_only (bool, optional): If True, include only bonds (bonds_only=1).
+            bonds_only (bool, optional): If True, return only bonds.
             exchange (str, optional): Exchange code filter (e.g., 'US', 'PA', 'FOREX', 'NYSE').
             type (str, optional): One of {'all','stock','etf','fund','bond','index','crypto'}.
-                                  Note: when using 'all', bonds are excluded by default; use type='bond'
-                                  or bonds_only=True to include bonds.
             fmt (str): Must be 'json'.
-            api_token (str, optional): Per-call API token override (demo does NOT work for Search).
+            api_token (str, optional): Per-call API token override (demo token does NOT work for Search).
+
 
         Returns:
-            str: JSON-formatted list of instruments or {"error": "..."}.
+            Array of matching instruments, each with:
+            - Code (str): ticker symbol
+            - Exchange (str): exchange code
+            - Name (str): instrument name
+            - Type (str): instrument type (e.g. "Common Stock", "ETF")
+            - Country (str): country of listing
+            - Currency (str): trading currency
+            - ISIN (str): ISIN code
+            - previousClose (float): last closing price
+            - previousCloseDate (str): date of last close (YYYY-MM-DD)
+
+        Examples:
+            "Find Apple stock" → get_stocks_from_search(query="Apple Inc", type="stock")
+            "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
+            "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
+
+        
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

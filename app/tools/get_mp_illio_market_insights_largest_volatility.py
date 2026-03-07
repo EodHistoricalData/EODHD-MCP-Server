@@ -49,6 +49,12 @@ def _canon_id(v: str) -> str | None:
 async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> str:
     """
     Internal runner for Largest Volatility Change chapter.
+
+
+        Examples:
+            "S&P 500 largest volatility changes" → id="SnP500"
+            "Nasdaq-100 biggest volatility movers" → id="NDX"
+
     """
     # Validate fmt
     fmt = (fmt or "json").lower()
@@ -95,24 +101,30 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Largest Volatility Change (v1.0.0)
-        GET /api/mp/illio/chapters/volume/{id}
 
-        Returns chapter: Largest Volatility Change over the past year for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
+        [Illio] Identify constituents with the largest year-over-year volatility changes.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns top instruments by 100-day volatility
+        increase and decrease, plus the overall share of instruments with rising vs falling volatility.
+        Consumes 10 API calls per request.
+        For current volatility bands and daily moves, use get_mp_illio_market_insights_volatility.
+        For beta-based market sensitivity, use get_mp_illio_market_insights_beta_bands.
 
-        This insight highlights instruments with the largest increases and decreases
-        in 100-day volatility over the past year, including:
-          - Overall share of instruments with higher vs lower volatility.
-          - Top instruments by volatility increase.
-          - Top instruments by volatility decrease.
+        Returns:
+          JSON object with largest volatility change chapter data:
+            - chapter (str): chapter identifier, e.g. "volume"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): volatility change analysis, including:
+                - summary (object): share of instruments with higher vs lower volatility
+                - increasers (array): top instruments by volatility increase, each with
+                    ticker, name, volatilityChange (float), currentVolatility (float)
+                - decreasers (array): top instruments by volatility decrease, same fields
+            - metadata (object|null): date range, lookback period
 
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON
+
         """
         return await _run_largest_volatility(id=id, fmt=fmt, api_token=api_token)
 
@@ -124,6 +136,7 @@ def register(mcp: FastMCP):
         api_token: str | None = None,
     ) -> str:
         """
-        Alias for get_mp_illio_market_insights_largest_volatility.
+        [Illio] Alias for get_mp_illio_market_insights_largest_volatility.
+        Identify constituents with the largest year-over-year volatility changes in a major US index.
         """
         return await _run_largest_volatility(id=id, fmt=fmt, api_token=api_token)

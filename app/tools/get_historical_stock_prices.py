@@ -28,7 +28,12 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        End-Of-Day Historical Stock Market Data (EOD) — spec-aligned.
+
+        Get historical daily, weekly, or monthly OHLCV price data for any stock, ETF, index, or crypto.
+        Covers open, high, low, close, adjusted close, and volume for a date range.
+        Use for price history, charting, backtesting, and performance analysis.
+        For intraday candles (1min-1h), use get_intraday_historical_data instead.
+        For current/live prices, use get_live_price_data instead.
 
         Args:
             ticker (str): Symbol in SYMBOL.EXCHANGE format, e.g. 'AAPL.US'.
@@ -41,8 +46,21 @@ def register(mcp: FastMCP):
             api_token (str, optional): Override API token for this call. If not provided, env token is used.
 
         Returns:
-            str: JSON string with data or {"error": "..."}.
-                 If fmt='csv', returns CSV text embedded as a JSON string for consistency.
+            Array of daily/weekly/monthly records, each with:
+            - date (str): YYYY-MM-DD
+            - open, high, low, close (float): OHLC prices (unadjusted)
+            - adjusted_close (float): split- and dividend-adjusted close
+            - volume (int): shares traded
+
+            Use adjusted_close for return calculations; close is raw exchange price.
+            If filter is set (e.g. 'last_close'), returns a single scalar value.
+
+        Examples:
+            "Apple stock price last month" → ticker="AAPL.US", start_date="2026-02-01", end_date="2026-02-28"
+            "Weekly Tesla for 2025" → ticker="TSLA.US", period="w", start_date="2025-01-01", end_date="2025-12-31"
+            "Monthly S&P 500 since 2020" → ticker="GSPC.INDX", period="m", start_date="2020-01-01"
+
+        
         """
         # --- Validate required/typed params ---
         ticker = validate_ticker(ticker)

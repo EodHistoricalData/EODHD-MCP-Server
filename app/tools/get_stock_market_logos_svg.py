@@ -17,20 +17,33 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Stock Market Logos API (SVG)
-        GET /api/logo-svg/{symbol}
 
-        Returns an SVG vector logo for the given symbol.
-        Coverage: US and TO (Toronto) exchanges only.
+        Get a company logo in SVG vector format. Use when the user needs a scalable vector logo
+        for high-quality rendering, web embedding, or print.
+
+        Limited to US and TO (Toronto) exchanges only. Costs 10 API calls per request.
+        Symbol must be in TICKER.EXCHANGE format (e.g., 'AAPL.US', 'RY.TO').
+
+        For PNG logos with broader exchange coverage (60+ exchanges), use get_stock_market_logos.
 
         Args:
-            symbol (str): Ticker in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').
-            api_token (str, optional): Per-call token override; env token used otherwise.
+            symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'RY.TO').
+            api_token (str, optional): Per-call token override.
+
+
+        Returns:
+            SVG image data as XML string (vector logo, scalable).
 
         Notes:
             - Marketplace product: 10 API calls per request.
             - Response is SVG image data (XML text).
             - Limited to US and TO exchanges.
+
+        Examples:
+            "Apple SVG logo" → get_stock_market_logos_svg(symbol="AAPL.US")
+            "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
+
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').")

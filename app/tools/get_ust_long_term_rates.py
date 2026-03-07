@@ -18,11 +18,14 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        US Treasury Long-Term Rates API
-        GET /api/ust/long-term-rates
 
-        Returns Daily Treasury Long-Term Rates and Real Long-Term Rate Averages.
-        Rate types: BC_20year, Over_10_Years, Real_Rate.
+        Fetch US Treasury long-term rate composites and averages. Use when asked about 20-year bond
+        constant maturity rates, long-term real rate averages, or extrapolation factors.
+        Covers rate types: BC_20year, Over_10_Years, Real_Rate — combining daily long-term
+        nominal rates with real long-term rate averages.
+        For individual tenor yield curves use get_ust_yield_rates. For inflation-adjusted
+        real yields use get_ust_real_yield_rates. For T-bill rates use get_ust_bill_rates.
+        Consumes 1 API call per request.
 
         Args:
             year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
@@ -30,12 +33,27 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+
+        Returns:
+            JSON array of objects, each with:
+            - date (str): Rate date, YYYY-MM-DD.
+            - LT_COMPOSITE_RATE (str): Long-term composite rate.
+            - TREASURY_20YR (str): Treasury 20-year rate.
+            - BC_20YEAR (str): Bond-equivalent 20-year rate.
+            - EXTRAPOLATION_FACTOR_20YR (str): Extrapolation factor for 20-year maturity.
+
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, rate_type, rate, extrapolation_factor.
             - Combines "Daily Treasury Real Long-Term Rate Averages" and
               "Daily Treasury Long-Term Rates".
+
+        Examples:
+            "long-term treasury rates for 2024" → year=2024
+            "20-year bond rates this year, first 20 records" → year=2026, limit=20
+            "real long-term rate averages for 2022" → year=2022
+
+        
         """
         url = f"{EODHD_API_BASE}/ust/long-term-rates?1=1"
 

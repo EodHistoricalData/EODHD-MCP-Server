@@ -36,7 +36,12 @@ def register(mcp: FastMCP):
         api_token: str | None = None,
     ) -> str:
         """
-        Live (Delayed) Stock Prices API
+
+        Get the current (delayed ~15-20 min) price snapshot for one or more tickers.
+        Returns last trade price, change, change percent, volume, high, low, open, previous close, and timestamp.
+        Supports stocks, ETFs, indices, forex, and crypto. Batch up to 20 symbols in one call.
+        For US stocks with bid/ask, 52w range, and market cap, use get_us_live_extended_quotes instead.
+        For historical daily/weekly/monthly OHLCV, use get_historical_stock_prices instead.
 
         Args:
             ticker (str): Primary symbol in SYMBOL.EXCHANGE format (e.g., 'AAPL.US').
@@ -48,8 +53,23 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override. If omitted, env token is used.
 
         Returns:
-            str: JSON string. If fmt='csv' and your `make_request` returns raw text,
-                 this tool wraps CSV into {"csv": "..."}; otherwise returns JSON from API.
+            Single object (one ticker) or array (multiple tickers), each with:
+            - code (str): ticker symbol
+            - timestamp (int): Unix epoch seconds of last trade
+            - open, high, low, close (float): session OHLC
+            - volume (int): session volume
+            - previousClose (float): prior session close
+            - change (float): absolute change from previousClose
+            - change_p (float): percent change from previousClose
+
+            Prices are delayed ~15-20 min depending on exchange.
+
+        Examples:
+            "Current Apple price" → ticker="AAPL.US"
+            "Live quotes for Tesla, Google, and Amazon" → ticker="TSLA.US", additional_symbols=["GOOG.US", "AMZN.US"]
+            "Bitcoin and Ethereum prices right now" → ticker="BTC-USD.CC", additional_symbols=["ETH-USD.CC"]
+
+        
         """
         # --- Validate inputs ---
         ticker = validate_ticker(ticker)

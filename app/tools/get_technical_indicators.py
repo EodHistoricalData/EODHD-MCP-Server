@@ -120,13 +120,45 @@ def register(mcp: FastMCP):
         api_token: str | None = None,
     ) -> str:
         """
-        Technical Indicators API (spec-aligned)
 
-        Notes:
-          - Each request consumes 5 API calls (Marketplace accounting).
-          - Supports all documented functions (sma, ema, wma, macd, rsi, stochastic, stochrsi, dmi/dx, adx, atr, cci, sar, beta, bbands, volatility, avgvol, avgvolccy, splitadjusted, format_amibroker).
+        Compute technical indicators for any ticker over a date range.
+        Supported indicators: SMA, EMA, WMA, MACD, RSI, Stochastic, StochRSI, DMI/ADX, ATR,
+        CCI, Parabolic SAR, Beta, Bollinger Bands, Volatility, Average Volume, and split-adjusted prices.
+        Each indicator has configurable periods, and results include a time series of computed values.
+        Consumes 5 API calls per request.
+        For raw OHLCV price data, use get_historical_stock_prices instead.
+        For fundamental analysis, use get_fundamentals_data instead.
 
-        Args mirror API docs; only provided params are passed through.
+
+        Returns:
+            Array of objects, each with 'date' (str, YYYY-MM-DD) plus indicator-specific fields:
+            - sma/ema/wma: {sma|ema|wma} (float)
+            - rsi: {rsi} (float, 0-100)
+            - macd: {macd, macd_signal, macd_hist} (float)
+            - stochastic: {slow_k, slow_d} (float)
+            - stochrsi: {stochrsi} (float)
+            - bbands: {uband, mband, lband} (float — upper/middle/lower)
+            - atr: {atr} (float)
+            - adx: {adx} (float)
+            - dmi: {dmi} (float)
+            - cci: {cci} (float)
+            - sar: {sar} (float)
+            - beta: {beta} (float)
+            - volatility: {volatility} (float)
+            - avgvol: {avgvol} (int)
+            - avgvolccy: {avgvolccy} (float — volume * close)
+            - splitadjusted: {open, high, low, close, volume} (split-adjusted OHLCV)
+            - stddev: {stddev} (float)
+            - slope: {slope} (float)
+
+            If filter is set (e.g. 'last_sma'), returns a single scalar value.
+
+        Examples:
+            "50-day SMA for Apple in 2025" → ticker="AAPL.US", function="sma", period=50, start_date="2025-01-01", end_date="2025-12-31"
+            "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
+            "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
+
+        
         """
         # --- Required/typed validation ---
         ticker = validate_ticker(ticker)

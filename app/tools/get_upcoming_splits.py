@@ -25,17 +25,29 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override; else env EODHD_API_KEY
     ) -> str:
         """
-        Upcoming Splits API (/calendar/splits)
 
-        Parameters:
-          - from_date (YYYY-MM-DD): start date (maps to 'from'); server default = today
-          - to_date   (YYYY-MM-DD): end date   (maps to 'to');   server default = today+7d
-          - fmt: 'json' or 'csv'. API default is 'csv'; we default to 'json' for developer ergonomics.
-          - api_token: optional override for per-call token
+        Get upcoming and recent stock split events.
+        Returns split dates, tickers, and split ratios (e.g., 4:1) within a date range (defaults to next 7 days).
+        Use when the user asks about stock splits, share splits, or reverse splits.
+        For IPO calendar, use get_upcoming_ipos. For dividend calendar, use get_upcoming_dividends.
+
 
         Returns:
-          - JSON string when fmt='json'
-          - CSV wrapped as {"fmt":"csv","data": "..."} when fmt='csv'
+            Array of split records, each with:
+            - code (str): ticker symbol
+            - exchange (str): exchange code
+            - optionable (str): whether options exist ('0' or '1')
+            - date (str): split effective date
+            - split (str): split ratio (e.g. '4/1')
+            - oldShares (int): pre-split share count
+            - newShares (int): post-split share count
+
+        Examples:
+            "Stock splits this week" → from_date="2026-03-02", to_date="2026-03-06"
+            "Splits in Q1 2026" → from_date="2026-01-01", to_date="2026-03-31"
+            "Any splits next month" → from_date="2026-04-01", to_date="2026-04-30"
+
+        
         """
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):

@@ -53,18 +53,12 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Performance Insights (v1.0.0)
-        GET /api/mp/illio/categories/performance/{id}
 
-        Returns performance attributes for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Notes & Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Retrieve portfolio-level performance attributes for a major US index.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns return metrics, attribution,
+        and performance breakdown at the index-portfolio level. Consumes 10 API calls per request.
+        For market-level performance comparison across constituents, use get_mp_illio_market_insights_performance.
+        For risk attributes of the same indices, use mp_illio_risk_insights.
 
         Args:
           id: 'SnP500' | 'DJI' | 'NDX'  (common aliases like 'SP500', 'SPX', 'NASDAQ100' accepted)
@@ -72,7 +66,20 @@ def register(mcp: FastMCP):
           api_token: override token; otherwise picked from environment by make_request()
 
         Returns:
-          Pretty-printed JSON string or {"error": "..."} on failure.
+          JSON object with performance attributes for the selected index:
+            - category (str): category name, e.g. "performance"
+            - id (str): index identifier, e.g. "SnP500"
+            - attributes (array): list of performance attribute objects, each containing:
+                - name (str): attribute name (e.g. "1W Return", "1M Return", "YTD Return")
+                - value (float|null): current attribute value
+                - details (object|null): additional breakdown or metadata
+          On failure returns ToolError.
+
+        Examples:
+            "S&P 500 performance insights" → id="SnP500"
+            "Nasdaq-100 performance attributes" → id="NDX"
+
+        
         """
         # Validate fmt
         fmt = (fmt or "json").lower()

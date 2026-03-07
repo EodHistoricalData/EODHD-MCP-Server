@@ -35,24 +35,49 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call token override
     ) -> str:
         """
-        Get Exchange Details & Trading Hours (GET /api/exchange-details/{EXCHANGE_CODE})
 
-        Returns metadata for the exchange, including:
-          - Timezone
-          - isOpen (boolean)
-          - TradingHours (open/close, UTC equivalents, working days, lunch hours if present)
-          - ExchangeHolidays (bank/official; ~6 months back & forward; supports 'from'/'to')
-          - ActiveTickers (last 2 months), UpdatedTickers (today), PreviousDayUpdatedTickers
+        Retrieve detailed metadata for a single exchange: trading hours, timezone, open/closed
+        status, holidays, and ticker counts. Use when the user asks about exchange schedules,
+        market holidays, or whether an exchange is currently open.
+
+        Returns timezone, isOpen flag, trading hours (open/close with UTC equivalents, working
+        days, lunch breaks), exchange holidays (bank and official, ~6 months window), and
+        ticker statistics (active, updated today, previous day).
+
+        For the list of all exchanges, use get_exchanges_list.
+        For tickers on an exchange, use get_exchange_tickers.
 
         Args:
             exchange_code (str): Exchange code (e.g., 'US', 'LSE', 'XETRA').
-            start_date (str, optional): YYYY-MM-DD; mapped to 'from' for holidays filter.
-            end_date (str, optional):   YYYY-MM-DD; mapped to 'to'   for holidays filter.
+            start_date (str, optional): YYYY-MM-DD; filter holidays from this date.
+            end_date (str, optional): YYYY-MM-DD; filter holidays up to this date.
             fmt (str): 'json' only (default).
             api_token (str, optional): Per-call token override (env token otherwise).
 
+
         Returns:
-            str: JSON string with exchange details or {"error": "..."} on failure.
+            Object with:
+            - Name (str): exchange full name
+            - Code (str): exchange code
+            - OperatingMIC (str): ISO 10383 operating MIC
+            - Country (str): country name
+            - Currency (str): primary currency code
+            - CountryISO2 (str): alpha-2 country code
+            - CountryISO3 (str): alpha-3 country code
+            - Timezone (str): IANA timezone (e.g. "America/New_York")
+            - isOpen (bool): whether the exchange is currently open
+            - tradingHours (object): open, close, UTC equivalents, working days, lunch hours
+            - ExchangeHolidays (array): holiday objects with Name, Date, Type (bank/official)
+            - ActiveTickers (int): tickers active in last 2 months
+            - UpdatedTickers (int): tickers updated today
+            - PreviousDayUpdatedTickers (int): tickers updated previous day
+
+        Examples:
+            "Is the US market open right now?" → get_exchange_details(exchange_code="US")
+            "LSE trading hours and timezone" → get_exchange_details(exchange_code="LSE")
+            "XETRA holidays in Q1 2026" → get_exchange_details(exchange_code="XETRA", start_date="2026-01-01", end_date="2026-03-31")
+
+        
         """
         # --- Validate inputs ---
         if not exchange_code or not isinstance(exchange_code, str):

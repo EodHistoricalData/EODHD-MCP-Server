@@ -23,21 +23,42 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Marketplace: TradingHours — Get Market Details
-        GET /api/mp/tradinghours/markets/details
 
-        Returns detailed information for a specific market identified by its FinID.
+        [TradingHours] Get detailed metadata for a specific market by its FinID. Use when asked
+        about an exchange's timezone, MIC codes, asset types, weekend schedule, or holiday date range.
+        Returns country, timezone (IANA), products traded, MIC/MIC extended, acronym, and more.
+        Find the FinID first via get_mp_tradinghours_list_markets or get_mp_tradinghours_lookup_markets.
+        For real-time open/closed status, use get_mp_tradinghours_market_status instead.
+        Consumes 10 API calls per request.
 
         Args:
             fin_id (str): Market FinID, case-insensitive (e.g. 'us.nyse', 'gb.lse').
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+
+        Returns:
+            JSON object with:
+            - fin_id (str): Unique market identifier (e.g. 'us.nyse').
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - products (str): Traded product types.
+            - timezone (str): IANA timezone identifier.
+            - local_time (str): Current local time at the exchange.
+            - regular (object): Regular session hours with open/close times.
+            - pre_market (object|null): Pre-market session hours, if applicable.
+            - post_market (object|null): Post-market session hours, if applicable.
+            - holidays (array): Upcoming holidays with date, name, and schedule impact.
+
         Notes:
             - Marketplace product: 10 API calls per request.
-            - Response fields: fin_id, country_code, exchange, market, products, mic,
-              mic_extended, acronym, asset_type, memo, permanently_closed, timezone,
-              weekend_definition, holidays_min_date, holidays_max_date.
             - Returns IANA timezone identifiers.
+
+        Examples:
+            "NYSE market details" → fin_id="us.nyse"
+            "London Stock Exchange info" → fin_id="gb.lse"
+            "Tokyo Stock Exchange details" → fin_id="jp.jpx"
+
+        
         """
         if not fin_id or not isinstance(fin_id, str):
             raise ToolError("Parameter 'fin_id' is required (e.g. 'us.nyse').")

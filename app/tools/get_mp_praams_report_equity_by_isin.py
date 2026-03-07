@@ -63,17 +63,31 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Marketplace: Praams Multi-Factor Equity Report by ISIN
-        GET /api/mp/praams/reports/equity/isin/{isin}
 
-        Generates a comprehensive PDF report with multi-factor analysis
-        for an equity identified by its ISIN code.
+        [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ISIN code.
+        Covers 120,000+ global equities. Report includes valuation, performance, profitability,
+        growth, dividends, analyst view, plus risk factors (volatility, stress-test, liquidity,
+        country, solvency). Requires an email for delivery notification. Consumes 10 API calls per request.
+        For report by ticker, use get_mp_praams_report_equity_by_ticker.
+        For JSON risk scoring without PDF, use get_mp_praams_risk_scoring_by_isin.
 
         Args:
             isin (str): ISIN code (e.g. 'US0378331005' for Apple, 'US88160R1014' for Tesla).
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Returns:
+            JSON object with report generation status:
+              - success (bool): whether the report request was accepted
+              - item (object|null): report metadata if available, including:
+                  - reportId (str): unique report identifier
+                  - status (str): generation status (e.g. "queued", "processing", "completed")
+                  - downloadUrl (str|null): URL to download the PDF when ready
+              - message (str): status message (e.g. "Report generation started")
+              - errors (array): list of error messages, empty on success
+            The actual report is a PDF sent to the provided email address.
 
         Notes:
             - Marketplace product: 10 API calls per request.
@@ -84,6 +98,12 @@ def register(mcp: FastMCP):
             - Risk factors: default, volatility, stress-test, selling difficulty,
               country, other risks.
             - Demo ISINs: US0378331005, US88160R1014, US0231351067.
+
+        Examples:
+            "Full Apple equity report by ISIN" → isin="US0378331005", email="user@example.com", is_full=True
+            "Tesla equity PDF via ISIN" → isin="US88160R1014", email="user@example.com"
+
+        
         """
         return await _run_praams_report_equity_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)
 

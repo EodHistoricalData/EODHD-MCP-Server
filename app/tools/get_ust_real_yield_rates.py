@@ -18,11 +18,13 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        US Treasury Real Yield Rates API (Inflation-Adjusted)
-        GET /api/ust/real-yield-rates
 
-        Returns Daily Par Real Yield Curve Rates (inflation-adjusted yields).
-        Tenors: 5Y, 7Y, 10Y, 20Y, 30Y.
+        Fetch US Treasury inflation-adjusted (real) yield curve rates. Use when asked about TIPS yields,
+        real interest rates, or inflation-adjusted Treasury returns.
+        Covers 5Y, 7Y, 10Y, 20Y, 30Y tenors from the Daily Par Real Yield Curve.
+        For nominal Treasury yields use get_ust_yield_rates. For T-bill discount rates use get_ust_bill_rates.
+        For long-term rate averages (20Y+ composites) use get_ust_long_term_rates.
+        Consumes 1 API call per request.
 
         Args:
             year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
@@ -30,11 +32,27 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+
+        Returns:
+            JSON array of objects, each with:
+            - date (str): Rate date, YYYY-MM-DD.
+            - 5YR (str): 5-year real yield rate.
+            - 7YR (str): 7-year real yield rate.
+            - 10YR (str): 10-year real yield rate.
+            - 20YR (str): 20-year real yield rate.
+            - 30YR (str): 30-year real yield rate.
+
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, rate.
             - Compare with nominal yields for implied inflation expectations.
+
+        Examples:
+            "real yield rates for 2025" → year=2025
+            "last 10 inflation-adjusted treasury yields" → limit=10
+            "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
+
+        
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
 

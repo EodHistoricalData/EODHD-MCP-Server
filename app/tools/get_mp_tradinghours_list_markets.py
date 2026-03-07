@@ -25,21 +25,45 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Marketplace: TradingHours — List All Markets
-        GET /api/mp/tradinghours/markets
 
-        Returns a list of all tracked markets with metadata.
+        [TradingHours] List all tracked global markets and exchanges. Use as the starting point
+        to browse available markets before looking up details or checking status.
+        Returns FinID, exchange name, MIC code, asset type, and group for each market.
+        Filter by group: 'core' (24 G20+ markets), 'extended', 'all', or 'allowed' (your tier).
+        To search markets by name/country, use get_mp_tradinghours_lookup_markets.
+        For detailed info on one market, use get_mp_tradinghours_market_details.
+        Consumes 10 API calls per request.
 
         Args:
             group (str, optional): Filter markets — 'core' (G20+), 'extended' (global equities),
                 'all' (equities + derivatives), 'allowed' (your tier). Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
+
+        Returns:
+            JSON array of market objects, each with:
+            - fin_id (str): Unique market identifier (e.g. 'us.nyse').
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - products (str): Traded product types.
+            - country (str): Country name.
+            - country_code (str): ISO country code.
+            - city (str): City where exchange is located.
+            - timezone (str): IANA timezone identifier.
+            - timezone_abbr (str): Timezone abbreviation.
+            - mic (str): Market Identifier Code (ISO 10383).
+            - mic_o (str): Operating MIC.
+
         Notes:
             - Marketplace product: 10 API calls per request.
-            - Response fields: fin_id, exchange, market, products, mic, asset_type,
-              group, permanently_closed, holidays_min_date, holidays_max_date.
             - Core tier: 24 G20+ markets.
+
+        Examples:
+            "list all tracked markets" → (no params)
+            "show only G20 core markets" → group="core"
+            "all equity and derivative markets" → group="all"
+
+        
         """
         if group is not None:
             group = group.strip().lower()

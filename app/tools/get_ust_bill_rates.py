@@ -18,23 +18,50 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        US Treasury Bill Rates API
-        GET /api/ust/bill-rates
 
-        Returns Daily Treasury Bill Rates (discount and coupon-equivalent).
-        Tenors: 4WK, 8WK, 13WK, 17WK, 26WK, 52WK.
+        Fetch daily US Treasury Bill rates (discount and coupon-equivalent yields). Use when the
+        user asks about T-bill rates, short-term government borrowing costs, or discount rates
+        for Treasury bills.
+
+        Returns daily rates for tenors: 4WK, 8WK, 13WK, 17WK, 26WK, 52WK. Fields include
+        date, tenor, discount rate, coupon-equivalent yield, averages, maturity date, and CUSIP.
+        Filterable by year. Costs 1 API call per request.
+
+        For Treasury par yield curve rates (longer maturities up to 30Y), use get_ust_yield_rates.
 
         Args:
-            year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
+            year (int, optional): Filter by year (1900+). Defaults to current year.
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
-            api_token (str, optional): Per-call token override; env token used otherwise.
+            api_token (str, optional): Per-call token override.
+
+
+        Returns:
+            Array of daily bill rate objects, each with:
+            - date (str): observation date (YYYY-MM-DD)
+            - 4WEEKS_BANK_DISCOUNT (float): 4-week bank discount rate
+            - 4WEEKS_COUPON_EQUIVALENT (float): 4-week coupon equivalent yield
+            - 8WEEKS_BANK_DISCOUNT (float): 8-week bank discount rate
+            - 8WEEKS_COUPON_EQUIVALENT (float): 8-week coupon equivalent yield
+            - 13WEEKS_BANK_DISCOUNT (float): 13-week bank discount rate
+            - 13WEEKS_COUPON_EQUIVALENT (float): 13-week coupon equivalent yield
+            - 17WEEKS_BANK_DISCOUNT (float): 17-week bank discount rate
+            - 17WEEKS_COUPON_EQUIVALENT (float): 17-week coupon equivalent yield
+            - 26WEEKS_BANK_DISCOUNT (float): 26-week bank discount rate
+            - 26WEEKS_COUPON_EQUIVALENT (float): 26-week coupon equivalent yield
+            - 52WEEKS_BANK_DISCOUNT (float): 52-week bank discount rate
+            - 52WEEKS_COUPON_EQUIVALENT (float): 52-week coupon equivalent yield
 
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, discount, coupon, avg_discount, avg_coupon,
-              maturity_date, cusip.
+
+        Examples:
+            "Treasury bill rates for 2026" → get_ust_bill_rates(year=2026)
+            "Latest T-bill rates" → get_ust_bill_rates()
+            "T-bill rates for 2025, first 50 records" → get_ust_bill_rates(year=2025, limit=50)
+
+        
         """
         url = f"{EODHD_API_BASE}/ust/bill-rates?1=1"
 

@@ -364,12 +364,12 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # noqa: ARG001 — kept for MCP tool interface parity
     ) -> str:
         """
-        Returns a predefined documentation page by numeric type and id.
 
-        Call with no parameters or type=0 to get the global README with
-        full usage instructions. Call with type=X, id=0 to get the README
-        for that resource group. Invalid or missing parameters fall back to
-        the global README (with "fallback": true in the response).
+        Retrieve built-in EODHD API documentation by numeric type and id. Use when
+        the user asks about API usage, endpoint specs, subscription plans, or reference guides.
+        Returns structured Markdown content for subscriptions (type=1), endpoint docs (type=2),
+        or general reference (type=3). Call with type=0 or no args for the global README index.
+        This is a local lookup — not an API data call. No API calls consumed.
 
         Types:
           0 — Global README / help
@@ -424,8 +424,23 @@ def register(mcp: FastMCP):
             api_token: Ignored (accepted for interface uniformity).
 
         Returns:
-            JSON string with "type", "id", "title", "content", and "raw" keys.
-            Invalid parameters return the global README with "fallback": true.
+            JSON object with:
+            - type (int): Page category number (0-3).
+            - id (int): Page ID within the category.
+            - title (str): Human-readable page title derived from filename.
+            - content (dict): Structured parsed markdown (headings as nested dicts,
+              tables as list-of-dicts, lists as arrays, key-value pairs as dict entries).
+            - raw (str): Original markdown source text.
+            - fallback (bool, optional): Present and true when invalid/missing params
+              caused a fallback to the global README.
+
+        Examples:
+            "show me the global help page" → type=0
+            "docs for the All-In-One subscription plan" → type=1, id=5
+            "how does the historical stock prices endpoint work" → type=2, id=12
+            "explain rate limits" → type=3, id=22
+
+        
         """
         if type is None:
             page_type = 0

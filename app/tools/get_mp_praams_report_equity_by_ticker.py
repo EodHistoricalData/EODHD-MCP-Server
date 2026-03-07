@@ -55,17 +55,31 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Marketplace: Praams Multi-Factor Equity Report by Ticker
-        GET /api/mp/praams/reports/equity/ticker/{ticker}
 
-        Generates a comprehensive PDF report with multi-factor analysis
-        for an equity identified by its ticker symbol.
+        [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ticker symbol.
+        Covers 120,000+ global equities. Report includes valuation, performance, profitability,
+        growth, dividends, analyst view, plus risk factors (volatility, stress-test, liquidity,
+        country, solvency). Requires an email for delivery notification. Consumes 10 API calls per request.
+        For report by ISIN, use get_mp_praams_report_equity_by_isin.
+        For JSON risk scoring without PDF, use get_mp_praams_risk_scoring_by_ticker.
 
         Args:
             ticker (str): Ticker symbol (e.g. 'AAPL', 'TSLA', 'AMZN').
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Returns:
+            JSON object with report generation status:
+              - success (bool): whether the report request was accepted
+              - item (object|null): report metadata if available, including:
+                  - reportId (str): unique report identifier
+                  - status (str): generation status (e.g. "queued", "processing", "completed")
+                  - downloadUrl (str|null): URL to download the PDF when ready
+              - message (str): status message (e.g. "Report generation started")
+              - errors (array): list of error messages, empty on success
+            The actual report is a PDF sent to the provided email address.
 
         Notes:
             - Marketplace product: 10 API calls per request.
@@ -76,6 +90,12 @@ def register(mcp: FastMCP):
             - Risk factors: default, volatility, stress-test, selling difficulty,
               country, other risks.
             - Demo tickers: AAPL, TSLA, AMZN.
+
+        Examples:
+            "Full Apple equity report" → ticker="AAPL", email="user@example.com", is_full=True
+            "Tesla quick equity analysis" → ticker="TSLA", email="user@example.com"
+
+        
         """
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token

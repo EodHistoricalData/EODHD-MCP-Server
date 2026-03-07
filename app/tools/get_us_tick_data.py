@@ -31,22 +31,41 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        US Stock Market Tick Data API (GET /api/ticks)
-        Returns granular trade ticks for US equities across all venues.
+
+        Fetch historical tick-level trade data for US equities. Use when the user needs
+        individual trade records with exact timestamps, prices, volumes, and market venue
+        identifiers at the finest granularity available.
+
+        Returns individual trades (ticks) across all US venues for a given time range.
+        Fields include timestamp (ms), price, shares, market, sub-market, sequence number.
+        US stocks only. Costs 10 API calls per request.
+
+        For real-time streaming ticks, use capture_realtime_ws instead.
+        For daily/intraday OHLCV bars, use get_intraday_historical_data.
 
         Args:
-            ticker (str): e.g., 'AAPL' or 'AAPL.US' (US-only).
-            from_timestamp (int|str): Start UNIX time (seconds, UTC).
-            to_timestamp   (int|str): End   UNIX time (seconds, UTC).
-            limit (int): Max ticks to return. Example in docs uses 5. Default 1000.
+            ticker (str): US ticker, e.g., 'AAPL' or 'AAPL.US'.
+            from_timestamp (int|str): Start UNIX time in seconds (UTC).
+            to_timestamp (int|str): End UNIX time in seconds (UTC).
+            limit (int): Max ticks to return (default 1000).
             fmt (str): 'json' (default) or 'csv'.
-            api_token (str, optional): Per-call token override; env token used otherwise.
+            api_token (str, optional): Per-call token override.
 
-        Notes:
-            • Endpoint shape:
-              /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
-            • Each request costs 10 API calls (any history depth).
-            • Response fields (arrays): mkt, price, seq, shares, sl, sub_mkt, ts (ms).
+
+        Returns:
+            Array of tick objects, each with:
+            - timestamp (int): UNIX timestamp in milliseconds
+            - datetime (str): human-readable datetime
+            - volume (int): tick volume (shares)
+            - price (float): trade price
+            - type (str): tick type (trade/quote)
+            - conditions (str): trade condition codes
+
+        Examples:
+            "AAPL tick data on 2026-03-05 first 100 ticks" → get_us_tick_data(ticker="AAPL", from_timestamp=1772870400, to_timestamp=1772956800, limit=100)
+            "TSLA trades between two timestamps" → get_us_tick_data(ticker="TSLA", from_timestamp=1772870400, to_timestamp=1772874000, limit=500)
+
+        
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

@@ -25,9 +25,26 @@ def register(mcp: FastMCP):
         fmt: str | None = "json",
     ) -> str:
         """
-        List all underlying symbols that have options (mp/unicornbay/options/underlying-symbols)
 
-        Returns JSON: meta {total, fields, compact}, data [symbols...], links.next
+        [Marketplace] List all US stock and ETF ticker symbols that have listed options.
+        Use to check whether a specific ticker has options data or to browse the full universe
+        of optionable underlyings before querying contracts or EOD pricing.
+        For available contracts on a specific ticker, use get_us_options_contracts.
+        For options pricing data, use get_us_options_eod.
+        Consumes 10 API calls per request.
+
+
+        Returns:
+            JSON object with:
+            - meta (object): Contains total count, fields list, compact flag.
+            - data (array of str): Ticker symbols that have options available (e.g. ['AAPL','MSFT',...]).
+            - links.next (str|null): URL for next page, null if last page.
+
+        Examples:
+            "list all tickers that have options" → (no params)
+            "which stocks have options available" → (no params)
+
+        
         """
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/underlying-symbols?1=1"
         base += _q("page[offset]", page_offset)

@@ -63,10 +63,14 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override (else env)
     ) -> str:
         """
-        Stock Market Screener API
-        GET /api/screener
 
-        Each request consumes 5 API calls.
+        Screen and filter stocks by fundamental and technical criteria.
+        Build custom queries using filters (e.g., market_cap > 1B, sector = Technology, P/E < 20)
+        and signals (e.g., 200d_new_hi, 50d_new_lo, bookvalue_neg, wallstreetbull).
+        Returns matching tickers with key metrics. Supports sorting, pagination (limit up to 100).
+        Consumes 5 API calls per request.
+        Use this tool for stock discovery, screening by fundamentals/technicals, and building watchlists.
+        For detailed data on a specific ticker, use get_fundamentals_data instead.
 
         Args:
           - filters: list-of-lists or JSON string
@@ -76,6 +80,27 @@ def register(mcp: FastMCP):
           - offset: 0..999
           - fmt: optional; Screener is JSON-only. If provided, must be "json".
           - api_token: optional override
+
+
+        Returns:
+            Array of matching stocks, each with:
+            - code (str): ticker symbol
+            - name (str): company name
+            - exchange (str): exchange code (e.g. 'US')
+            - sector (str): GICS sector
+            - industry (str): GICS industry
+            - market_capitalization (float): market cap in USD
+            Plus any fields relevant to applied filters/signals, e.g.:
+            - earnings_share, dividend_yield, price, change, volume, etc.
+
+            Max 100 results per page; use offset for pagination.
+
+        Examples:
+            "Large-cap tech stocks" → filters=[["market_capitalization",">",10000000000],["sector","=","Technology"]], sort="market_capitalization.desc", limit=20
+            "Stocks hitting new 52-week highs" → signals=["52weekhigh"], limit=50
+            "Undervalued healthcare with high volume" → filters=[["sector","=","Healthcare"],["pe_ratio","<",15],["avgvol_200d",">",1000000]], sort="pe_ratio.asc"
+
+        
         """
 
         # --- fmt handling (for compatibility with callers passing fmt) ---

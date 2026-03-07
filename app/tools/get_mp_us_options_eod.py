@@ -61,9 +61,41 @@ def register(mcp: FastMCP):
         fmt: str | None = "json",
     ) -> str:
         """
-        Get end-of-day options data (mp/unicornbay/options/eod)
 
-        Returns JSON: meta, data[], links.next; supports 'compact' mode.
+        [Marketplace] Fetch end-of-day pricing data for US options contracts. Use when asked about
+        options prices, Greeks, open interest, volume, or implied volatility for stock/ETF options.
+        Returns OHLC, volume, open interest, and Greeks per contract per trading day.
+        Supports filtering by underlying symbol, expiration, strike, type (put/call), and trade date range.
+        First find available contracts with get_us_options_contracts, then fetch pricing here.
+        For the list of optionable tickers, use get_us_options_underlyings.
+        Consumes 10 API calls per request.
+
+
+        Returns:
+            JSON object with:
+            - meta: Pagination metadata.
+            - data (array): EOD options records per date, each containing:
+              - options.CALLS (array): Call contracts with:
+                - contractName (str): Full OCC contract name.
+                - expirationDate (str): Expiration date YYYY-MM-DD.
+                - strike (float): Strike price.
+                - lastPrice (float): Last traded price.
+                - bid (float): Bid price.
+                - ask (float): Ask price.
+                - change (float): Price change.
+                - changePercent (float): Price change percentage.
+                - volume (int): Trading volume.
+                - openInterest (int): Open interest.
+                - impliedVolatility (float): Implied volatility.
+              - options.PUTS (array): Put contracts (same fields as CALLS).
+            - links.next (str|null): URL for next page, null if last page.
+
+        Examples:
+            "AAPL end-of-day options for March 2026" → underlying_symbol="AAPL", tradetime_from="2026-03-01", tradetime_to="2026-03-31"
+            "MSFT puts EOD data, strike 300-400" → underlying_symbol="MSFT", type="put", strike_from=300, strike_to=400
+            "NVDA calls expiring 2026-06-20, compact" → underlying_symbol="NVDA", type="call", exp_date_eq="2026-06-20", compact=True
+
+        
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

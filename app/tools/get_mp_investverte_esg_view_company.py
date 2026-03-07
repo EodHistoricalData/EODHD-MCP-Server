@@ -21,12 +21,14 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        View ESG ratings for a specific company
-        (GET /api/mp/investverte/esg/{SYMBOL})
 
-        Examples:
-            - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
-            - /api/mp/investverte/esg/000039.SZ
+        [InvestVerte] Get detailed ESG scores (E, S, G, and composite) for a specific company by symbol.
+        Returns Environmental, Social, Governance, and combined ESG scores broken down by year and
+        frequency (FY, Q1-Q4). Optionally filter by year and frequency. Consumes 10 API calls per request.
+        Use get_mp_investverte_esg_list_companies first to discover available symbols.
+        For country-level ESG, use get_mp_investverte_esg_view_country.
+        For sector-level ESG, use get_mp_investverte_esg_view_sector.
+
 
         Returns:
             A JSON-formatted string with an array of objects, e.g.:
@@ -50,6 +52,12 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
+            - /api/mp/investverte/esg/000039.SZ
+
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'AAPL').")

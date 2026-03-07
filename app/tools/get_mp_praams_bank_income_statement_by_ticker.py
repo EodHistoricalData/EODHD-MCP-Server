@@ -44,6 +44,12 @@ async def _run_praams_bank_income_statement_by_ticker(
 ) -> str:
     """
     Core runner for Praams Bank Income Statement by ticker.
+
+
+        Examples:
+            "JPMorgan income statement" → ticker="JPM"
+            "HSBC bank income financials" → ticker="HSBA.LSE"
+
     """
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)
@@ -81,28 +87,35 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Bank Income Statement by Ticker
-        GET /api/mp/praams/bank/income_statement/ticker/{ticker}
 
-        Retrieves the income statement data for a bank identified by its ticker.
+        [PRAAMS] Retrieve bank-specific income statement time series by ticker symbol.
+        Returns annual and quarterly data: core revenue, net interest income, fee & commission income,
+        RIBPT, non-recurring income, IBPT, and provisioning. Tailored for banking sector analysis.
+        Consumes 10 API calls per request.
+        For lookup by ISIN, use get_mp_praams_bank_income_statement_by_isin.
+        For bank balance sheet data, use get_mp_praams_bank_balance_sheet_by_ticker.
 
-        The Praams Bank Financials API provides bank-specific financials using a
-        methodology tailored to banking analysis, including (annual and quarterly):
-
-          - Core revenue
-          - Net interest income
-          - Net fee & commission income
-          - RIBPT (Recurring income before provisioning and taxes)
-          - Non-recurring income
-          - IBPT (Income before provisioning and taxes)
-          - Provisioning
-
-        This endpoint returns a time series of income statement entries under "items".
+        Returns:
+          JSON object with Praams envelope:
+            - success (bool): whether the request succeeded
+            - items (array): time-series of income statement entries, each containing:
+                - period (str): reporting period (e.g. "2023-Q4", "2023-FY")
+                - coreRevenue (float|null): total core revenue
+                - netInterestIncome (float|null): net interest income
+                - netFeeCommissionIncome (float|null): net fee & commission income
+                - ribpt (float|null): recurring income before provisioning and taxes
+                - nonRecurringIncome (float|null): non-recurring income items
+                - ibpt (float|null): income before provisioning and taxes
+                - provisioning (float|null): loan loss provisions
+                - Additional bank-specific income line items
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
 
         Limits (Marketplace rules):
           - 1 request = 10 API calls
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON only
+
         """
         return await _run_praams_bank_income_statement_by_ticker(
             ticker=ticker,

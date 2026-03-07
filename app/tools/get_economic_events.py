@@ -32,11 +32,32 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Economic Events Data API (/economic-events)
 
-        Returns past/future economic events with optional filters:
-        date window, country (ISO2), comparison (mom|qoq|yoy), type text,
-        and pagination (offset/limit).
+        Fetch macroeconomic calendar events such as GDP, CPI, employment, and interest rate releases.
+        Returns scheduled and past economic indicators with actual, estimate, and previous values.
+        Covers global economies; filter by country (ISO-2), date range, comparison period (mom/qoq/yoy), and event type.
+        Use when the user asks about economic calendar, macro releases, or upcoming government data publications.
+        This tool covers macro events only -- for company-level earnings dates, use get_upcoming_earnings.
+
+
+        Returns:
+            Array of events, each with:
+            - type (str): event category
+            - country (str): ISO-3166 alpha-2 country code
+            - date (str): event datetime
+            - actual (float|null): actual value
+            - previous (float|null): previous period value
+            - estimate (float|null): consensus estimate
+            - change (float|null): absolute change
+            - changePercentage (float|null): percentage change
+            - event (str): event name/description
+
+        Examples:
+            "US economic events this week" → country="US", start_date="2026-03-02", end_date="2026-03-06"
+            "German GDP year-over-year" → country="DE", comparison="yoy", type="GDP"
+            "All events in March 2026, first 200" → start_date="2026-03-01", end_date="2026-03-31", limit=200
+
+        
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:

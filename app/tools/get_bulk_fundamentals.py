@@ -28,21 +28,38 @@ def register(mcp: FastMCP):
         api_token: str | None = None,  # per-call override
     ) -> str:
         """
-        Bulk Fundamentals API
-        GET /api/bulk-fundamentals/{EXCHANGE}
 
-        Retrieves fundamentals data for all stocks on an exchange in a single call.
-        Includes General, Highlights, Valuation, Technicals, SplitsDividends,
-        Earnings (last 4 quarters + 4 years), and Financials sections.
+        Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
+        financials, valuation, or earnings data for many companies at once -- screening,
+        comparing sectors, or building dashboards across an entire exchange.
+
+        Returns General, Highlights, Valuation, Technicals, SplitsDividends, Earnings (last 4
+        quarters + 4 years), and Financials for up to 500 stocks per call. Stocks only (no ETFs
+        or mutual funds). Costs 100 API calls per request. Requires Extended Fundamentals plan.
+
+        For a single ticker's full fundamentals, use get_fundamentals_data instead.
+        For macro country-level economic data, use get_macro_indicator.
 
         Args:
             exchange (str): Exchange code (e.g., 'NASDAQ', 'NYSE', 'US', 'LSE').
-            symbols (str, optional): Comma-separated list of specific symbols.
-            offset (int, optional): Starting position for pagination (default 0).
-            limit (int, optional): Number of symbols to return (default 500, max 500).
-            version (str, optional): '1.2' for output closer to single-symbol template.
-            fmt (str): Response format: 'json' (default) or 'csv'.
-            api_token (str, optional): Per-call token override; env token used otherwise.
+            symbols (str, optional): Comma-separated list of specific symbols to filter.
+            offset (int, optional): Pagination start (default 0).
+            limit (int, optional): Max symbols to return (default 500, max 500).
+            version (str, optional): '1.2' for single-symbol-like output format.
+            fmt (str): 'json' (default) or 'csv'.
+            api_token (str, optional): Per-call token override.
+
+
+        Returns:
+            Dict of ticker -> fundamentals object, each with:
+            - General (object): Code, Type, Name, Exchange, CurrencyCode, CurrencyName, CountryName, ISIN, Sector, Industry
+            - Highlights (object): MarketCapitalization, EBITDA, PERatio, WallStreetTargetPrice, BookValue, EarningsShare, DividendYield
+            - Valuation (object): TrailingPE, ForwardPE, PriceSalesTTM, PriceBookMRQ, EnterpriseValue
+            - SharesStats (object): SharesOutstanding, SharesFloat, PercentInsiders, PercentInstitutions
+            - Technicals (object): Beta, 52WeekHigh, 52WeekLow, 50DayMA, 200DayMA
+            - SplitsDividends (object): ForwardAnnualDividendRate, ForwardAnnualDividendYield, ExDividendDate, LastSplitDate, LastSplitFactor
+            - Earnings (object): Last_4_Quarters (array), Annual_Earnings (array)
+            - Financials (object): Income_Statement, Balance_Sheet, Cash_Flow (quarterly + yearly)
 
         Notes:
             - Requires Extended Fundamentals subscription plan.
@@ -50,6 +67,13 @@ def register(mcp: FastMCP):
             - Stocks only (no ETFs or Mutual Funds).
             - Max pagination limit: 500.
             - Historical data limited to 4 quarters and 4 years.
+
+        Examples:
+            "Fundamentals for all NASDAQ stocks" → get_bulk_fundamentals(exchange="NASDAQ")
+            "AAPL and MSFT fundamentals from NYSE" → get_bulk_fundamentals(exchange="US", symbols="AAPL,MSFT")
+            "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
+
+        
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(

@@ -14,18 +14,38 @@ def register(mcp: FastMCP):
         api_token: str | None = None,
     ) -> str:
         """
-        User API (GET /api/user)
 
-        Returns account information for the API token holder:
-        name, email, subscriptionType, paymentMethod, apiRequests, apiRequestsDate,
-        dailyRateLimit, extraLimit, inviteToken, inviteTokenClicked, subscriptionMode.
+        Retrieve EODHD account details for the current API token. Use when the user asks about
+        their subscription plan, API usage, rate limits, or account information.
+
+        Returns account holder name, email, subscription type, payment method, API requests
+        consumed today, daily rate limit, and invite token. This is account metadata only --
+        does not return any financial market data.
 
         Args:
             api_token (str, optional): Per-call token override. If omitted, the
-                                       env var EODHD_API_KEY (via make_request) will be used.
+                                       env var EODHD_API_KEY is used.
+
 
         Returns:
-            str: JSON string with user details or {"error": "..."} on failure.
+            Object with:
+            - name (str): account holder name
+            - email (str): account email
+            - subscriptionType (str): plan name (e.g. "allworld")
+            - paymentMethod (str): payment method type
+            - apiRequests (int): API calls used in current period
+            - apiRequestsDate (str): current billing period date
+            - dailyRateLimit (int): daily API call limit
+            - extraLimit (int): extra API calls available
+            - inviteToken (str): referral invite token
+            - inviteTokenClicked (int): invite link click count
+            - subscriptionMode (str): subscription billing mode
+
+        Examples:
+            "What plan am I on?" → get_user_details()
+            "How many API calls have I used today?" → get_user_details()
+
+        
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.
