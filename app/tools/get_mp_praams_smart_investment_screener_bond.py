@@ -1,12 +1,12 @@
 # get_mp_praams_smart_investment_screener_bond.py
 
 import json
-from typing import Optional, Any, Tuple, Dict
+from typing import Any
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
@@ -14,7 +14,7 @@ def _is_int(v: Any) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def _canon_list_ints(v: Any) -> Optional[list[int]]:
+def _canon_list_ints(v: Any) -> list[int] | None:
     if v is None:
         return None
     if not isinstance(v, (list, tuple)):
@@ -30,7 +30,7 @@ def _canon_list_ints(v: Any) -> Optional[list[int]]:
     return out
 
 
-def _canon_list_strs(v: Any) -> Optional[list[str]]:
+def _canon_list_strs(v: Any) -> list[str] | None:
     if v is None:
         return None
     if not isinstance(v, (list, tuple)):
@@ -45,7 +45,7 @@ def _canon_list_strs(v: Any) -> Optional[list[str]]:
     return out if out else None
 
 
-def _canon_range_1_7(_name: str, v: Any) -> Optional[int]:
+def _canon_range_1_7(_name: str, v: Any) -> int | None:
     """
     Canonicalize scoring filters that must be int in [1..7].
     Returns:
@@ -66,7 +66,7 @@ def _canon_range_1_7(_name: str, v: Any) -> Optional[int]:
     return -1
 
 
-def _canon_int32(v: Any) -> Optional[int]:
+def _canon_int32(v: Any) -> int | None:
     """
     Canonicalize to JSON integer suitable for ASP.NET Int32? binding.
 
@@ -102,7 +102,7 @@ def _canon_int32(v: Any) -> Optional[int]:
         return None
 
 
-def _canon_bool(v: Any) -> Optional[bool]:
+def _canon_bool(v: Any) -> bool | None:
     """
     Canonicalize boolean or null.
     Accepts: True/False, 1/0, "true"/"false", "1"/"0"
@@ -122,7 +122,7 @@ def _canon_bool(v: Any) -> Optional[bool]:
     return None
 
 
-def _validate_skip_take(skip: Any, take: Any) -> Optional[str]:
+def _validate_skip_take(skip: Any, take: Any) -> str | None:
     if skip is None:
         return None
     if not _is_int(skip) or skip < 0:
@@ -173,7 +173,7 @@ def _build_body(
     sectors: Any = None,
     industries: Any = None,
     capitalisation: Any = None,  # 1/2/3
-    currency: Any = None,        # ISO Alpha-3 strings
+    currency: Any = None,  # ISO Alpha-3 strings
     # bond-specific numeric ranges (Int32? in schema)
     yield_min: Any = None,
     yield_max: Any = None,
@@ -184,8 +184,8 @@ def _build_body(
     exclude_perpetuals: Any = None,
     # sorting
     order_by: Any = None,
-) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-    body: Dict[str, Any] = {}
+) -> tuple[dict[str, Any] | None, str | None]:
+    body: dict[str, Any] = {}
 
     # --- 1..7 scoring fields ---
     scale_fields = [
@@ -225,7 +225,7 @@ def _build_body(
         if v is None:
             continue
         if v == -1:
-            return None, "Parameter '{}' must be an integer in [1..7].".format(key)
+            return None, f"Parameter '{key}' must be an integer in [1..7]."
         body[key] = v
 
     # --- list fields ---
@@ -322,18 +322,18 @@ def _build_body(
 
 
 async def _run_explore_bond(
-    skip: Optional[int],
-    take: Optional[int],
-    body: Dict[str, Any],
-    api_token: Optional[str],
+    skip: int | None,
+    take: int | None,
+    body: dict[str, Any],
+    api_token: str | None,
 ) -> str:
-    url = "{}/mp/praams/explore/bond?1=1".format(EODHD_API_BASE)
+    url = f"{EODHD_API_BASE}/mp/praams/explore/bond?1=1"
     if skip is not None:
-        url += "&skip={}".format(int(skip))
+        url += f"&skip={int(skip)}"
     if take is not None:
-        url += "&take={}".format(int(take))
+        url += f"&take={int(take)}"
     if api_token:
-        url += "&api_token={}".format(api_token)
+        url += f"&api_token={api_token}"
 
     data = await make_request(
         url,
@@ -344,7 +344,6 @@ async def _run_explore_bond(
 
     if data is None:
         raise ToolError("No response from API.")
-
 
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
@@ -358,59 +357,59 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_praams_smart_screener_bond(
         # pagination
-        skip: Optional[int] = 0,
-        take: Optional[int] = 50,
+        skip: int | None = 0,
+        take: int | None = 50,
         # geography / classification
-        regions: Optional[list[int]] = None,
-        countries: Optional[list[int]] = None,
-        sectors: Optional[list[int]] = None,
-        industries: Optional[list[int]] = None,
-        capitalisation: Optional[list[int]] = None,
-        currency: Optional[list[str]] = None,
+        regions: list[int] | None = None,
+        countries: list[int] | None = None,
+        sectors: list[int] | None = None,
+        industries: list[int] | None = None,
+        capitalisation: list[int] | None = None,
+        currency: list[str] | None = None,
         # ratio / return factors (1..7)
-        mainRatioMin: Optional[int] = None,
-        mainRatioMax: Optional[int] = None,
-        valuationMin: Optional[int] = None,
-        valuationMax: Optional[int] = None,
-        performanceMin: Optional[int] = None,
-        performanceMax: Optional[int] = None,
-        profitabilityMin: Optional[int] = None,
-        profitabilityMax: Optional[int] = None,
-        growthMomMin: Optional[int] = None,
-        growthMomMax: Optional[int] = None,
-        otherMin: Optional[int] = None,
-        otherMax: Optional[int] = None,
-        analystViewMin: Optional[int] = None,
-        analystViewMax: Optional[int] = None,
-        dividendsMin: Optional[int] = None,
-        dividendsMax: Optional[int] = None,
-        marketViewMin: Optional[int] = None,
-        marketViewMax: Optional[int] = None,
-        couponsMin: Optional[int] = None,
-        couponsMax: Optional[int] = None,
+        mainRatioMin: int | None = None,
+        mainRatioMax: int | None = None,
+        valuationMin: int | None = None,
+        valuationMax: int | None = None,
+        performanceMin: int | None = None,
+        performanceMax: int | None = None,
+        profitabilityMin: int | None = None,
+        profitabilityMax: int | None = None,
+        growthMomMin: int | None = None,
+        growthMomMax: int | None = None,
+        otherMin: int | None = None,
+        otherMax: int | None = None,
+        analystViewMin: int | None = None,
+        analystViewMax: int | None = None,
+        dividendsMin: int | None = None,
+        dividendsMax: int | None = None,
+        marketViewMin: int | None = None,
+        marketViewMax: int | None = None,
+        couponsMin: int | None = None,
+        couponsMax: int | None = None,
         # risk factors (1..7)
-        countryRiskMin: Optional[int] = None,
-        countryRiskMax: Optional[int] = None,
-        liquidityMin: Optional[int] = None,
-        liquidityMax: Optional[int] = None,
-        stressTestMin: Optional[int] = None,
-        stressTestMax: Optional[int] = None,
-        volatilityMin: Optional[int] = None,
-        volatilityMax: Optional[int] = None,
-        solvencyMin: Optional[int] = None,
-        solvencyMax: Optional[int] = None,
+        countryRiskMin: int | None = None,
+        countryRiskMax: int | None = None,
+        liquidityMin: int | None = None,
+        liquidityMax: int | None = None,
+        stressTestMin: int | None = None,
+        stressTestMax: int | None = None,
+        volatilityMin: int | None = None,
+        volatilityMax: int | None = None,
+        solvencyMin: int | None = None,
+        solvencyMax: int | None = None,
         # bond numeric filters (Int32?)
-        yieldMin: Optional[int] = None,
-        yieldMax: Optional[int] = None,
-        durationMin: Optional[int] = None,
-        durationMax: Optional[int] = None,
+        yieldMin: int | None = None,
+        yieldMax: int | None = None,
+        durationMin: int | None = None,
+        durationMax: int | None = None,
         # bond flags
-        excludeSubordinated: Optional[bool] = None,
-        excludePerpetuals: Optional[bool] = None,
+        excludeSubordinated: bool | None = None,
+        excludePerpetuals: bool | None = None,
         # sorting
-        orderBy: Optional[str] = None,
+        orderBy: str | None = None,
         # auth
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -452,7 +451,7 @@ def register(mcp: FastMCP):
             "High-yield EUR bonds low risk" → currency=["EUR"], yieldMin=5, countryRiskMax=3
             "US investment-grade bonds short duration" → regions=[1], durationMax=3, solvencyMin=5
 
-        
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
@@ -510,22 +509,22 @@ def register(mcp: FastMCP):
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_praams_smart_screener_bond(
-        skip: Optional[int] = 0,
-        take: Optional[int] = 50,
-        regions: Optional[list[int]] = None,
-        sectors: Optional[list[int]] = None,
-        currency: Optional[list[str]] = None,
-        marketViewMin: Optional[int] = None,
-        marketViewMax: Optional[int] = None,
-        growthMomMin: Optional[int] = None,
-        growthMomMax: Optional[int] = None,
-        yieldMin: Optional[int] = None,
-        yieldMax: Optional[int] = None,
-        durationMin: Optional[int] = None,
-        durationMax: Optional[int] = None,
-        excludeSubordinated: Optional[bool] = None,
-        excludePerpetuals: Optional[bool] = None,
-        api_token: Optional[str] = None,
+        skip: int | None = 0,
+        take: int | None = 50,
+        regions: list[int] | None = None,
+        sectors: list[int] | None = None,
+        currency: list[str] | None = None,
+        marketViewMin: int | None = None,
+        marketViewMax: int | None = None,
+        growthMomMin: int | None = None,
+        growthMomMax: int | None = None,
+        yieldMin: int | None = None,
+        yieldMax: int | None = None,
+        durationMin: int | None = None,
+        durationMax: int | None = None,
+        excludeSubordinated: bool | None = None,
+        excludePerpetuals: bool | None = None,
+        api_token: str | None = None,
     ) -> str:
         """
         [PRAAMS] Convenience alias for bond screening with common filters.

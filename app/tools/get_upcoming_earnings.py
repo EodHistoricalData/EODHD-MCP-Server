@@ -1,23 +1,22 @@
-#get_upcoming_earnings.py
+# get_upcoming_earnings.py
 
 import json
-from typing import Optional, Union, List
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str]) -> str:
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(val)}"
 
 
-def _normalize_symbols(symbols: Optional[Union[str, List[str]]]) -> Optional[str]:
+def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
     if symbols is None:
         return None
     if isinstance(symbols, str):
@@ -32,11 +31,11 @@ def _normalize_symbols(symbols: Optional[Union[str, List[str]]]) -> Optional[str
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_upcoming_earnings(
-        start_date: Optional[str] = None,         # maps to from= (YYYY-MM-DD)
-        end_date: Optional[str] = None,           # maps to to=   (YYYY-MM-DD)
-        symbols: Optional[Union[str, List[str]]] = None,  # 'AAPL.US' or ['AAPL.US','MSFT.US']
-        fmt: Optional[str] = "json",              # 'json' or 'csv' (docs default csv)
-        api_token: Optional[str] = None,          # per-call override
+        start_date: str | None = None,  # maps to from= (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to to=   (YYYY-MM-DD)
+        symbols: str | list[str] | None = None,  # 'AAPL.US' or ['AAPL.US','MSFT.US']
+        fmt: str | None = "json",  # 'json' or 'csv' (docs default csv)
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -66,7 +65,7 @@ def register(mcp: FastMCP):
             "Earnings this week" → start_date="2026-03-02", end_date="2026-03-06"
             "Microsoft and Google earnings" → symbols="MSFT.US,GOOG.US"
 
-        
+
         """
         sym_param = _normalize_symbols(symbols)
 

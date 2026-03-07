@@ -1,23 +1,22 @@
-#get_cboe_index_data.py
+# get_cboe_index_data.py
 
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_cboe_index_data(
-        index_code: str,             # e.g., "BDE30P"
-        feed_type: str,              # e.g., "snapshot_official_closing"
-        date: str,                   # YYYY-MM-DD, e.g., "2017-02-01"
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
+        index_code: str,  # e.g., "BDE30P"
+        feed_type: str,  # e.g., "snapshot_official_closing"
+        date: str,  # YYYY-MM-DD, e.g., "2017-02-01"
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -79,19 +78,15 @@ def register(mcp: FastMCP):
               &filter[feed_type]=snapshot_official_closing
               &filter[date]=2017-02-01
 
-        
+
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):
-            raise ToolError(
-                "Parameter 'index_code' is required and must be a non-empty string "
-                "(e.g., 'BDE30P')."
-            )
+            raise ToolError("Parameter 'index_code' is required and must be a non-empty string (e.g., 'BDE30P').")
 
         if not feed_type or not isinstance(feed_type, str):
             raise ToolError(
-                "Parameter 'feed_type' is required and must be a non-empty string "
-                "(e.g., 'snapshot_official_closing')."
+                "Parameter 'feed_type' is required and must be a non-empty string (e.g., 'snapshot_official_closing')."
             )
 
         if not date or not isinstance(date, str):

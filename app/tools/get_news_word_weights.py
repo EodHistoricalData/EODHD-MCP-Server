@@ -1,20 +1,19 @@
-#get_news_word_weights.py
+# get_news_word_weights.py
 
 import json
 import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -25,15 +24,16 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_news_word_weights(
-        ticker: str,                      # maps to 's'
-        start_date: Optional[str] = None, # maps to filter[date_from]
-        end_date: Optional[str] = None,   # maps to filter[date_to]
-        limit: Optional[int] = None,      # maps to page[limit]
+        ticker: str,  # maps to 's'
+        start_date: str | None = None,  # maps to filter[date_from]
+        end_date: str | None = None,  # maps to filter[date_to]
+        limit: int | None = None,  # maps to page[limit]
         fmt: str = "json",
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             "Nvidia word weights, top 20" → ticker="NVDA.US", limit=20
             "Amazon news themes in Q1 2026" → ticker="AMZN.US", start_date="2026-01-01", end_date="2026-03-06"
 
-        
+
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")

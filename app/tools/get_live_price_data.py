@@ -1,18 +1,20 @@
-#get_live_price_data.py
+# get_live_price_data.py
 
 import json
-from typing import Iterable, Optional, Sequence
+from collections.abc import Iterable, Sequence
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.validators import validate_ticker
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 ALLOWED_FMT = {"json", "csv"}
 MAX_EXTRA_TICKERS = 20  # soft limit recommended by docs (15–20)
 
-def _normalize_symbols(symbols: Optional[Iterable[str]]) -> list[str]:
+
+def _normalize_symbols(symbols: Iterable[str] | None) -> list[str]:
     if not symbols:
         return []
     out: list[str] = []
@@ -24,13 +26,14 @@ def _normalize_symbols(symbols: Optional[Iterable[str]]) -> list[str]:
             out.append(s)
     return out
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_live_price_data(
         ticker: str,
-        additional_symbols: Optional[Sequence[str]] = None,
+        additional_symbols: Sequence[str] | None = None,
         fmt: str = "json",
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -66,11 +69,10 @@ def register(mcp: FastMCP):
             "Live quotes for Tesla, Google, and Amazon" → ticker="TSLA.US", additional_symbols=["GOOG.US", "AMZN.US"]
             "Bitcoin and Ethereum prices right now" → ticker="BTC-USD.CC", additional_symbols=["ETH-USD.CC"]
 
-        
+
         """
         # --- Validate inputs ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
@@ -81,8 +83,7 @@ def register(mcp: FastMCP):
 
         if len(extras) > MAX_EXTRA_TICKERS:
             raise ToolError(
-                f"Too many symbols in 'additional_symbols'. "
-                f"Got {len(extras)}, max recommended is {MAX_EXTRA_TICKERS}."
+                f"Too many symbols in 'additional_symbols'. Got {len(extras)}, max recommended is {MAX_EXTRA_TICKERS}."
             )
 
         # --- Build URL per docs ---

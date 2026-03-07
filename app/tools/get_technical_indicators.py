@@ -1,20 +1,17 @@
-#get_technical_indicators.py
+# get_technical_indicators.py
 import json
-import re
 from datetime import datetime
-from typing import Optional, Union
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.validators import validate_date, validate_ticker
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
+ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}
-ALLOWED_AGG_PERIOD = {"d", "w", "m"}       # for splitadjusted only
+ALLOWED_AGG_PERIOD = {"d", "w", "m"}  # for splitadjusted only
 PERIOD_MIN, PERIOD_MAX = 2, 100_000
 
 # Canonical function list + convenience normalization
@@ -31,7 +28,7 @@ ALLOWED_FUNCTIONS = {
     "stddev",
     "stochrsi",
     "slope",
-    "dmi",               # aka dx
+    "dmi",  # aka dx
     "adx",
     "macd",
     "atr",
@@ -48,26 +45,25 @@ FUNC_ALIASES = {
 
 # splitadjusted_only is documented to work with these functions:
 SPLITADJ_ONLY_SUPPORTED = {
-    "sma", "ema", "wma", "volatility", "rsi", "slope", "macd",
+    "sma",
+    "ema",
+    "wma",
+    "volatility",
+    "rsi",
+    "slope",
+    "macd",
 }
 
-def _valid_date(s: str) -> bool:
-    if not isinstance(s, str) or not DATE_RE.match(s):
-        return False
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
 
-def _normalize_function(fn: str) -> Optional[str]:
+def _normalize_function(fn: str) -> str | None:
     if not isinstance(fn, str) or not fn.strip():
         return None
     f = fn.strip().lower()
     f = FUNC_ALIASES.get(f, f)
     return f if f in ALLOWED_FUNCTIONS else None
 
-def _validate_period(name: str, val: Optional[Union[int, str]]) -> Optional[str]:
+
+def _validate_period(name: str, val: int | str | None) -> str | None:
     if val is None or val == "":
         return None
     try:
@@ -78,7 +74,8 @@ def _validate_period(name: str, val: Optional[Union[int, str]]) -> Optional[str]
         return f"Parameter '{name}' out of range [{PERIOD_MIN}, {PERIOD_MAX}]."
     return None
 
-def _validate_float(name: str, val: Optional[Union[int, float, str]]) -> Optional[str]:
+
+def _validate_float(name: str, val: int | float | str | None) -> str | None:
     if val is None or val == "":
         return None
     try:
@@ -87,47 +84,40 @@ def _validate_float(name: str, val: Optional[Union[int, float, str]]) -> Optiona
         return f"Parameter '{name}' must be a number."
     return None
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_technical_indicators(
         ticker: str,
-        function: str,                          # required (e.g., 'sma', 'macd', 'stochastic', ...)
+        function: str,  # required (e.g., 'sma', 'macd', 'stochastic', ...)
         # common optional
-        start_date: Optional[str] = None,        # 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,          # 'to'   (YYYY-MM-DD)
-        order: str = "a",                        # 'a' | 'd'
-        fmt: str = "json",                       # 'json' | 'csv'
-        filter: Optional[str] = None,            # e.g., 'last_ema', 'last_volume'
-        splitadjusted_only: Optional[Union[int, bool, str]] = None,  # 0/1 or bool (only for some functions)
-
+        start_date: str | None = None,  # 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # 'to'   (YYYY-MM-DD)
+        order: str = "a",  # 'a' | 'd'
+        fmt: str = "json",  # 'json' | 'csv'
+        filter: str | None = None,  # e.g., 'last_ema', 'last_volume'
+        splitadjusted_only: int | bool | str | None = None,  # 0/1 or bool (only for some functions)
         # shared indicator params
-        period: Optional[Union[int, str]] = None,
-
+        period: int | str | None = None,
         # splitadjusted
-        agg_period: Optional[str] = None,        # 'd'|'w'|'m' (splitadjusted only)
-
+        agg_period: str | None = None,  # 'd'|'w'|'m' (splitadjusted only)
         # stochastic
-        fast_kperiod: Optional[Union[int, str]] = None,
-        slow_kperiod: Optional[Union[int, str]] = None,
-        slow_dperiod: Optional[Union[int, str]] = None,
-
+        fast_kperiod: int | str | None = None,
+        slow_kperiod: int | str | None = None,
+        slow_dperiod: int | str | None = None,
         # stochrsi
-        fast_dperiod: Optional[Union[int, str]] = None,
-
+        fast_dperiod: int | str | None = None,
         # macd
-        fast_period: Optional[Union[int, str]] = None,
-        slow_period: Optional[Union[int, str]] = None,
-        signal_period: Optional[Union[int, str]] = None,
-
+        fast_period: int | str | None = None,
+        slow_period: int | str | None = None,
+        signal_period: int | str | None = None,
         # sar
-        acceleration: Optional[Union[float, str]] = None,
-        maximum: Optional[Union[float, str]] = None,
-
+        acceleration: float | str | None = None,
+        maximum: float | str | None = None,
         # beta
-        code2: Optional[str] = None,
-
+        code2: str | None = None,
         # token
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -168,17 +158,15 @@ def register(mcp: FastMCP):
             "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
             "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
 
-        
+
         """
         # --- Required/typed validation ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         fn = _normalize_function(function)
         if not fn:
             raise ToolError(
-                "Invalid 'function'. Allowed: "
-                + ", ".join(sorted(ALLOWED_FUNCTIONS | set(FUNC_ALIASES.keys())))
+                "Invalid 'function'. Allowed: " + ", ".join(sorted(ALLOWED_FUNCTIONS | set(FUNC_ALIASES.keys())))
             )
 
         if order not in ALLOWED_ORDER:
@@ -187,10 +175,8 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date is not None and not _valid_date(start_date):
-            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
-        if end_date is not None and not _valid_date(end_date):
-            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
+        validate_date(start_date, "start_date")
+        validate_date(end_date, "end_date")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
                 raise ToolError("'start_date' cannot be after 'end_date'.")

@@ -1,20 +1,20 @@
-#get_historical_market_cap.py
+# get_historical_market_cap.py
 
 import json
 import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_FMT = {"json", "csv"}
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -25,14 +25,15 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_historical_market_cap(
-        ticker: str,                        # e.g., "AAPL" or "AAPL.US"
-        start_date: Optional[str] = None,   # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,     # maps to 'to'   (YYYY-MM-DD)
-        fmt: str = "json",                  # 'json' or 'csv' (API shows json; csv optional)
-        api_token: Optional[str] = None,    # per-call override; env token otherwise
+        ticker: str,  # e.g., "AAPL" or "AAPL.US"
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
+        fmt: str = "json",  # 'json' or 'csv' (API shows json; csv optional)
+        api_token: str | None = None,  # per-call override; env token otherwise
     ) -> str:
         """
 
@@ -53,7 +54,7 @@ def register(mcp: FastMCP):
             "Microsoft market cap last 6 months" → ticker="MSFT.US", start_date="2025-09-06", end_date="2026-03-06"
             "Google market cap since 2023" → ticker="GOOG.US", start_date="2023-01-01"
 
-        
+
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

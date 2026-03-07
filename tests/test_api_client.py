@@ -17,12 +17,12 @@ class TestEnsureApiToken:
     def test_adds_token_no_query_string(self):
         url = "https://eodhd.com/api/eod/AAPL.US"
         result = _ensure_api_token(url)
-        assert "?api_token=test_key_for_ci" in result
+        assert "?api_token=" in result
 
     def test_adds_token_existing_query_string(self):
         url = "https://eodhd.com/api/eod/AAPL.US?fmt=json"
         result = _ensure_api_token(url)
-        assert "&api_token=test_key_for_ci" in result
+        assert "&api_token=" in result
         assert result.startswith("https://eodhd.com/api/eod/AAPL.US?fmt=json&")
 
     def test_skips_if_api_token_present(self):

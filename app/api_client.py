@@ -1,11 +1,11 @@
-# app/api_client.py
-
 import asyncio
 import logging
+import re
 import time
-from typing import Optional
 
 import httpx
+from fastmcp.server.dependencies import get_http_request
+
 from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
 
 logger = logging.getLogger("eodhd-mcp.api_client")
@@ -25,39 +25,25 @@ _rate_limit_delay: float = 0.1  # 100 ms between requests
 
 # Retry configuration
 MAX_RETRIES = 3
-RETRY_DELAY_BASE = 1.0   # seconds
-RETRY_DELAY_MAX = 10.0   # seconds cap
+RETRY_DELAY_BASE = 1.0  # seconds
+RETRY_DELAY_MAX = 10.0  # seconds cap
 
-#from fastmcp.server.dependencies import get_http_request
+# Pattern to redact api_token from URLs before logging
+_TOKEN_RE = re.compile(r"api_token=[^&]+")
 
 
-#def _resolve_eodhd_token_from_request() -> str | None:
-#    """
-#    Try to read ?apikey=... from the incoming MCP HTTP request.
-#    Safe to call even outside HTTP context (falls back).
-#    """
-#    try:
-#        req = get_http_request()
-#    except RuntimeError:
-#        # Not running under HTTP transport (e.g., stdio), or no active request
-#        return None
-#    except Exception:
-#        return None
-#
-#    apikey = req.query_params.get("apikey")
-#    if apikey:
-#        return apikey
+def _redact_url(url: str) -> str:
+    """Strip api_token values from a URL for safe logging."""
+    return _TOKEN_RE.sub("api_token=***", url)
 
-#    return req.query_params.get("api_key") or req.query_params.get("token")
-
-# app/api_client.py
-
-from fastmcp.server.dependencies import get_http_request
 
 def _resolve_eodhd_token_from_request() -> str | None:
     try:
         req = get_http_request()
+    except RuntimeError:
+        return None
     except Exception:
+        logger.debug("Unexpected error resolving HTTP request context", exc_info=True)
         return None
 
     # 1) Authorization: Bearer <token>
@@ -77,8 +63,6 @@ def _resolve_eodhd_token_from_request() -> str | None:
     if apikey:
         return apikey
     return req.query_params.get("api_key") or req.query_params.get("token")
-
-
 
 
 def _ensure_api_token(url: str) -> str:
@@ -108,7 +92,7 @@ async def _rate_limit() -> None:
 
 def _backoff(attempt: int) -> float:
     """Exponential backoff: 1 s, 2 s, 4 s … capped at RETRY_DELAY_MAX."""
-    return min(RETRY_DELAY_BASE * (2 ** attempt), RETRY_DELAY_MAX)
+    return min(RETRY_DELAY_BASE * (2**attempt), RETRY_DELAY_MAX)
 
 
 def set_rate_limit(delay: float) -> None:
@@ -132,8 +116,8 @@ async def make_request(
     - Auto-injects api_token into URL if absent.
     - Supports GET (default), POST, PUT, DELETE with optional JSON payload.
     - Backoff & retry are **disabled by default**. Enable by:
-        • passing retry_enabled=True to this call, OR
-        • setting the env var EODHD_RETRY_ENABLED=true
+        * passing retry_enabled=True to this call, OR
+        * setting the env var EODHD_RETRY_ENABLED=true
     - When enabled, retries transient failures (timeouts, 5xx) up to
       MAX_RETRIES times with exponential backoff; HTTP 429 uses Retry-After.
     - Returns parsed JSON dict on success, or {"error": "..."} on failure.
@@ -157,13 +141,13 @@ async def make_request(
     _retry_on = retry_enabled if retry_enabled is not None else EODHD_RETRY_ENABLED
     retries = MAX_RETRIES if _retry_on else 0
 
-    last_error: Optional[Exception] = None
+    last_error: Exception | None = None
 
     for attempt in range(retries + 1):
         try:
             await _rate_limit()
 
-            logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, url[:120])
+            logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, _redact_url(url)[:120])
 
             if m == "GET":
                 response = await _http_client.get(url, headers=req_headers, timeout=timeout)
@@ -177,8 +161,9 @@ async def make_request(
             # Handle rate limiting from the API
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", 60))
-                logger.warning("Rate limited by API; waiting %ds (attempt %d/%d)",
-                               retry_after, attempt + 1, retries + 1)
+                logger.warning(
+                    "Rate limited by API; waiting %ds (attempt %d/%d)", retry_after, attempt + 1, retries + 1
+                )
                 await asyncio.sleep(retry_after)
                 continue  # doesn't count as a failed attempt
 
@@ -187,7 +172,7 @@ async def make_request(
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
                 return response.json()
-            except Exception:
+            except ValueError:
                 ct = response.headers.get("content-type", "")
                 text = response.text
                 if text and len(text) > 2000:

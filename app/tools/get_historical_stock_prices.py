@@ -1,42 +1,31 @@
-#get_historical_stock_prices.py
+# get_historical_stock_prices.py
 
 import json
-import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.validators import validate_date, validate_ticker
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+ALLOWED_PERIODS = {"d", "w", "m"}  # daily, weekly, monthly (per docs)
+ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
+ALLOWED_FMT = {"json", "csv"}  # default is csv in API, but we default to json here
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-ALLOWED_PERIODS = {"d", "w", "m"}          # daily, weekly, monthly (per docs)
-ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
-ALLOWED_FMT = {"json", "csv"}              # default is csv in API, but we default to json here
-
-def _valid_date(s: str) -> bool:
-    if not DATE_RE.match(s):
-        return False
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_historical_stock_prices(
         ticker: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
         period: str = "d",
         order: str = "a",
         fmt: str = "json",
-        filter: Optional[str] = None,           # e.g., "last_close", "last_volume"
-        api_token: Optional[str] = None,        # per-call override
+        filter: str | None = None,  # e.g., "last_close", "last_volume"
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -71,11 +60,10 @@ def register(mcp: FastMCP):
             "Weekly Tesla for 2025" → ticker="TSLA.US", period="w", start_date="2025-01-01", end_date="2025-12-31"
             "Monthly S&P 500 since 2020" → ticker="GSPC.INDX", period="m", start_date="2020-01-01"
 
-        
+
         """
         # --- Validate required/typed params ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         if period not in ALLOWED_PERIODS:
             raise ToolError(f"Invalid 'period'. Allowed values: {sorted(ALLOWED_PERIODS)}")
@@ -86,11 +74,8 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date is not None and not _valid_date(start_date):
-            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
-
-        if end_date is not None and not _valid_date(end_date):
-            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
+        validate_date(start_date, "start_date")
+        validate_date(end_date, "end_date")
 
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
@@ -118,7 +103,6 @@ def register(mcp: FastMCP):
         # --- Transport/API errors ---
         if data is None:
             raise ToolError("No response from API.")
-
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))

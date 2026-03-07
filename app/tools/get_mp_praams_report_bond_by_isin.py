@@ -1,23 +1,22 @@
-#get_mp_praams_report_bond_by_isin.py
+# get_mp_praams_report_bond_by_isin.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
 
 
-def _canon_isin(v: str) -> Optional[str]:
+def _canon_isin(v: str) -> str | None:
     """Light validation/normalization for ISIN path param."""
     if not isinstance(v, str):
         return None
@@ -27,9 +26,7 @@ def _canon_isin(v: str) -> Optional[str]:
     return s.upper()
 
 
-async def _run_praams_report_bond_by_isin(
-    isin: str, email: str, is_full: Optional[bool], api_token: Optional[str]
-) -> str:
+async def _run_praams_report_bond_by_isin(isin: str, email: str, is_full: bool | None, api_token: str | None) -> str:
     ci = _canon_isin(isin)
     if ci is None:
         raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g. 'US7593518852').")
@@ -49,7 +46,6 @@ async def _run_praams_report_bond_by_isin(
     if data is None:
         raise ToolError("No response from API.")
 
-
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     try:
@@ -61,10 +57,10 @@ async def _run_praams_report_bond_by_isin(
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_praams_report_bond_by_isin(
-        isin: str,                             # e.g. "US7593518852"
-        email: str,                            # email for notifications
-        is_full: Optional[bool] = None,        # full or partial report
-        api_token: Optional[str] = None,       # per-call override
+        isin: str,  # e.g. "US7593518852"
+        email: str,  # email for notifications
+        is_full: bool | None = None,  # full or partial report
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -108,19 +104,15 @@ def register(mcp: FastMCP):
             "Full bond report for Realty Income" → isin="US7593518852", email="user@example.com", is_full=True
             "US Treasury bond PDF report" → isin="US91282CJN20", email="user@example.com"
 
-        
+
         """
-        return await _run_praams_report_bond_by_isin(
-            isin=isin, email=email, is_full=is_full, api_token=api_token
-        )
+        return await _run_praams_report_bond_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)
 
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_praams_report_bond_by_isin(
         isin: str,
         email: str,
-        is_full: Optional[bool] = None,
-        api_token: Optional[str] = None,
+        is_full: bool | None = None,
+        api_token: str | None = None,
     ) -> str:
-        return await _run_praams_report_bond_by_isin(
-            isin=isin, email=email, is_full=is_full, api_token=api_token
-        )
+        return await _run_praams_report_bond_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)

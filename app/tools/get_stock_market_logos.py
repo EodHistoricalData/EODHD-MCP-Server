@@ -1,21 +1,20 @@
-#get_stock_market_logos.py
+# get_stock_market_logos.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_stock_market_logos(
-        symbol: str,                            # e.g. "AAPL.US", "BMW.XETRA"
-        api_token: Optional[str] = None,        # per-call override
+        symbol: str,  # e.g. "AAPL.US", "BMW.XETRA"
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -49,12 +48,11 @@ def register(mcp: FastMCP):
             "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
             "Toyota logo from Tokyo" → get_stock_market_logos(symbol="7203.TSE")
 
-        
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(
-                "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format "
-                "(e.g. 'AAPL.US', 'BMW.XETRA')."
+                "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'BMW.XETRA')."
             )
 
         symbol = symbol.strip().upper()
