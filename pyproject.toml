@@ -61,6 +61,7 @@ select = [
 ]
 ignore = [
     "E501",    # line length (handled by formatter)
+    "W293",    # blank line contains whitespace — inside docstrings, formatter doesn't touch
     "S101",    # assert in tests
     "N803",    # API param names use camelCase (e.g. splitadjusted_only) — matches EODHD docs
     "A002",    # tools shadow builtins (filter, format, type) to match API param names
