@@ -31,6 +31,13 @@ def register(mcp: FastMCP):
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "real yield rates for 2025" → year=2025
+            "last 10 inflation-adjusted treasury yields" → limit=10
+            "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
+
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
 

@@ -80,6 +80,13 @@ def register(mcp: FastMCP):
             indicator (str, optional): One of documented indicators. Defaults to 'gdp_current_usd'.
             fmt (str): 'json' or 'csv'. Default 'json'.
             api_token (str, optional): Per-call token override.
+
+
+        Examples:
+            "US GDP over time" → get_macro_indicator(country="USA", indicator="gdp_current_usd")
+            "Germany unemployment rate" → get_macro_indicator(country="DEU", indicator="unemployment_total_percent")
+            "France inflation (CPI)" → get_macro_indicator(country="FRA", indicator="inflation_consumer_prices_annual")
+
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

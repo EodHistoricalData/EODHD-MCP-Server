@@ -25,6 +25,12 @@ def register(mcp: FastMCP):
         for ~38 CBOE indices. Paginated via 'links.next'. Costs 10 API calls per request.
 
         For detailed component-level data on a specific CBOE index, use get_cboe_index_data.
+
+
+        Examples:
+            "List all CBOE indices" → get_cboe_indices_list()
+            "What CBOE European indices are available?" → get_cboe_indices_list()
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

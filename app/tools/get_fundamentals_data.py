@@ -296,6 +296,13 @@ def register(mcp: FastMCP):
         Supports date-range pruning to limit financials and earnings to a specific window.
         For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
         For price data, use get_historical_stock_prices or get_live_price_data instead.
+
+
+        Examples:
+            "Apple fundamentals" → ticker="AAPL.US"
+            "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
+            "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
+
         """
         # --- Validate basics
         if fmt != "json":

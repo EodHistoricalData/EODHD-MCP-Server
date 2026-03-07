@@ -44,6 +44,12 @@ async def _run_praams_bank_income_statement_by_ticker(
 ) -> str:
     """
     Core runner for Praams Bank Income Statement by ticker.
+
+
+        Examples:
+            "JPMorgan income statement" → ticker="JPM"
+            "HSBC bank income financials" → ticker="HSBA.LSE"
+
     """
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)

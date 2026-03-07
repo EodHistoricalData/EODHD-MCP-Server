@@ -79,6 +79,13 @@ def register(mcp: FastMCP):
           - offset: 0..999
           - fmt: optional; Screener is JSON-only. If provided, must be "json".
           - api_token: optional override
+
+
+        Examples:
+            "Large-cap tech stocks" → filters=[["market_capitalization",">",10000000000],["sector","=","Technology"]], sort="market_capitalization.desc", limit=20
+            "Stocks hitting new 52-week highs" → signals=["52weekhigh"], limit=50
+            "Undervalued healthcare with high volume" → filters=[["sector","=","Healthcare"],["pe_ratio","<",15],["avgvol_200d",">",1000000]], sort="pe_ratio.asc"
+
         """
 
         # --- fmt handling (for compatibility with callers passing fmt) ---

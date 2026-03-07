@@ -39,6 +39,13 @@ def register(mcp: FastMCP):
             group (str, optional): Filter markets — 'core' (G20+), 'extended' (global equities),
                 'all' (equities + derivatives), 'allowed' (your tier). Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "list all tracked markets" → (no params)
+            "show only G20 core markets" → group="core"
+            "all equity and derivative markets" → group="all"
+
         """
         if group is not None:
             group = group.strip().lower()

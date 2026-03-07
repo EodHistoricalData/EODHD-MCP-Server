@@ -419,6 +419,12 @@ def register(mcp: FastMCP):
         Consumes 10 API calls per request.
         For equity screening, use get_mp_praams_smart_screener_equity.
         For deep analysis of a single bond, use get_mp_praams_bond_analyze_by_isin.
+
+
+        Examples:
+            "High-yield EUR bonds low risk" → currency=["EUR"], yieldMin=5, countryRiskMax=3
+            "US investment-grade bonds short duration" → regions=[1], durationMax=3, solvencyMin=5
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:

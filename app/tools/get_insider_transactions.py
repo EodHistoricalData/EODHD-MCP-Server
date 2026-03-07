@@ -50,6 +50,13 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON array of insider transactions or {"error": "..."} on failure.
+
+
+        Examples:
+            "Apple insider trades this year" → symbol="AAPL.US", start_date="2026-01-01", end_date="2026-03-06"
+            "Recent insider transactions, top 50" → limit=50
+            "Tesla insider buys and sells in Feb 2026" → symbol="TSLA.US", start_date="2026-02-01", end_date="2026-02-28"
+
         """
         # --- Validate inputs ---
         if fmt != "json":

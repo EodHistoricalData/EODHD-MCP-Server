@@ -44,6 +44,12 @@ async def _run_praams_income_statement_by_isin(
 ) -> str:
     """
     Core runner for Praams Bank Income Statement by ISIN.
+
+
+        Examples:
+            "JPMorgan income statement by ISIN" → isin="US46625H1005"
+            "Bank of America income via ISIN" → isin="US0605051046"
+
     """
     # Validate/normalize ISIN
     ci = _canon_isin(isin)

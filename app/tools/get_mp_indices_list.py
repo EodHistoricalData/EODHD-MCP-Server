@@ -33,6 +33,12 @@ def register(mcp: FastMCP):
         Args:
           - fmt: 'json' (default). (CSV is not documented; keep JSON only.)
           - api_token: optional override API token
+
+
+        Examples:
+            "show all S&P and Dow Jones indices" → (no params)
+            "list available market indices with details" → (no params)
+
         """
         fmt = (fmt or "json").lower()
         if fmt != "json":

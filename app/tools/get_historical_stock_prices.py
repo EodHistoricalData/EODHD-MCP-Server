@@ -58,6 +58,13 @@ def register(mcp: FastMCP):
         Returns:
             str: JSON string with data or {"error": "..."}.
                  If fmt='csv', returns CSV text embedded as a JSON string for consistency.
+
+
+        Examples:
+            "Apple stock price last month" → ticker="AAPL.US", start_date="2026-02-01", end_date="2026-02-28"
+            "Weekly Tesla for 2025" → ticker="TSLA.US", period="w", start_date="2025-01-01", end_date="2025-12-31"
+            "Monthly S&P 500 since 2020" → ticker="GSPC.INDX", period="m", start_date="2020-01-01"
+
         """
         # --- Validate required/typed params ---
         if not ticker or not isinstance(ticker, str):

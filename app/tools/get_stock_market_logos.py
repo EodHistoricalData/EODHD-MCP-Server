@@ -29,6 +29,13 @@ def register(mcp: FastMCP):
         Args:
             symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'BMW.XETRA').
             api_token (str, optional): Per-call token override.
+
+
+        Examples:
+            "Apple logo" → get_stock_market_logos(symbol="AAPL.US")
+            "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
+            "Toyota logo from Tokyo" → get_stock_market_logos(symbol="7203.TSE")
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(

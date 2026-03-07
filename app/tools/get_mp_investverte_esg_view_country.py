@@ -28,6 +28,12 @@ def register(mcp: FastMCP):
         Use get_mp_investverte_esg_list_countries first to discover available country codes.
         For company-level ESG, use get_mp_investverte_esg_view_company.
         For sector-level ESG, use get_mp_investverte_esg_view_sector.
+
+
+        Examples:
+            - /api/mp/investverte/country/US?year=2021&frequency=FY
+            - /api/mp/investverte/country/US
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")

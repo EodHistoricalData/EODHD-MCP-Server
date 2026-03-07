@@ -96,6 +96,12 @@ def register(mcp: FastMCP):
         ranges, and constituent volatility distribution versus market. Consumes 10 API calls per request.
         For largest year-over-year volatility changes, use get_mp_illio_market_insights_largest_volatility.
         For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
+
+
+        Examples:
+            "Dow Jones volatility bands" → id="DJI"
+            "Nasdaq-100 volatility and day moves" → id="NDX"
+
         """
         return await _run_volatility(id=id, fmt=fmt, api_token=api_token)
 

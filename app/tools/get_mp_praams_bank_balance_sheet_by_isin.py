@@ -46,6 +46,12 @@ async def _run_praams_balance_sheet_by_isin(
 ) -> str:
     """
     Core runner for Praams Bank Balance Sheet by ISIN.
+
+
+        Examples:
+            "JPMorgan balance sheet by ISIN" → isin="US46625H1005"
+            "Bank of America balance sheet ISIN" → isin="US0605051046"
+
     """
     # Validate/normalize ISIN
     ci = _canon_isin(isin)

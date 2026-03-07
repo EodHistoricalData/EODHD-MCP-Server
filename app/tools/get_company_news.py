@@ -57,6 +57,13 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON string of articles (or {"xml": "..."} if fmt='xml' and your client returns text).
+
+
+        Examples:
+            "Apple news last week" → ticker="AAPL.US", start_date="2026-02-27", end_date="2026-03-06"
+            "Crypto news, 50 results" → tag="crypto", limit=50
+            "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
+
         """
         # --- Validate required conditions ---
         if not ticker and not tag:

@@ -30,6 +30,13 @@ def register(mcp: FastMCP):
         Returns split dates, tickers, and split ratios (e.g., 4:1) within a date range (defaults to next 7 days).
         Use when the user asks about stock splits, share splits, or reverse splits.
         For IPO calendar, use get_upcoming_ipos. For dividend calendar, use get_upcoming_dividends.
+
+
+        Examples:
+            "Stock splits this week" → from_date="2026-03-02", to_date="2026-03-06"
+            "Splits in Q1 2026" → from_date="2026-01-01", to_date="2026-03-31"
+            "Any splits next month" → from_date="2026-04-01", to_date="2026-04-30"
+
         """
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):

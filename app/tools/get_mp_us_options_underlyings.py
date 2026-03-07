@@ -31,6 +31,12 @@ def register(mcp: FastMCP):
         For available contracts on a specific ticker, use get_us_options_contracts.
         For options pricing data, use get_us_options_eod.
         Consumes 10 API calls per request.
+
+
+        Examples:
+            "list all tickers that have options" → (no params)
+            "which stocks have options available" → (no params)
+
         """
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/underlying-symbols?1=1"
         base += _q("page[offset]", page_offset)

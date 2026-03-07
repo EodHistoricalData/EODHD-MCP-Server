@@ -69,6 +69,12 @@ def register(mcp: FastMCP):
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "Full Apple equity report" → ticker="AAPL", email="user@example.com", is_full=True
+            "Tesla quick equity analysis" → ticker="TSLA", email="user@example.com"
+
         """
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token

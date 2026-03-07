@@ -44,6 +44,13 @@ def register(mcp: FastMCP):
             end_date (str, optional):   'to' in YYYY-MM-DD   (e.g., '2022-11-01').
             fmt (str): 'json' (default).
             api_token (str, optional): Per-call token override; env token used if omitted.
+
+
+        Examples:
+            "Symbol changes this month" → start_date="2026-03-01", end_date="2026-03-06"
+            "Ticker renames in 2025" → start_date="2025-01-01", end_date="2025-12-31"
+            "Recent symbol changes last 90 days" → start_date="2025-12-06", end_date="2026-03-06"
+
         """
         # Validate inputs
         if fmt != "json":

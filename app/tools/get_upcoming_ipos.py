@@ -30,6 +30,13 @@ def register(mcp: FastMCP):
         Returns IPO dates, company names, exchanges, share prices, and deal details within a date range (defaults to next 7 days).
         Use when the user asks about new stock listings, companies going public, or IPO calendar.
         For stock splits calendar, use get_upcoming_splits. For dividend calendar, use get_upcoming_dividends.
+
+
+        Examples:
+            "IPOs this week" → from_date="2026-03-02", to_date="2026-03-06"
+            "IPOs in March 2026" → from_date="2026-03-01", to_date="2026-03-31"
+            "Upcoming IPOs next 30 days" → from_date="2026-03-06", to_date="2026-04-05"
+
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()

@@ -43,6 +43,12 @@ def _canon_isin(v: str) -> Optional[str]:
 async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
     """
     Core runner for Praams Bond Risk & Return analysis by ISIN.
+
+
+        Examples:
+            "Analyze US Treasury bond" → isin="US912810TM53"
+            "Realty Income bond risk analysis" → isin="US7593518852"
+
     """
     # Validate/normalize ISIN
     ci = _canon_isin(isin)

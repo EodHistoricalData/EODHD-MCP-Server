@@ -44,6 +44,13 @@ def register(mcp: FastMCP):
             type (str, optional): One of {'all','stock','etf','fund','bond','index','crypto'}.
             fmt (str): Must be 'json'.
             api_token (str, optional): Per-call API token override (demo token does NOT work for Search).
+
+
+        Examples:
+            "Find Apple stock" → get_stocks_from_search(query="Apple Inc", type="stock")
+            "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
+            "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
+
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

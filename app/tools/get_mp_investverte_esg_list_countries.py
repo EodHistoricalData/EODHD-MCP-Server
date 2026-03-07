@@ -21,6 +21,12 @@ def register(mcp: FastMCP):
         Use as a reference lookup before calling get_mp_investverte_esg_view_country for detailed ESG scores.
         Consumes 10 API calls per request.
         For company or sector reference lists, use get_mp_investverte_esg_list_companies or list_sectors.
+
+
+        Examples:
+            "List all ESG countries" → (no params needed)
+            "Which countries have ESG ratings?" → (no params needed)
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
