@@ -43,6 +43,7 @@ def register(mcp: FastMCP):
         connect_timeout: float = 15.0,
     ) -> str:
         """
+
         Capture real-time streaming market data via WebSocket for a fixed time window. Use when
         the user needs live tick-by-tick prices, real-time trades, bid/ask quotes, or streaming
         forex/crypto rates.
@@ -57,13 +58,29 @@ def register(mcp: FastMCP):
         Args:
             feed (str): One of {'us_trades','us_quotes','forex','crypto'}.
             symbols (str | list[str]): Single or comma-separated symbols, or a list.
-                Examples: 'AAPL,MSFT,TSLA' (US), 'EURUSD' (forex), 'ETH-USD,BTC-USD' (crypto).
+                Returns:
+            Object with:
+            - feed (str): feed name used
+            - endpoint (str): WS endpoint path
+            - symbols (array[str]): subscribed symbols
+            - duration_seconds (int): capture window length
+            - started_at (int): start epoch in ms
+            - ended_at (int): end epoch in ms
+            - message_count (int): total messages captured
+            - messages (array): captured messages, each varies by feed:
+              - us_trades: s (str, symbol), p (float, price), v (int, volume), t (int, timestamp ms), c (str, conditions)
+              - us_quotes: s (str, symbol), ap (float, ask price), as (int, ask size), bp (float, bid price), bs (int, bid size), t (int, timestamp ms)
+              - forex: s (str, symbol), a (float, ask), b (float, bid), t (int, timestamp ms)
+              - crypto: s (str, symbol), p (float, price), q (float, quantity), t (int, timestamp ms)
+
+        Examples: 'AAPL,MSFT,TSLA' (US), 'EURUSD' (forex), 'ETH-USD,BTC-USD' (crypto).
             duration_seconds (int): How long to capture messages (1..600). Default 5.
             api_token (str, optional): WebSocket token; 'demo' supports limited symbols.
             max_messages (int, optional): Stop early after N messages.
             ping_interval (float): WebSocket ping interval in seconds.
             ping_timeout (float): WebSocket ping timeout in seconds.
             connect_timeout (float): Overall connection timeout in seconds.
+        
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")

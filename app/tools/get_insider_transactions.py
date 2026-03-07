@@ -35,6 +35,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call token override
     ) -> str:
         """
+
         Fetch SEC Form 4 insider trading transactions -- purchases and sales by company officers, directors, and major shareholders.
         Returns transaction date, insider name, title, transaction type (P=Purchase, S=Sale), shares, and value.
         Filter by ticker symbol and/or date range. Each request consumes 10 API calls.
@@ -49,14 +50,26 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token; env token used if omitted.
 
         Returns:
-            str: JSON array of insider transactions or {"error": "..."} on failure.
+            Object with:
+            - code (str): ticker symbol
+            - transactions (list): array of transactions, each with:
+              - date (str): transaction date
+              - ownerName (str): insider name
+              - transactionType (str): 'P' (Purchase) or 'S' (Sale)
+              - sharesTraded (int): number of shares traded
+              - pricePerShare (float|null): price per share
+              - sharesOwned (int): total shares owned after transaction
 
+        Notes:
+            • Each request consumes 10 API calls (per docs).
+            • Transaction codes in results include 'P' (Purchase) and 'S' (Sale).
 
         Examples:
             "Apple insider trades this year" → symbol="AAPL.US", start_date="2026-01-01", end_date="2026-03-06"
             "Recent insider transactions, top 50" → limit=50
             "Tesla insider buys and sells in Feb 2026" → symbol="TSLA.US", start_date="2026-02-01", end_date="2026-02-28"
 
+        
         """
         # --- Validate inputs ---
         if fmt != "json":

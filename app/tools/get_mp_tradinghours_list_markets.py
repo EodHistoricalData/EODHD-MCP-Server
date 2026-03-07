@@ -27,6 +27,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override
     ) -> str:
         """
+
         [TradingHours] List all tracked global markets and exchanges. Use as the starting point
         to browse available markets before looking up details or checking status.
         Returns FinID, exchange name, MIC code, asset type, and group for each market.
@@ -41,11 +42,30 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
+        Returns:
+            JSON array of market objects, each with:
+            - fin_id (str): Unique market identifier (e.g. 'us.nyse').
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - products (str): Traded product types.
+            - country (str): Country name.
+            - country_code (str): ISO country code.
+            - city (str): City where exchange is located.
+            - timezone (str): IANA timezone identifier.
+            - timezone_abbr (str): Timezone abbreviation.
+            - mic (str): Market Identifier Code (ISO 10383).
+            - mic_o (str): Operating MIC.
+
+        Notes:
+            - Marketplace product: 10 API calls per request.
+            - Core tier: 24 G20+ markets.
+
         Examples:
             "list all tracked markets" → (no params)
             "show only G20 core markets" → group="core"
             "all equity and derivative markets" → group="all"
 
+        
         """
         if group is not None:
             group = group.strip().lower()

@@ -289,6 +289,7 @@ def register(mcp: FastMCP):
         fmt: str = "json",
     ) -> str:
         """
+
         Retrieve fundamental data for a single stock, ETF, mutual fund, index, or crypto.
         Auto-detects asset type. For stocks: returns financials (income statement, balance sheet, cash flow),
         earnings, valuation, analyst ratings, holders, insider transactions, and outstanding shares.
@@ -298,11 +299,40 @@ def register(mcp: FastMCP):
         For price data, use get_historical_stock_prices or get_live_price_data instead.
 
 
+        Returns:
+            Nested object; structure depends on asset Type:
+
+            Common Stock — top-level keys:
+            - General: name, exchange, currency, sector, industry, description, etc.
+            - Highlights: marketCap, EBITDA, PE, EPS, dividendYield, etc.
+            - Valuation: trailing/forward PE, PEG, price-to-sales/book, EV ratios
+            - SharesStats: shares outstanding, float, percent insiders/institutions
+            - Technicals: beta, 52wHigh/Low, moving averages, short ratio
+            - SplitsDividends: forward/trailing dividend rate & yield, payout ratio, split history
+            - AnalystRatings: target price, strong buy/buy/hold/sell/strong sell counts
+            - Holders: top institutional & fund holders with shares/weight
+            - InsiderTransactions: array of insider trades (date, name, shares, value)
+            - outstandingShares: quarterly & annual share counts by date
+            - Earnings: History (actual/estimate EPS), Trend, Annual
+            - Financials: Balance_Sheet, Cash_Flow, Income_Statement (quarterly & yearly)
+
+            ETF — top-level keys:
+            - General, Technicals
+            - ETF_Data: Holdings (top N positions), Sector_Weights, World_Regions,
+              Top_10_Holdings, Asset_Allocation, performance, fees
+
+            Mutual Fund — top-level keys:
+            - General
+            - MutualFund_Data: fund family, category, NAV, yield, holdings, sector weights
+
+            Index — General only (pass extra_params={'historical': 1} for components).
+
         Examples:
             "Apple fundamentals" → ticker="AAPL.US"
             "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
             "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
 
+        
         """
         # --- Validate basics
         if fmt != "json":

@@ -30,6 +30,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,                    # per-call override
     ) -> str:
         """
+
         [Marketplace] Fetch individual trade ticks (tick-by-tick data) for US stocks. Use when
         asked about granular trade-level data, tick history, or microstructure analysis.
         Returns timestamp (ms), price, shares, market center, and sequence for each trade.
@@ -45,11 +46,27 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
+        Returns:
+            JSON array of tick objects, each with:
+            - timestamp (int): Trade timestamp in UNIX seconds.
+            - datetime (str): Human-readable UTC datetime.
+            - gmtoffset (int): GMT offset in seconds.
+            - type (str): Tick type identifier.
+            - price (float): Trade price.
+            - volume (int): Number of shares traded.
+            - conditions (str): Trade condition codes.
+
+        Notes:
+            - Marketplace product: 10 API calls per request.
+            - Timestamp params in seconds but response timestamps may differ in precision.
+            - US stocks only.
+
         Examples:
             "AAPL tick data for yesterday" → ticker="AAPL"
             "first 500 TSLA ticks from March 3 2026" → ticker="TSLA", from_timestamp=1741003200, to_timestamp=1741089600, limit=500
             "MSFT trade ticks, max 1000" → ticker="MSFT", limit=1000
 
+        
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")

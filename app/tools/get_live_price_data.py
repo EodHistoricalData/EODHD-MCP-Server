@@ -33,6 +33,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
+
         Get the current (delayed ~15-20 min) price snapshot for one or more tickers.
         Returns last trade price, change, change percent, volume, high, low, open, previous close, and timestamp.
         Supports stocks, ETFs, indices, forex, and crypto. Batch up to 20 symbols in one call.
@@ -49,15 +50,23 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override. If omitted, env token is used.
 
         Returns:
-            str: JSON string. If fmt='csv' and your `make_request` returns raw text,
-                 this tool wraps CSV into {"csv": "..."}; otherwise returns JSON from API.
+            Single object (one ticker) or array (multiple tickers), each with:
+            - code (str): ticker symbol
+            - timestamp (int): Unix epoch seconds of last trade
+            - open, high, low, close (float): session OHLC
+            - volume (int): session volume
+            - previousClose (float): prior session close
+            - change (float): absolute change from previousClose
+            - change_p (float): percent change from previousClose
 
+            Prices are delayed ~15-20 min depending on exchange.
 
         Examples:
             "Current Apple price" → ticker="AAPL.US"
             "Live quotes for Tesla, Google, and Amazon" → ticker="TSLA.US", additional_symbols=["GOOG.US", "AMZN.US"]
             "Bitcoin and Ethereum prices right now" → ticker="BTC-USD.CC", additional_symbols=["ETH-USD.CC"]
 
+        
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

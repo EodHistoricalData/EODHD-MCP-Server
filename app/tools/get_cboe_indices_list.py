@@ -17,6 +17,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
+
         List all available CBOE indices with their latest values. Use when the user wants to
         browse CBOE European and regional index families, check which CBOE indices are available,
         or find a CBOE index code.
@@ -27,10 +28,32 @@ def register(mcp: FastMCP):
         For detailed component-level data on a specific CBOE index, use get_cboe_index_data.
 
 
+        Returns:
+            Object with:
+            - meta (object): total (int) — total number of indices
+            - data (array): index objects, each with:
+              - id (str): CBOE index identifier
+              - type (str): always "cboe-index"
+              - attributes (object):
+                - region (str): geographic region (e.g. "Eurozone", "Germany")
+                - index_code (str): CBOE index code
+                - feed_type (str): feed type (e.g. "snapshot_official_closing")
+                - date (str): latest date (YYYY-MM-DD)
+                - index_close (float): latest closing value
+                - index_divisor (float): index divisor
+            - links (object): next (str|null) — URL for next page, null if last
+
+        Notes:
+            - Pagination:
+              If 'links.next' is not null, call that URL to get the next page.
+            - Rate limits:
+                * 10 API calls per request (CBOE dataset rule of thumb).
+
         Examples:
             "List all CBOE indices" → get_cboe_indices_list()
             "What CBOE European indices are available?" → get_cboe_indices_list()
 
+        
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

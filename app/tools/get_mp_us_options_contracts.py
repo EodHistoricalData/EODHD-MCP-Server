@@ -74,6 +74,7 @@ def register(mcp: FastMCP):
         fmt: Optional[str] = "json",
     ) -> str:
         """
+
         [Marketplace] Get available US options contracts (calls and puts) for a stock or ETF.
         Returns strike prices, expiration dates, and contract symbols for the specified underlying ticker.
         Supports filtering by expiration date range, strike range, trade time, and option type (put/call).
@@ -82,11 +83,37 @@ def register(mcp: FastMCP):
         Consumes 10 API calls per request.
 
 
+        Returns:
+            JSON object with:
+            - meta: Pagination metadata.
+            - data (array): Options contracts, each with:
+              - contractName (str): Full OCC contract name.
+              - contractSize (int): Contract size (typically 100).
+              - currency (str): Currency code (e.g. 'USD').
+              - type (str): 'call' or 'put'.
+              - lastTradeDateTime (str): Last trade timestamp.
+              - strike (float): Strike price.
+              - lastPrice (float): Last traded price.
+              - bid (float): Current bid price.
+              - ask (float): Current ask price.
+              - volume (int): Trading volume.
+              - openInterest (int): Open interest.
+              - impliedVolatility (float): Implied volatility.
+              - delta (float): Option delta.
+              - gamma (float): Option gamma.
+              - theta (float): Option theta.
+              - vega (float): Option vega.
+              - expirationDate (str): Expiration date YYYY-MM-DD.
+              - daysBeforeExpiration (int): Days until expiration.
+              - intrinsicValue (float): Intrinsic value.
+            - links.next (str|null): URL for next page, null if last page.
+
         Examples:
             "AAPL options expiring this month" → underlying_symbol="AAPL", exp_date_from="2026-03-01", exp_date_to="2026-03-31"
             "SPY puts with strike between 400 and 450" → underlying_symbol="SPY", type="put", strike_from=400, strike_to=450
             "TSLA call contracts expiring in June 2026, sorted by strike" → underlying_symbol="TSLA", type="call", exp_date_from="2026-06-01", exp_date_to="2026-06-30", sort="strike"
 
+        
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

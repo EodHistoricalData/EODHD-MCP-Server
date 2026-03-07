@@ -18,6 +18,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,        # per-call override
     ) -> str:
         """
+
         Get a company logo in PNG format (200x200 with transparency). Use when the user needs
         a raster logo image for a stock or company for display, reports, or UI.
 
@@ -31,11 +32,24 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            Binary PNG image data (200x200 with transparency).
+            When returned via JSON wrapper, base64-encoded image string.
+
+        Notes:
+            - Marketplace product: 10 API calls per request.
+            - Response is a binary PNG image.
+            - Supported exchanges include: AS, AT, AU, BA, BK, BR, BSE, CN, CO, CSE,
+              DU, F, HE, HK, HM, IC, IR, IS, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
+              MCX, MI, MU, MX, NEO, NSE, NZ, OL, PA, RG, SA, SG, SHE, SHG, SN, SR,
+              ST, STU, SW, TA, TO, TSE, TW, TWO, US, V, VI, VS, VX, XETRA.
+
         Examples:
             "Apple logo" → get_stock_market_logos(symbol="AAPL.US")
             "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
             "Toyota logo from Tokyo" → get_stock_market_logos(symbol="7203.TSE")
 
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(

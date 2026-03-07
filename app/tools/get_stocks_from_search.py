@@ -25,6 +25,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,         # per-call override
     ) -> str:
         """
+
         Search for financial instruments by name, ticker, or ISIN. Use when the user wants to
         find a ticker symbol, look up a company by name, resolve an ISIN, or discover instruments
         matching a keyword.
@@ -46,11 +47,24 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call API token override (demo token does NOT work for Search).
 
 
+        Returns:
+            Array of matching instruments, each with:
+            - Code (str): ticker symbol
+            - Exchange (str): exchange code
+            - Name (str): instrument name
+            - Type (str): instrument type (e.g. "Common Stock", "ETF")
+            - Country (str): country of listing
+            - Currency (str): trading currency
+            - ISIN (str): ISIN code
+            - previousClose (float): last closing price
+            - previousCloseDate (str): date of last close (YYYY-MM-DD)
+
         Examples:
             "Find Apple stock" → get_stocks_from_search(query="Apple Inc", type="stock")
             "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
             "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
 
+        
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

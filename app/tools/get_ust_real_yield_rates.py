@@ -19,6 +19,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
+
         Fetch US Treasury inflation-adjusted (real) yield curve rates. Use when asked about TIPS yields,
         real interest rates, or inflation-adjusted Treasury returns.
         Covers 5Y, 7Y, 10Y, 20Y, 30Y tenors from the Daily Par Real Yield Curve.
@@ -33,11 +34,26 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
+        Returns:
+            JSON array of objects, each with:
+            - date (str): Rate date, YYYY-MM-DD.
+            - 5YR (str): 5-year real yield rate.
+            - 7YR (str): 7-year real yield rate.
+            - 10YR (str): 10-year real yield rate.
+            - 20YR (str): 20-year real yield rate.
+            - 30YR (str): 30-year real yield rate.
+
+        Notes:
+            - 1 API call per request.
+            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
+            - Compare with nominal yields for implied inflation expectations.
+
         Examples:
             "real yield rates for 2025" → year=2025
             "last 10 inflation-adjusted treasury yields" → limit=10
             "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
 
+        
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
 

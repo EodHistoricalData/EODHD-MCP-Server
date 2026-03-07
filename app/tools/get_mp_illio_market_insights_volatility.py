@@ -91,6 +91,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
+
         [Illio] Get volatility bands and daily move distribution for index constituents.
         Covers S&P 500, Dow Jones, and Nasdaq-100. Returns volatility levels, daily move
         ranges, and constituent volatility distribution versus market. Consumes 10 API calls per request.
@@ -98,10 +99,26 @@ def register(mcp: FastMCP):
         For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
 
 
+        Returns:
+          JSON object with volatility bands chapter data:
+            - chapter (str): chapter identifier, e.g. "volatility"
+            - id (str): index identifier, e.g. "NDX"
+            - data (object): volatility and day-move distributions, including:
+                - bands (array): volatility band buckets with instrument counts
+                - instruments (array): per-instrument volatility metrics
+                - dailyMoves (object|null): distribution of daily price changes
+            - metadata (object|null): date range, calculation parameters
+
+        Limits (Marketplace rules):
+          - 1 request = 10 API calls
+          - 100k calls / 24h, 1k requests / minute
+          - Output is JSON
+
         Examples:
             "Dow Jones volatility bands" → id="DJI"
             "Nasdaq-100 volatility and day moves" → id="NDX"
 
+        
         """
         return await _run_volatility(id=id, fmt=fmt, api_token=api_token)
 

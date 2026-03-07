@@ -39,6 +39,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,          # per-call override
     ) -> str:
         """
+
         Get upcoming and recent earnings report dates for stocks.
         Returns scheduled earnings dates, EPS estimates, and actual results when available.
         Filter by specific symbols or a date range (defaults to next 7 days).
@@ -47,11 +48,25 @@ def register(mcp: FastMCP):
         For macroeconomic events (GDP, CPI), use get_economic_events instead.
 
 
+        Returns:
+            Object with:
+            - earnings (list): array of earning records, each with:
+              - code (str): ticker symbol
+              - report_date (str): report filing date
+              - date (str): earnings date
+              - before_after_market (str|null): 'BeforeMarket' or 'AfterMarket'
+              - currency (str): reporting currency
+              - actual (float|null): actual EPS
+              - estimate (float|null): consensus EPS estimate
+              - difference (float|null): actual minus estimate
+              - surprise_prc (float|null): surprise percentage
+
         Examples:
             "Apple earnings schedule" → symbols="AAPL.US"
             "Earnings this week" → start_date="2026-03-02", end_date="2026-03-06"
             "Microsoft and Google earnings" → symbols="MSFT.US,GOOG.US"
 
+        
         """
         sym_param = _normalize_symbols(symbols)
 

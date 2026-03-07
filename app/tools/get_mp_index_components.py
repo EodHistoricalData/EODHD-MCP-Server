@@ -24,6 +24,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call override
     ) -> str:
         """
+
         [Marketplace] Get constituent stocks of a specific S&P or Dow Jones index, including
         historical component changes for major indices. Use when asked which stocks are in an
         index, or to track index rebalancing history.
@@ -37,11 +38,23 @@ def register(mcp: FastMCP):
           - api_token: optional override API token
 
 
+        Returns:
+            JSON object with:
+            - Components (array): Current index constituents, each with:
+              - Code (str): Ticker symbol.
+              - Exchange (str): Exchange code.
+              - Name (str): Company name.
+              - Sector (str): GICS sector.
+              - Industry (str): GICS industry.
+              - Weight (float): Index weight.
+            - Historical changes (for major indices): additions/removals over time.
+
         Examples:
             "what are the S&P 500 components" → symbol="GSPC.INDX"
             "Dow Jones Industrial Average constituents" → symbol="DJI.INDX"
             "S&P 400 MidCap index members" → symbol="SP400.INDX"
 
+        
         """
         if not (symbol and symbol.strip()):
             raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")

@@ -20,6 +20,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
+
         Fetch detailed data for a specific CBOE index on a given date, including all constituent
         components. Use when the user needs index close value, divisor, and full component
         breakdown (symbols, weights, market caps, sectors) for a CBOE index.
@@ -38,11 +39,47 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            Object with:
+            - meta (object): total (int) — number of results
+            - data (array): index feed objects, each with:
+              - id (str): composite key (index_code-date-feed_type)
+              - type (str): "cboe-index"
+              - attributes (object):
+                - region (str): geographic region
+                - index_code (str): CBOE index code
+                - feed_type (str): feed type
+                - date (str): trading date (YYYY-MM-DD)
+                - index_close (float): index closing value
+                - index_divisor (float): index divisor
+                - effective_date (str|null): effective date
+                - review_date (str|null): review date
+              - components (array): index constituents, each with:
+                - id (str): component identifier
+                - type (str): "cboe-index-component"
+                - attributes (object):
+                  - symbol (str): ticker symbol
+                  - isin (str): ISIN code
+                  - name (str): company name
+                  - closing_price (float): component closing price
+                  - currency (str): trading currency
+                  - total_shares (int): total shares outstanding
+                  - market_cap (float): market capitalization
+                  - index_weighting (float): weight in index (%)
+                  - index_value (float): contributed index value
+                  - sector (str): industry sector
+
+        Notes:
+            - If required filters are missing, the API returns a JSON error
+              under the "errors" key.
+            - Rate limits: 10 API calls per request (dataset-specific rule of thumb).
+
         Examples:
             - /api/cboe/index?filter[index_code]=BDE30P
               &filter[feed_type]=snapshot_official_closing
               &filter[date]=2017-02-01
 
+        
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):

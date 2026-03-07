@@ -155,6 +155,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
+
         Get historical intraday OHLCV candles at 1-minute, 5-minute, or 1-hour intervals.
         Use for intraday price analysis, short-term patterns, and high-resolution charting.
         Accepts date strings or Unix timestamps for the time range.
@@ -177,6 +178,20 @@ def register(mcp: FastMCP):
             - If no 'from'/'to' provided, API returns last 120 days by default (per docs).
             - Max span depends on interval:
                 1m -> 120 days, 5m -> 600 days, 1h -> 7200 days.
+
+        Returns:
+            Array of intraday bar records, each with:
+            - timestamp (int): Unix epoch seconds
+            - gmtoffset (int): GMT offset in seconds for the exchange
+            - datetime (str): human-readable datetime (YYYY-MM-DD HH:MM:SS)
+            - open, high, low, close (float): bar OHLC
+            - volume (int): shares traded in this bar
+
+        Notes:
+            - If no 'from'/'to' provided, API returns last 120 days by default (per docs).
+            - Max span depends on interval:
+                1m -> 120 days, 5m -> 600 days, 1h -> 7200 days.
+
         """
 
         # --- Validate required/typed params ---

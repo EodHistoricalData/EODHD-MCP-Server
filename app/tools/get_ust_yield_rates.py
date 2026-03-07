@@ -19,6 +19,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
+
         Fetch daily US Treasury par yield curve rates. Use when the user asks about Treasury
         yields, the yield curve, government bond rates, or interest rates across maturities.
 
@@ -35,11 +36,34 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            Array of daily yield rate objects, each with:
+            - date (str): observation date (YYYY-MM-DD)
+            - 1MO (float): 1-month yield
+            - 2MO (float): 2-month yield
+            - 3MO (float): 3-month yield
+            - 4MO (float): 4-month yield
+            - 6MO (float): 6-month yield
+            - 1YR (float): 1-year yield
+            - 2YR (float): 2-year yield
+            - 3YR (float): 3-year yield
+            - 5YR (float): 5-year yield
+            - 7YR (float): 7-year yield
+            - 10YR (float): 10-year yield
+            - 20YR (float): 20-year yield
+            - 30YR (float): 30-year yield
+
+        Notes:
+            - 1 API call per request.
+            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
+            - Full yield curve across multiple maturities.
+
         Examples:
             "US Treasury yield curve for 2026" → get_ust_yield_rates(year=2026)
             "Current yield rates" → get_ust_yield_rates()
             "2025 yield rates, page 2" → get_ust_yield_rates(year=2025, offset=100, limit=100)
 
+        
         """
         url = f"{EODHD_API_BASE}/ust/yield-rates?1=1"
 

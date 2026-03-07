@@ -36,6 +36,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
+
         Get top weighted keywords from news articles for a given stock ticker over a date range.
         Returns word frequency and importance scores, useful for identifying dominant themes and narratives in coverage.
         Use when analyzing what topics or terms dominate news about a company.
@@ -51,14 +52,17 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
         Returns:
-            str: JSON like {"data": {...}, "meta": {...}, "links": {...}} or {"error": "..."}.
-
+            Object with:
+            - data (object): date-grouped records with word-weight mappings
+            - meta (object): pagination metadata
+            - links (object): pagination links (self, next, prev)
 
         Examples:
             "Top news keywords for Apple last month" → ticker="AAPL.US", start_date="2026-02-01", end_date="2026-02-28"
             "Nvidia word weights, top 20" → ticker="NVDA.US", limit=20
             "Amazon news themes in Q1 2026" → ticker="AMZN.US", start_date="2026-01-01", end_date="2026-03-06"
 
+        
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")

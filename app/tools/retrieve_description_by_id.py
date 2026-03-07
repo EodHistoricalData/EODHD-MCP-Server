@@ -375,6 +375,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
+
         Retrieve built-in EODHD API documentation by numeric type and id. Use when
         the user asks about API usage, endpoint specs, subscription plans, or reference guides.
         Returns structured Markdown content for subscriptions (type=1), endpoint docs (type=2),
@@ -434,9 +435,15 @@ def register(mcp: FastMCP):
             api_token: Ignored (accepted for interface uniformity).
 
         Returns:
-            JSON string with "type", "id", "title", "content", and "raw" keys.
-            Invalid parameters return the global README with "fallback": true.
-
+            JSON object with:
+            - type (int): Page category number (0-3).
+            - id (int): Page ID within the category.
+            - title (str): Human-readable page title derived from filename.
+            - content (dict): Structured parsed markdown (headings as nested dicts,
+              tables as list-of-dicts, lists as arrays, key-value pairs as dict entries).
+            - raw (str): Original markdown source text.
+            - fallback (bool, optional): Present and true when invalid/missing params
+              caused a fallback to the global README.
 
         Examples:
             "show me the global help page" → type=0
@@ -444,6 +451,7 @@ def register(mcp: FastMCP):
             "how does the historical stock prices endpoint work" → type=2, id=12
             "explain rate limits" → type=3, id=22
 
+        
         """
         if type is None:
             page_type = 0
