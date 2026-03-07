@@ -67,6 +67,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override
     ) -> str:
         """
+
         [PRAAMS] Generate a comprehensive multi-factor PDF report for a bond by ISIN code.
         Covers 120,000+ global bonds (corporate and sovereign). Report includes valuation,
         performance, coupon analysis, profitability, growth, plus risk factors (volatility,
@@ -82,10 +83,32 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
+        Returns:
+            JSON object with report generation status:
+              - success (bool): whether the report request was accepted
+              - item (object|null): report metadata if available, including:
+                  - reportId (str): unique report identifier
+                  - status (str): generation status (e.g. "queued", "processing", "completed")
+                  - downloadUrl (str|null): URL to download the PDF when ready
+              - message (str): status message (e.g. "Report generation started")
+              - errors (array): list of error messages, empty on success
+            The actual report is a PDF sent to the provided email address.
+
+        Notes:
+            - Marketplace product: 10 API calls per request.
+            - Response is a PDF file download (application/pdf).
+            - Coverage: 120,000+ global bonds (corporate and sovereign).
+            - Return factors: valuation, performance, analyst view, profitability,
+              growth, dividends/coupons.
+            - Risk factors: default, volatility, stress-test, selling difficulty,
+              country, other risks.
+            - Demo ISINs: US7593518852, US91282CJN20.
+
         Examples:
             "Full bond report for Realty Income" → isin="US7593518852", email="user@example.com", is_full=True
             "US Treasury bond PDF report" → isin="US91282CJN20", email="user@example.com"
 
+        
         """
         return await _run_praams_report_bond_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token

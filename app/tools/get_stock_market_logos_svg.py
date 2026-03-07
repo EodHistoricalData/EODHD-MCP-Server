@@ -18,6 +18,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,        # per-call override
     ) -> str:
         """
+
         Get a company logo in SVG vector format. Use when the user needs a scalable vector logo
         for high-quality rendering, web embedding, or print.
 
@@ -31,10 +32,19 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            SVG image data as XML string (vector logo, scalable).
+
+        Notes:
+            - Marketplace product: 10 API calls per request.
+            - Response is SVG image data (XML text).
+            - Limited to US and TO exchanges.
+
         Examples:
             "Apple SVG logo" → get_stock_market_logos_svg(symbol="AAPL.US")
             "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
 
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(

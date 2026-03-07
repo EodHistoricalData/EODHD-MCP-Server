@@ -85,12 +85,41 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
+
         [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ISIN code.
         Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
         growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
         Use when assessing investment risk and you have the ISIN. Consumes 10 API calls per request.
         For lookup by ticker instead of ISIN, use get_mp_praams_risk_scoring_by_ticker.
         For a full PDF report, use get_mp_praams_report_equity_by_isin.
+
+        Returns:
+          JSON object with Praams envelope:
+            - success (bool): whether the request succeeded
+            - item (object): equity analysis payload containing:
+                - praamsRatio (float): overall PRAAMS score
+                - totalReturnScore (int): aggregate return score (1-7 scale)
+                - totalRiskScore (int): aggregate risk score (1-7 scale)
+                - valuation (object): valuation metrics and score
+                - performance (object): performance metrics and score
+                - profitability (object): profitability metrics and score
+                - growthMomentum (object): growth & momentum metrics and score
+                - dividends (object): dividend yield, payout ratio, score
+                - analystView (object): consensus target price, recommendations, score
+                - volatility (object): historical volatility, VaR, score
+                - stressTest (object): stress-test scenarios and score
+                - liquidity (object): trading volume, bid-ask spread, score
+                - countryRisk (object): country-level risk assessment and score
+                - solvency (object): debt ratios, interest coverage, score
+                - descriptions (object|null): narrative risk/return explanations
+            - errors (array): list of error messages, empty on success
+            - message (str): status message
+
+        Limits (Marketplace rules):
+          - 1 request = 10 API calls
+          - 100k calls / 24h, 1k requests / minute
+          - Output is JSON only
+
         """
         return await _run_praams_equity_by_isin(isin=isin, api_token=api_token)
 

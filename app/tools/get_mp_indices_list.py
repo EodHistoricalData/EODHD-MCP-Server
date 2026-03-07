@@ -23,6 +23,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
+
         [Marketplace] List all available S&P and Dow Jones indices with end-of-day details.
         Use when asked to browse or enumerate major stock market indices, or to find an index
         symbol before fetching its components with mp_index_components.
@@ -35,10 +36,18 @@ def register(mcp: FastMCP):
           - api_token: optional override API token
 
 
+        Returns:
+            JSON array of objects, each with:
+            - code (str): Index ticker code (e.g. 'GSPC.INDX').
+            - name (str): Index name (e.g. 'S&P 500').
+            - exchange (str): Exchange identifier.
+            - currency (str): Currency code (e.g. 'USD').
+
         Examples:
             "show all S&P and Dow Jones indices" → (no params)
             "list available market indices with details" → (no params)
 
+        
         """
         fmt = (fmt or "json").lower()
         if fmt != "json":

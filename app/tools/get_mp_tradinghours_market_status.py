@@ -24,6 +24,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override
     ) -> str:
         """
+
         [TradingHours] Check whether a market is currently open or closed. Use when asked
         "is the NYSE open?", "when does Tokyo close?", or any real-time market status question.
         Returns status (Open/Closed), reason, time until next status change, and next bell time.
@@ -37,11 +38,28 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
+        Returns:
+            JSON object with:
+            - fin_id (str): Unique market identifier.
+            - exchange (str): Exchange name.
+            - market (str): Market name.
+            - status (str): Current status — 'Open' or 'Closed'.
+            - reason (str): Reason for current status (e.g. 'Primary Trading Session', 'After-Hours').
+            - local_time (str): Current local time at the exchange.
+            - next_bell_action (str): Next expected action ('open' or 'close').
+            - next_bell_time_utc (str): UTC timestamp of next bell event.
+
+        Notes:
+            - Marketplace product: 10 API calls per request.
+            - Does NOT include circuit breakers or trading halts.
+            - Cache-friendly: use the 'until' field to know when to re-check.
+
         Examples:
             "is NYSE open right now" → fin_id="us.nyse"
             "check if London Stock Exchange is trading" → fin_id="gb.lse"
             "NASDAQ market status" → fin_id="us.nasdaq"
 
+        
         """
         if not fin_id or not isinstance(fin_id, str):
             raise ToolError(

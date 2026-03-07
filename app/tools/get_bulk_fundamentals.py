@@ -29,6 +29,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,              # per-call override
     ) -> str:
         """
+
         Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
         financials, valuation, or earnings data for many companies at once -- screening,
         comparing sectors, or building dashboards across an entire exchange.
@@ -50,11 +51,30 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            Dict of ticker -> fundamentals object, each with:
+            - General (object): Code, Type, Name, Exchange, CurrencyCode, CurrencyName, CountryName, ISIN, Sector, Industry
+            - Highlights (object): MarketCapitalization, EBITDA, PERatio, WallStreetTargetPrice, BookValue, EarningsShare, DividendYield
+            - Valuation (object): TrailingPE, ForwardPE, PriceSalesTTM, PriceBookMRQ, EnterpriseValue
+            - SharesStats (object): SharesOutstanding, SharesFloat, PercentInsiders, PercentInstitutions
+            - Technicals (object): Beta, 52WeekHigh, 52WeekLow, 50DayMA, 200DayMA
+            - SplitsDividends (object): ForwardAnnualDividendRate, ForwardAnnualDividendYield, ExDividendDate, LastSplitDate, LastSplitFactor
+            - Earnings (object): Last_4_Quarters (array), Annual_Earnings (array)
+            - Financials (object): Income_Statement, Balance_Sheet, Cash_Flow (quarterly + yearly)
+
+        Notes:
+            - Requires Extended Fundamentals subscription plan.
+            - API cost: 100 calls per request (or 100 + number of symbols if using symbols param).
+            - Stocks only (no ETFs or Mutual Funds).
+            - Max pagination limit: 500.
+            - Historical data limited to 4 quarters and 4 years.
+
         Examples:
             "Fundamentals for all NASDAQ stocks" → get_bulk_fundamentals(exchange="NASDAQ")
             "AAPL and MSFT fundamentals from NYSE" → get_bulk_fundamentals(exchange="US", symbols="AAPL,MSFT")
             "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
 
+        
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(

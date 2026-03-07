@@ -22,6 +22,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,          # per-call override
     ) -> str:
         """
+
         [InvestVerte] Get detailed ESG scores (E, S, G, and composite) for a specific company by symbol.
         Returns Environmental, Social, Governance, and combined ESG scores broken down by year and
         frequency (FY, Q1-Q4). Optionally filter by year and frequency. Consumes 10 API calls per request.
@@ -30,10 +31,34 @@ def register(mcp: FastMCP):
         For sector-level ESG, use get_mp_investverte_esg_view_sector.
 
 
+        Returns:
+            A JSON-formatted string with an array of objects, e.g.:
+
+            [
+              {
+                "e": 58.97,
+                "s": 68.66,
+                "g": 65.21,
+                "esg": 64.09,
+                "year": 2021,
+                "frequency": "FY"
+              },
+              ...
+            ]
+
+        Notes:
+            - Year and frequency are optional; when omitted, all available
+              years/frequencies for the symbol are returned.
+            - Rate limits (Marketplace product):
+                * 100,000 API calls per 24 hours
+                * 1,000 API requests per minute
+                * 1 API request = 10 API calls
+
         Examples:
             - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
             - /api/mp/investverte/esg/000039.SZ
 
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'AAPL').")

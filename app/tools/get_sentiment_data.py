@@ -39,6 +39,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
+
         Get aggregated sentiment scores for stocks based on news and social media analysis.
         Returns daily sentiment polarity, news buzz, and weighted scores for one or more tickers over a date range.
         Use when analyzing market mood, news impact, or sentiment-driven trading signals.
@@ -53,14 +54,19 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call override; env token used if omitted.
 
         Returns:
-            str: JSON with sentiment grouped by ticker or {"error": "..."}.
-
+            Object keyed by ticker, each value with:
+            - date (str): sentiment date
+            - count (int): number of articles analyzed
+            - normalized (float): normalized sentiment score
+            - buzz (object): articlesInLastWeek, weeklyAverage, buzz
+            - sentiment (object): bearishPercent, bullishPercent
 
         Examples:
             "Apple sentiment this month" → symbols="AAPL.US", start_date="2026-03-01", end_date="2026-03-06"
             "Bitcoin and Ethereum sentiment" → symbols="BTC-USD.CC,ETH-USD.CC"
             "Microsoft sentiment in Q4 2025" → symbols="MSFT.US", start_date="2025-10-01", end_date="2025-12-31"
 
+        
         """
         # Validate required
         if not symbols or not isinstance(symbols, str):

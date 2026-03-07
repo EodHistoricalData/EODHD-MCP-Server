@@ -17,6 +17,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
+
         [InvestVerte] Get detailed ESG time-series data for a specific sector by name.
         Returns ESG values mapped by industry/sub-sector across all available year-frequency
         combinations (e.g., "2015-FY", "2021-Q3"). Consumes 10 API calls per request.
@@ -25,10 +26,35 @@ def register(mcp: FastMCP):
         For country-level ESG, use get_mp_investverte_esg_view_country.
 
 
+        Returns:
+            A JSON-formatted string with a sector ESG object:
+            {
+              "find": true,
+              "industry": {
+                "Airlines": [<ESG values per year>],
+                "Transportation": [<ESG values per year>]
+              },
+              "years": ["2015-FY", "2015-Q1", ...]
+            }
+            Fields:
+              - find (bool): whether the sector was found
+              - industry (object): map of industry/sector names to arrays of ESG
+                values aligned with the "years" axis
+              - years (array of str): time axis labels in "YYYY-frequency" format
+
+        Notes:
+            - The 'industry' section contains sector/industry names mapped
+              to ESG values over the 'years' axis.
+            - Rate limits (Marketplace product):
+                * 100,000 API calls per 24 hours
+                * 1,000 API requests per minute
+                * 1 API request = 10 API calls
+
         Examples:
             "Airlines sector ESG data" → symbol="Airlines"
             "Aerospace & Defense ESG ratings" → symbol="Aerospace & Defense"
 
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")

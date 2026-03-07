@@ -65,6 +65,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override; env otherwise
     ) -> str:
         """
+
         Fetch macroeconomic indicators for a country over time. Use when the user asks about
         country-level economic data: GDP, inflation, CPI, unemployment, population, trade
         balance, debt-to-GDP, life expectancy, and 30+ other World Bank-style indicators.
@@ -82,11 +83,22 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            Array of indicator data points, each with:
+            - CountryCode (str): ISO-3 country code (e.g. "USA")
+            - Indicator (str): indicator key (e.g. "gdp_current_usd")
+            - Date (str): observation date (YYYY-MM-DD)
+            - Period (str): reporting period
+            - Value (float): indicator value
+            - Frequency (str): data frequency (e.g. "Annual")
+            - Unit (str): measurement unit
+
         Examples:
             "US GDP over time" → get_macro_indicator(country="USA", indicator="gdp_current_usd")
             "Germany unemployment rate" → get_macro_indicator(country="DEU", indicator="unemployment_total_percent")
             "France inflation (CPI)" → get_macro_indicator(country="FRA", indicator="inflation_consumer_prices_annual")
 
+        
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

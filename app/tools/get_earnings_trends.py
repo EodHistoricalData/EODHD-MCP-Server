@@ -37,6 +37,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override (else uses env EODHD_API_KEY)
     ) -> str:
         """
+
         Get earnings trend data including EPS/revenue estimates, analyst revisions, and growth projections for specific stocks.
         Returns quarterly and annual consensus estimates, number of analysts, and revision history.
         Requires explicit symbol(s). Each request consumes ~10 API calls.
@@ -44,10 +45,22 @@ def register(mcp: FastMCP):
         For earnings report dates and calendar, use get_upcoming_earnings instead.
 
 
+        Returns:
+            Array of trend records, each with:
+            - code (str): ticker symbol
+            - date (str): report date
+            - period (str): fiscal period (e.g. '+1y', '0q')
+            - growth (float|null): expected growth rate
+            - earningsEstimate (object): avg, low, high, yearAgoEps, numberOfAnalysts, growth
+            - revenueEstimate (object): avg, low, high, yearAgoRevenue, numberOfAnalysts, growth
+            - epsTrend (object): current, 7daysAgo, 30daysAgo, 60daysAgo, 90daysAgo
+            - epsRevisions (object): upLast7days, upLast30days, downLast7days, downLast30days
+
         Examples:
             "Apple earnings trend" → symbols="AAPL.US"
             "Compare Tesla and Nvidia earnings trends" → symbols="TSLA.US,NVDA.US"
 
+        
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:

@@ -31,6 +31,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override
     ) -> str:
         """
+
         Fetch historical tick-level trade data for US equities. Use when the user needs
         individual trade records with exact timestamps, prices, volumes, and market venue
         identifiers at the finest granularity available.
@@ -51,10 +52,20 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override.
 
 
+        Returns:
+            Array of tick objects, each with:
+            - timestamp (int): UNIX timestamp in milliseconds
+            - datetime (str): human-readable datetime
+            - volume (int): tick volume (shares)
+            - price (float): trade price
+            - type (str): tick type (trade/quote)
+            - conditions (str): trade condition codes
+
         Examples:
             "AAPL tick data on 2026-03-05 first 100 ticks" → get_us_tick_data(ticker="AAPL", from_timestamp=1772870400, to_timestamp=1772956800, limit=100)
             "TSLA trades between two timestamps" → get_us_tick_data(ticker="TSLA", from_timestamp=1772870400, to_timestamp=1772874000, limit=500)
 
+        
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

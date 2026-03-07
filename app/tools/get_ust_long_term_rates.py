@@ -19,6 +19,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
+
         Fetch US Treasury long-term rate composites and averages. Use when asked about 20-year bond
         constant maturity rates, long-term real rate averages, or extrapolation factors.
         Covers rate types: BC_20year, Over_10_Years, Real_Rate — combining daily long-term
@@ -34,11 +35,26 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
+        Returns:
+            JSON array of objects, each with:
+            - date (str): Rate date, YYYY-MM-DD.
+            - LT_COMPOSITE_RATE (str): Long-term composite rate.
+            - TREASURY_20YR (str): Treasury 20-year rate.
+            - BC_20YEAR (str): Bond-equivalent 20-year rate.
+            - EXTRAPOLATION_FACTOR_20YR (str): Extrapolation factor for 20-year maturity.
+
+        Notes:
+            - 1 API call per request.
+            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
+            - Combines "Daily Treasury Real Long-Term Rate Averages" and
+              "Daily Treasury Long-Term Rates".
+
         Examples:
             "long-term treasury rates for 2024" → year=2024
             "20-year bond rates this year, first 20 records" → year=2026, limit=20
             "real long-term rate averages for 2022" → year=2022
 
+        
         """
         url = f"{EODHD_API_BASE}/ust/long-term-rates?1=1"
 

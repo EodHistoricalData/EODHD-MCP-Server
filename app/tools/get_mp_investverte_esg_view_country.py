@@ -22,6 +22,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,         # per-call override
     ) -> str:
         """
+
         [InvestVerte] Get detailed ESG ratings for a specific country by country code.
         Returns mean and median ESG scores broken down by year and frequency (FY, Q1-Q4).
         Optionally filter by year and frequency. Consumes 10 API calls per request.
@@ -30,10 +31,34 @@ def register(mcp: FastMCP):
         For sector-level ESG, use get_mp_investverte_esg_view_sector.
 
 
+        Returns:
+            A JSON-formatted string with an array of objects, e.g.:
+
+            [
+              {
+                "symbol": "US",
+                "name": "United States of America",
+                "mean": 63.2928294103373,
+                "median": 63.32,
+                "year": 2021,
+                "frequency": "FY"
+              },
+              ...
+            ]
+
+        Notes:
+            - Year and frequency are optional; when omitted, all available
+              years/frequencies for the country are returned.
+            - Rate limits (Marketplace product):
+                * 100,000 API calls per 24 hours
+                * 1,000 API requests per minute
+                * 1 API request = 10 API calls
+
         Examples:
             - /api/mp/investverte/country/US?year=2021&frequency=FY
             - /api/mp/investverte/country/US
 
+        
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")

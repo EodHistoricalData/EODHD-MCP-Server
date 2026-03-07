@@ -22,6 +22,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override
     ) -> str:
         """
+
         List all tickers (symbols) available on a given exchange. Use when the user needs to
         enumerate stocks, ETFs, or funds on an exchange, or check if a specific instrument
         is listed there.
@@ -34,11 +35,22 @@ def register(mcp: FastMCP):
         For exchange metadata and trading hours, use get_exchange_details.
 
 
+        Returns:
+            Array of ticker objects, each with:
+            - Code (str): ticker symbol
+            - Name (str): instrument name
+            - Country (str): country of listing
+            - Exchange (str): exchange code
+            - Currency (str): trading currency
+            - Type (str): instrument type (e.g. "Common Stock", "ETF")
+            - Isin (str|null): ISIN code, if available
+
         Examples:
             "All tickers on London Stock Exchange" → get_exchange_tickers(exchange_code="LSE")
             "Show me delisted US stocks" → get_exchange_tickers(exchange_code="US", delisted=True)
             "ETFs trading on XETRA" → get_exchange_tickers(exchange_code="XETRA", type="etf")
 
+        
         """
         if not exchange_code or not isinstance(exchange_code, str):
             raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")

@@ -17,6 +17,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override (env token otherwise)
     ) -> str:
         """
+
         List all available stock exchanges worldwide. Use when the user asks which exchanges
         are supported, needs exchange codes, or wants to browse markets by country.
 
@@ -27,10 +28,21 @@ def register(mcp: FastMCP):
         For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
 
 
+        Returns:
+            Array of exchange objects, each with:
+            - Name (str): exchange full name
+            - Code (str): exchange code (e.g. "US", "LSE")
+            - OperatingMIC (str): ISO 10383 operating MIC
+            - Country (str): country name
+            - Currency (str): primary currency code
+            - CountryISO2 (str): ISO 3166-1 alpha-2 country code
+            - CountryISO3 (str): ISO 3166-1 alpha-3 country code
+
         Examples:
             "List all available exchanges" → get_exchanges_list()
             "What stock exchanges does EODHD support?" → get_exchanges_list()
 
+        
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
