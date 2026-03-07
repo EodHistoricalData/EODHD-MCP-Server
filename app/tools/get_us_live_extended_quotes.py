@@ -1,21 +1,20 @@
-#get_us_live_extended_quotes.py
+# get_us_live_extended_quotes.py
 
 import json
-from typing import Iterable, Optional, Sequence, Union
+from collections.abc import Iterable, Sequence
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 ALLOWED_FMT = {"json", "csv"}
 MAX_PAGE_LIMIT = 100  # per spec
 DEFAULT_FMT = "json"
 
 
-def _normalize_symbols(symbols: Optional[Union[str, Iterable[str]]]) -> list[str]:
+def _normalize_symbols(symbols: str | Iterable[str] | None) -> list[str]:
     """
     Accepts a single comma-separated string or an iterable of strings.
     Strips whitespace, removes empties, preserves order, and de-duplicates.
@@ -48,11 +47,11 @@ def _normalize_symbols(symbols: Optional[Union[str, Iterable[str]]]) -> list[str
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_us_live_extended_quotes(
-        symbols: Union[str, Sequence[str]],   # one or more (e.g., "AAPL.US,TSLA.US" or ["AAPL.US","TSLA.US"])
-        fmt: str = DEFAULT_FMT,               # 'json' (default) or 'csv'
-        page_limit: Optional[int] = None,     # page[limit] (max 100)
-        page_offset: Optional[int] = None,    # page[offset] (>= 0)
-        api_token: Optional[str] = None,      # per-call override
+        symbols: str | Sequence[str],  # one or more (e.g., "AAPL.US,TSLA.US" or ["AAPL.US","TSLA.US"])
+        fmt: str = DEFAULT_FMT,  # 'json' (default) or 'csv'
+        page_limit: int | None = None,  # page[limit] (max 100)
+        page_offset: int | None = None,  # page[offset] (>= 0)
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         Live v2 for US Stocks: Extended Quotes (Delayed, exchange-compliant)
@@ -121,4 +120,3 @@ def register(mcp: FastMCP):
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
             raise ToolError("Unexpected response format from API.")
-

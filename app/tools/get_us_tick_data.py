@@ -1,17 +1,16 @@
-#get_us_tick_data.py
+# get_us_tick_data.py
 import json
-from typing import Optional, Union
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 ALLOWED_FMT = {"json", "csv"}
 
-def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
+
+def _to_int(name: str, v: int | str | None) -> int | None:
     if v is None:
         return None
     if isinstance(v, int):
@@ -20,15 +19,16 @@ def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
         return int(v)
     raise ValueError(f"'{name}' must be an integer UNIX timestamp in seconds (UTC).")
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_us_tick_data(
-        ticker: str,                         # maps to s=
-        from_timestamp: Union[int, str],     # UNIX seconds (UTC)
-        to_timestamp: Union[int, str],       # UNIX seconds (UTC)
-        limit: int = 1000,                   # max number of ticks returned
-        fmt: str = "json",                   # 'json' | 'csv'
-        api_token: Optional[str] = None,     # per-call override
+        ticker: str,  # maps to s=
+        from_timestamp: int | str,  # UNIX seconds (UTC)
+        to_timestamp: int | str,  # UNIX seconds (UTC)
+        limit: int = 1000,  # max number of ticks returned
+        fmt: str = "json",  # 'json' | 'csv'
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         US Stock Market Tick Data API (GET /api/ticks)
@@ -74,14 +74,7 @@ def register(mcp: FastMCP):
         # --- Build URL per docs ---
         # Example:
         # /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
-        url = (
-            f"{EODHD_API_BASE}/ticks/"
-            f"?s={ticker}"
-            f"&from={f_ts}"
-            f"&to={t_ts}"
-            f"&limit={limit}"
-            f"&fmt={fmt}"
-        )
+        url = f"{EODHD_API_BASE}/ticks/?s={ticker}&from={f_ts}&to={t_ts}&limit={limit}&fmt={fmt}"
         if api_token:
             url += f"&api_token={api_token}"  # otherwise make_request appends env token
 

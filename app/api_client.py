@@ -4,6 +4,8 @@ import re
 import time
 
 import httpx
+from fastmcp.server.dependencies import get_http_request
+
 from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
 
 logger = logging.getLogger("eodhd-mcp.api_client")
@@ -23,8 +25,8 @@ _rate_limit_delay: float = 0.1  # 100 ms between requests
 
 # Retry configuration
 MAX_RETRIES = 3
-RETRY_DELAY_BASE = 1.0   # seconds
-RETRY_DELAY_MAX = 10.0   # seconds cap
+RETRY_DELAY_BASE = 1.0  # seconds
+RETRY_DELAY_MAX = 10.0  # seconds cap
 
 # Pattern to redact api_token from URLs before logging
 _TOKEN_RE = re.compile(r"api_token=[^&]+")
@@ -33,9 +35,6 @@ _TOKEN_RE = re.compile(r"api_token=[^&]+")
 def _redact_url(url: str) -> str:
     """Strip api_token values from a URL for safe logging."""
     return _TOKEN_RE.sub("api_token=***", url)
-
-
-from fastmcp.server.dependencies import get_http_request
 
 
 def _resolve_eodhd_token_from_request() -> str | None:
@@ -93,7 +92,7 @@ async def _rate_limit() -> None:
 
 def _backoff(attempt: int) -> float:
     """Exponential backoff: 1 s, 2 s, 4 s … capped at RETRY_DELAY_MAX."""
-    return min(RETRY_DELAY_BASE * (2 ** attempt), RETRY_DELAY_MAX)
+    return min(RETRY_DELAY_BASE * (2**attempt), RETRY_DELAY_MAX)
 
 
 def set_rate_limit(delay: float) -> None:
@@ -162,8 +161,9 @@ async def make_request(
             # Handle rate limiting from the API
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", 60))
-                logger.warning("Rate limited by API; waiting %ds (attempt %d/%d)",
-                               retry_after, attempt + 1, retries + 1)
+                logger.warning(
+                    "Rate limited by API; waiting %ds (attempt %d/%d)", retry_after, attempt + 1, retries + 1
+                )
                 await asyncio.sleep(retry_after)
                 continue  # doesn't count as a failed attempt
 

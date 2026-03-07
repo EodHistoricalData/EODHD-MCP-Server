@@ -1,19 +1,19 @@
-#get_insider_transactions.py
+# get_insider_transactions.py
 
 import json
 import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -24,15 +24,16 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_insider_transactions(
-        start_date: Optional[str] = None,   # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,     # maps to 'to'   (YYYY-MM-DD)
-        limit: int = 100,                   # 1..1000, default 100
-        symbol: Optional[str] = None,       # maps to 'code' (e.g., 'AAPL' or 'AAPL.US')
-        fmt: str = "json",                  # API returns json; we gate to json
-        api_token: Optional[str] = None,    # per-call token override
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
+        limit: int = 100,  # 1..1000, default 100
+        symbol: str | None = None,  # maps to 'code' (e.g., 'AAPL' or 'AAPL.US')
+        fmt: str = "json",  # API returns json; we gate to json
+        api_token: str | None = None,  # per-call token override
     ) -> str:
         """
         Insider Transactions API (SEC Form 4)

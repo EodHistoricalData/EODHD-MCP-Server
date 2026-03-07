@@ -1,17 +1,16 @@
-#get_upcoming_splits.py
+# get_upcoming_splits.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str]) -> str:
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -20,10 +19,10 @@ def _q(key: str, val: Optional[str]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_upcoming_splits(
-        from_date: Optional[str] = None,  # YYYY-MM-DD → maps to 'from'
-        to_date: Optional[str] = None,    # YYYY-MM-DD → maps to 'to'
-        fmt: str = "json",                # 'json' or 'csv' (API default is csv)
-        api_token: Optional[str] = None,  # per-call override; else env EODHD_API_KEY
+        from_date: str | None = None,  # YYYY-MM-DD → maps to 'from'
+        to_date: str | None = None,  # YYYY-MM-DD → maps to 'to'
+        fmt: str = "json",  # 'json' or 'csv' (API default is csv)
+        api_token: str | None = None,  # per-call override; else env EODHD_API_KEY
     ) -> str:
         """
         Upcoming Splits API (/calendar/splits)
@@ -57,7 +56,6 @@ def register(mcp: FastMCP):
         data = await make_request(url)
         if data is None:
             raise ToolError("No response from API.")
-
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))

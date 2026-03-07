@@ -1,17 +1,16 @@
-#get_upcoming_ipos.py
+# get_upcoming_ipos.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str]) -> str:
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -20,10 +19,10 @@ def _q(key: str, val: Optional[str]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_upcoming_ipos(
-        from_date: Optional[str] = None,     # format YYYY-MM-DD (mapped to 'from')
-        to_date: Optional[str] = None,       # format YYYY-MM-DD (mapped to 'to')
-        fmt: str = "json",                   # 'json' or 'csv' (default per API is csv; we default to json for dev-friendliness)
-        api_token: Optional[str] = None,     # per-call override; otherwise env EODHD_API_KEY is used
+        from_date: str | None = None,  # format YYYY-MM-DD (mapped to 'from')
+        to_date: str | None = None,  # format YYYY-MM-DD (mapped to 'to')
+        fmt: str = "json",  # 'json' or 'csv' (default per API is csv; we default to json for dev-friendliness)
+        api_token: str | None = None,  # per-call override; otherwise env EODHD_API_KEY is used
     ) -> str:
         """
         Upcoming IPOs API (/calendar/ipos)

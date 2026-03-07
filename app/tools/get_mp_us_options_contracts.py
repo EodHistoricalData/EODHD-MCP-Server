@@ -1,33 +1,33 @@
-#get_mp_us_options_contracts.py
+# get_mp_us_options_contracts.py
 
 import json
-from typing import Optional, Union, Sequence
+from collections.abc import Sequence
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
 ALLOWED_FMT = {"json"}
 
-def _q(key: str, val: Optional[Union[str, int, float]]) -> str:
+
+def _q(key: str, val: str | int | float | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
 
 
-def _q_bool(key: str, val: Optional[bool]) -> str:
+def _q_bool(key: str, val: bool | None) -> str:
     if val is None:
         return ""
     return f"&{key}={(1 if val else 0)}"
 
 
-def _q_fields_contracts(fields: Optional[Union[str, Sequence[str]]]) -> str:
+def _q_fields_contracts(fields: str | Sequence[str] | None) -> str:
     """
     Build fields[options-contracts] param.
 
@@ -54,24 +54,24 @@ def _q_fields_contracts(fields: Optional[Union[str, Sequence[str]]]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_us_options_contracts(
-        underlying_symbol: Optional[str] = None,     # filter[underlying_symbol]
-        contract: Optional[str] = None,              # filter[contract]
-        exp_date_eq: Optional[str] = None,           # filter[exp_date_eq]    YYYY-MM-DD
-        exp_date_from: Optional[str] = None,         # filter[exp_date_from]  YYYY-MM-DD
-        exp_date_to: Optional[str] = None,           # filter[exp_date_to]    YYYY-MM-DD
-        tradetime_eq: Optional[str] = None,          # filter[tradetime_eq]   YYYY-MM-DD
-        tradetime_from: Optional[str] = None,        # filter[tradetime_from] YYYY-MM-DD
-        tradetime_to: Optional[str] = None,          # filter[tradetime_to]   YYYY-MM-DD
-        type: Optional[str] = None,                  # filter[type] 'put'|'call'
-        strike_eq: Optional[float] = None,           # filter[strike_eq]
-        strike_from: Optional[float] = None,         # filter[strike_from]
-        strike_to: Optional[float] = None,           # filter[strike_to]
-        sort: Optional[str] = None,                  # exp_date|strike|-exp_date|-strike
-        page_offset: int = 0,                        # page[offset] 0..10000
-        page_limit: int = 1000,                      # page[limit]  1..1000
-        fields: Optional[Union[str, Sequence[str]]] = None,  # fields[options-contracts]
-        api_token: Optional[str] = None,
-        fmt: Optional[str] = "json",
+        underlying_symbol: str | None = None,  # filter[underlying_symbol]
+        contract: str | None = None,  # filter[contract]
+        exp_date_eq: str | None = None,  # filter[exp_date_eq]    YYYY-MM-DD
+        exp_date_from: str | None = None,  # filter[exp_date_from]  YYYY-MM-DD
+        exp_date_to: str | None = None,  # filter[exp_date_to]    YYYY-MM-DD
+        tradetime_eq: str | None = None,  # filter[tradetime_eq]   YYYY-MM-DD
+        tradetime_from: str | None = None,  # filter[tradetime_from] YYYY-MM-DD
+        tradetime_to: str | None = None,  # filter[tradetime_to]   YYYY-MM-DD
+        type: str | None = None,  # filter[type] 'put'|'call'
+        strike_eq: float | None = None,  # filter[strike_eq]
+        strike_from: float | None = None,  # filter[strike_from]
+        strike_to: float | None = None,  # filter[strike_to]
+        sort: str | None = None,  # exp_date|strike|-exp_date|-strike
+        page_offset: int = 0,  # page[offset] 0..10000
+        page_limit: int = 1000,  # page[limit]  1..1000
+        fields: str | Sequence[str] | None = None,  # fields[options-contracts]
+        api_token: str | None = None,
+        fmt: str | None = "json",
     ) -> str:
         """
         Get options contracts (mp/unicornbay/options/contracts)

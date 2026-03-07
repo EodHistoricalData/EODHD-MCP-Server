@@ -1,16 +1,16 @@
-#get_mp_indices_list.py
+# get_mp_indices_list.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str]) -> str:
+
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -19,8 +19,8 @@ def _q(key: str, val: Optional[str]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_indices_list(
-        fmt: str = "json",                 # API returns JSON; expose for symmetry
-        api_token: Optional[str] = None,   # per-call override (else env EODHD_API_KEY)
+        fmt: str = "json",  # API returns JSON; expose for symmetry
+        api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
         Marketplace: List of Indices with Details

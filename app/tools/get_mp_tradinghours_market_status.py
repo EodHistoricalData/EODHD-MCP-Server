@@ -1,17 +1,16 @@
-#get_mp_tradinghours_market_status.py
+# get_mp_tradinghours_market_status.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -20,8 +19,8 @@ def _q(key: str, val: Optional[str | int]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_tradinghours_market_status(
-        fin_id: str,                           # e.g. "us.nyse"
-        api_token: Optional[str] = None,       # per-call override
+        fin_id: str,  # e.g. "us.nyse"
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         Marketplace: TradingHours — Market Status
@@ -42,9 +41,7 @@ def register(mcp: FastMCP):
             - Cache-friendly: use the 'until' field to know when to re-check.
         """
         if not fin_id or not isinstance(fin_id, str):
-            raise ToolError(
-                "Parameter 'fin_id' is required (e.g. 'us.nyse')."
-            )
+            raise ToolError("Parameter 'fin_id' is required (e.g. 'us.nyse').")
 
         url = f"{EODHD_API_BASE}/mp/tradinghours/markets/status?1=1"
         url += _q("fin_id", fin_id.strip())

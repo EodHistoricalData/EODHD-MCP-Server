@@ -1,17 +1,16 @@
-#get_mp_illio_market_insights_risk_return.py
+# get_mp_illio_market_insights_risk_return.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -36,7 +35,7 @@ _CANONICAL_MAP = {
 }
 
 
-def _canon_id(v: str) -> Optional[str]:
+def _canon_id(v: str) -> str | None:
     if not isinstance(v, str) or not v.strip():
         return None
     s = v.strip()
@@ -47,7 +46,7 @@ def _canon_id(v: str) -> Optional[str]:
     return _CANONICAL_MAP.get(k)
 
 
-async def _run_risk_return(id: str, fmt: str, api_token: Optional[str]) -> str:
+async def _run_risk_return(id: str, fmt: str, api_token: str | None) -> str:
     # Validate fmt
     fmt = (fmt or "json").lower()
     if fmt != "json":
@@ -57,8 +56,7 @@ async def _run_risk_return(id: str, fmt: str, api_token: Optional[str]) -> str:
     cid = _canon_id(id)
     if cid is None:
         raise ToolError(
-            "Invalid 'id'. Allowed: ['SnP500', 'DJI', 'NDX'] "
-            "(aliases like 'SP500', 'SPX', 'NASDAQ100' accepted)."
+            "Invalid 'id'. Allowed: ['SnP500', 'DJI', 'NDX'] (aliases like 'SP500', 'SPX', 'NASDAQ100' accepted)."
         )
 
     # Build URL
@@ -73,7 +71,6 @@ async def _run_risk_return(id: str, fmt: str, api_token: Optional[str]) -> str:
     if data is None:
         raise ToolError("No response from API.")
 
-
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     # Normalize and return
@@ -86,9 +83,9 @@ async def _run_risk_return(id: str, fmt: str, api_token: Optional[str]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_illio_market_insights_risk_return(
-        id: str,                          # one of {'SnP500','DJI','NDX'} (common aliases accepted)
-        fmt: str = "json",                # JSON only (Marketplace returns JSON)
-        api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
+        id: str,  # one of {'SnP500','DJI','NDX'} (common aliases accepted)
+        fmt: str = "json",  # JSON only (Marketplace returns JSON)
+        api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
         Marketplace: illio Market Insights – Risk-Return (v1.0.0)
@@ -111,6 +108,6 @@ def register(mcp: FastMCP):
     async def mp_illio_market_insights_risk_return(
         id: str,
         fmt: str = "json",
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         return await _run_risk_return(id=id, fmt=fmt, api_token=api_token)

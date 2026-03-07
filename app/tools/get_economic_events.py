@@ -1,35 +1,35 @@
-#get_economic_events.py
+# get_economic_events.py
 
 import json
-from typing import Optional, Union
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 ALLOWED_COMPARISON = {None, "mom", "qoq", "yoy"}
 
-def _q(key: str, val: Optional[Union[str, int]]) -> str:
+
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_economic_events(
-        start_date: Optional[str] = None,   # maps to from= (YYYY-MM-DD)
-        end_date: Optional[str] = None,     # maps to to=   (YYYY-MM-DD)
-        country: Optional[str] = None,      # ISO-3166 alpha-2 (e.g., US, GB, DE)
-        comparison: Optional[str] = None,   # mom | qoq | yoy
-        type: Optional[str] = None,         # free text, e.g. "House Price Index"
-        offset: int = 0,                    # 0..1000 (default 0)
-        limit: int = 50,                    # 0..1000 (default 50)
-        fmt: Optional[str] = "json",        # json (default) | csv (if supported)
-        api_token: Optional[str] = None,    # per-call override
+        start_date: str | None = None,  # maps to from= (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to to=   (YYYY-MM-DD)
+        country: str | None = None,  # ISO-3166 alpha-2 (e.g., US, GB, DE)
+        comparison: str | None = None,  # mom | qoq | yoy
+        type: str | None = None,  # free text, e.g. "House Price Index"
+        offset: int = 0,  # 0..1000 (default 0)
+        limit: int = 50,  # 0..1000 (default 50)
+        fmt: str | None = "json",  # json (default) | csv (if supported)
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         Economic Events Data API (/economic-events)

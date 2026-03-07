@@ -1,32 +1,31 @@
-#get_historical_stock_prices.py
+# get_historical_stock_prices.py
 
 import json
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.validators import validate_date, validate_ticker
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
-from app.validators import validate_ticker, validate_date
 from mcp.types import ToolAnnotations
 
+ALLOWED_PERIODS = {"d", "w", "m"}  # daily, weekly, monthly (per docs)
+ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
+ALLOWED_FMT = {"json", "csv"}  # default is csv in API, but we default to json here
 
-ALLOWED_PERIODS = {"d", "w", "m"}          # daily, weekly, monthly (per docs)
-ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
-ALLOWED_FMT = {"json", "csv"}              # default is csv in API, but we default to json here
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_historical_stock_prices(
         ticker: str,
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
+        start_date: str | None = None,
+        end_date: str | None = None,
         period: str = "d",
         order: str = "a",
         fmt: str = "json",
-        filter: Optional[str] = None,           # e.g., "last_close", "last_volume"
-        api_token: Optional[str] = None,        # per-call override
+        filter: str | None = None,  # e.g., "last_close", "last_volume"
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         End-Of-Day Historical Stock Market Data (EOD) — spec-aligned.
@@ -86,7 +85,6 @@ def register(mcp: FastMCP):
         # --- Transport/API errors ---
         if data is None:
             raise ToolError("No response from API.")
-
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))

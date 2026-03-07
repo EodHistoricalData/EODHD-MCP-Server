@@ -1,31 +1,33 @@
-#get_mp_us_options_eod.py
+# get_mp_us_options_eod.py
 
 import json
-from typing import Optional, Union, Sequence
+from collections.abc import Sequence
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
 ALLOWED_FMT = {"json"}
 
-def _q(key: str, val: Optional[Union[str, int, float]]) -> str:
+
+def _q(key: str, val: str | int | float | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
 
-def _q_bool(key: str, val: Optional[bool]) -> str:
+
+def _q_bool(key: str, val: bool | None) -> str:
     if val is None:
         return ""
     return f"&{key}={(1 if val else 0)}"
 
-def _q_fields_eod(fields: Optional[Union[str, Sequence[str]]]) -> str:
+
+def _q_fields_eod(fields: str | Sequence[str] | None) -> str:
     if fields is None:
         return ""
     if isinstance(fields, str):
@@ -34,28 +36,29 @@ def _q_fields_eod(fields: Optional[Union[str, Sequence[str]]]) -> str:
         value = ",".join(f.strip() for f in fields if f and str(f).strip())
     return f"&fields[options-eod]={quote_plus(value)}"
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_us_options_eod(
-        underlying_symbol: Optional[str] = None,     # filter[underlying_symbol]
-        contract: Optional[str] = None,              # filter[contract]
-        exp_date_eq: Optional[str] = None,
-        exp_date_from: Optional[str] = None,
-        exp_date_to: Optional[str] = None,
-        tradetime_eq: Optional[str] = None,
-        tradetime_from: Optional[str] = None,
-        tradetime_to: Optional[str] = None,
-        type: Optional[str] = None,                  # 'put' | 'call'
-        strike_eq: Optional[float] = None,
-        strike_from: Optional[float] = None,
-        strike_to: Optional[float] = None,
-        sort: Optional[str] = None,                  # exp_date|strike|-exp_date|-strike
+        underlying_symbol: str | None = None,  # filter[underlying_symbol]
+        contract: str | None = None,  # filter[contract]
+        exp_date_eq: str | None = None,
+        exp_date_from: str | None = None,
+        exp_date_to: str | None = None,
+        tradetime_eq: str | None = None,
+        tradetime_from: str | None = None,
+        tradetime_to: str | None = None,
+        type: str | None = None,  # 'put' | 'call'
+        strike_eq: float | None = None,
+        strike_from: float | None = None,
+        strike_to: float | None = None,
+        sort: str | None = None,  # exp_date|strike|-exp_date|-strike
         page_offset: int = 0,
         page_limit: int = 1000,
-        fields: Optional[Union[str, Sequence[str]]] = None,  # fields[options-eod]
-        compact: Optional[bool] = None,              # compact=1 to minimize payload
-        api_token: Optional[str] = None,
-        fmt: Optional[str] = "json",
+        fields: str | Sequence[str] | None = None,  # fields[options-eod]
+        compact: bool | None = None,  # compact=1 to minimize payload
+        api_token: str | None = None,
+        fmt: str | None = "json",
     ) -> str:
         """
         Get end-of-day options data (mp/unicornbay/options/eod)

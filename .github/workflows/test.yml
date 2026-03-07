@@ -10,6 +10,23 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install linters
+        run: pip install ruff mypy
+      - name: Ruff check
+        run: ruff check app/ server.py
+      - name: Ruff format check
+        run: ruff format --check app/ server.py
+      - name: Mypy
+        run: mypy app/ server.py --ignore-missing-imports --explicit-package-bases
+        continue-on-error: true
+
   test:
     runs-on: ubuntu-latest
     strategy:

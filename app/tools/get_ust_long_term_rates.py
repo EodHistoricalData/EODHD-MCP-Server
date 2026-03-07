@@ -1,22 +1,21 @@
-#get_ust_long_term_rates.py
+# get_ust_long_term_rates.py
 
 import json
-from typing import Optional, Union
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_ust_long_term_rates(
-        year: Optional[Union[int, str]] = None,   # filter[year], e.g. 2024
-        limit: Optional[Union[int, str]] = None,   # page[limit]
-        offset: Optional[Union[int, str]] = None,  # page[offset]
-        api_token: Optional[str] = None,            # per-call override
+        year: int | str | None = None,  # filter[year], e.g. 2024
+        limit: int | str | None = None,  # page[limit]
+        offset: int | str | None = None,  # page[offset]
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         US Treasury Long-Term Rates API

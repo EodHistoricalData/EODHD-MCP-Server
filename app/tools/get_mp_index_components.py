@@ -1,16 +1,16 @@
-#get_mp_index_components.py
+# get_mp_index_components.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str]) -> str:
+
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -19,9 +19,9 @@ def _q(key: str, val: Optional[str]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_index_components(
-        symbol: str,                        # e.g., "GSPC.INDX" from mp_indices_list
-        fmt: str = "json",                  # JSON only (per docs)
-        api_token: Optional[str] = None,    # per-call override
+        symbol: str,  # e.g., "GSPC.INDX" from mp_indices_list
+        fmt: str = "json",  # JSON only (per docs)
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         Marketplace: Index Components (+ historical changes for major indices)

@@ -1,17 +1,16 @@
-#get_bulk_fundamentals.py
+# get_bulk_fundamentals.py
 
 import json
-from typing import Optional, Union
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -20,13 +19,13 @@ def _q(key: str, val: Optional[str | int]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_bulk_fundamentals(
-        exchange: str,                                # e.g. "NASDAQ", "NYSE", "US", "LSE"
-        symbols: Optional[str] = None,                # comma-separated list, e.g. "AAPL,MSFT,GOOG"
-        offset: Optional[Union[int, str]] = None,     # pagination start (default 0)
-        limit: Optional[Union[int, str]] = None,      # max symbols (default 500, max 500)
-        version: Optional[str] = None,                # "1.2" for single-symbol-like output
-        fmt: str = "json",                            # 'json' (default) or 'csv'
-        api_token: Optional[str] = None,              # per-call override
+        exchange: str,  # e.g. "NASDAQ", "NYSE", "US", "LSE"
+        symbols: str | None = None,  # comma-separated list, e.g. "AAPL,MSFT,GOOG"
+        offset: int | str | None = None,  # pagination start (default 0)
+        limit: int | str | None = None,  # max symbols (default 500, max 500)
+        version: str | None = None,  # "1.2" for single-symbol-like output
+        fmt: str = "json",  # 'json' (default) or 'csv'
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         Bulk Fundamentals API
@@ -54,8 +53,7 @@ def register(mcp: FastMCP):
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(
-                "Parameter 'exchange' is required and must be a non-empty string "
-                "(e.g., 'NASDAQ', 'NYSE', 'US')."
+                "Parameter 'exchange' is required and must be a non-empty string (e.g., 'NASDAQ', 'NYSE', 'US')."
             )
 
         exchange = exchange.strip().upper()

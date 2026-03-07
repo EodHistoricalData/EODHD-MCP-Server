@@ -1,16 +1,16 @@
-#get_mp_praams_risk_scoring_by_ticker.py
+# get_mp_praams_risk_scoring_by_ticker.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str | int]) -> str:
+
+def _q(key: str, val: str | int | None) -> str:
     """
     Helper to build query parameters safely.
     Skips None/empty, URL-encodes values.
@@ -20,7 +20,7 @@ def _q(key: str, val: Optional[str | int]) -> str:
     return f"&{key}={quote_plus(str(val))}"
 
 
-def _canon_ticker(v: str) -> Optional[str]:
+def _canon_ticker(v: str) -> str | None:
     """
     Very light validation/normalization for Praams ticker path param.
 
@@ -38,7 +38,7 @@ def _canon_ticker(v: str) -> Optional[str]:
     return s or None
 
 
-async def _run_praams_equity_by_ticker(ticker: str, api_token: Optional[str]) -> str:
+async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> str:
     """
     Core runner for Praams Equity Risk & Return Scoring by ticker.
     """
@@ -58,7 +58,6 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: Optional[str]) ->
     if data is None:
         raise ToolError("No response from API.")
 
-
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     # Normalize and return
@@ -73,8 +72,8 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: Optional[str]) ->
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_praams_risk_scoring_by_ticker(
-        ticker: str,                      # e.g. 'AAPL' (demo supports AAPL, TSLA, AMZN)
-        api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
+        ticker: str,  # e.g. 'AAPL' (demo supports AAPL, TSLA, AMZN)
+        api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
         Marketplace: Praams Equity Risk & Return Scoring by Ticker
@@ -102,6 +101,6 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_praams_risk_scoring_by_ticker(
         ticker: str,
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         return await _run_praams_equity_by_ticker(ticker=ticker, api_token=api_token)

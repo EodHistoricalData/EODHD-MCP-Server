@@ -1,23 +1,22 @@
-#get_earnings_trends.py
+# get_earnings_trends.py
 
 import json
-from typing import Optional, Union, List
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str]) -> str:
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(val)}"
 
 
-def _normalize_symbols(symbols: Union[str, List[str], None]) -> Optional[str]:
+def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
     if symbols is None:
         return None
     if isinstance(symbols, str):
@@ -32,9 +31,9 @@ def _normalize_symbols(symbols: Union[str, List[str], None]) -> Optional[str]:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_earnings_trends(
-        symbols: Union[str, List[str]],      # REQUIRED by API: 'AAPL.US' or ['AAPL.US','MSFT.US']
-        fmt: str = "json",                   # Trends are JSON-only (kept for consistency)
-        api_token: Optional[str] = None,     # per-call override (else uses env EODHD_API_KEY)
+        symbols: str | list[str],  # REQUIRED by API: 'AAPL.US' or ['AAPL.US','MSFT.US']
+        fmt: str = "json",  # Trends are JSON-only (kept for consistency)
+        api_token: str | None = None,  # per-call override (else uses env EODHD_API_KEY)
     ) -> str:
         """
         Earnings Trends API (/calendar/trends)

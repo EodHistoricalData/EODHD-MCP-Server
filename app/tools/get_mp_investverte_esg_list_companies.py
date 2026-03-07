@@ -1,19 +1,19 @@
-#get_mp_investverte_esg_list_companies.py
+# get_mp_investverte_esg_list_companies.py
 
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_investverte_esg_list_companies(
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
         Get List of Companies available in Investverte ESG dataset

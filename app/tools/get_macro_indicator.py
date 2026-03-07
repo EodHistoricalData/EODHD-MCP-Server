@@ -1,13 +1,12 @@
-#get_macro_indicator.py
+# get_macro_indicator.py
 
 import json
 import re
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 ISO3_RE = re.compile(r"^[A-Z]{3}$")
@@ -56,13 +55,14 @@ ALLOWED_INDICATORS = {
     "unemployment_total_percent",
 }
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_macro_indicator(
-        country: str,                          # ISO-3, e.g., USA, FRA, DEU
-        indicator: Optional[str] = None,       # default: gdp_current_usd
-        fmt: str = "json",                     # 'json' or 'csv' (API default json here)
-        api_token: Optional[str] = None,       # per-call override; env otherwise
+        country: str,  # ISO-3, e.g., USA, FRA, DEU
+        indicator: str | None = None,  # default: gdp_current_usd
+        fmt: str = "json",  # 'json' or 'csv' (API default json here)
+        api_token: str | None = None,  # per-call override; env otherwise
     ) -> str:
         """
         Macro Indicators API (GET /api/macro-indicator/{COUNTRY})
@@ -87,16 +87,12 @@ def register(mcp: FastMCP):
         use_indicator = indicator or "gdp_current_usd"
         if use_indicator not in ALLOWED_INDICATORS:
             raise ToolError(
-                "Invalid 'indicator'. Provide one of the documented indicators "
-                f"or omit it to use 'gdp_current_usd'."
+                "Invalid 'indicator'. Provide one of the documented indicators or omit it to use 'gdp_current_usd'."
             )
 
         # --- Build URL ---
         # Example: /api/macro-indicator/USA?indicator=inflation_consumer_prices_annual&fmt=json
-        url = (
-            f"{EODHD_API_BASE}/macro-indicator/{country.upper()}"
-            f"?indicator={use_indicator}&fmt={fmt}"
-        )
+        url = f"{EODHD_API_BASE}/macro-indicator/{country.upper()}?indicator={use_indicator}&fmt={fmt}"
         if api_token:
             url += f"&api_token={api_token}"  # otherwise make_request appends env token
 
