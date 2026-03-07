@@ -8,6 +8,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
+from app.validators import validate_ticker
 from mcp.types import ToolAnnotations
 
 
@@ -305,8 +306,7 @@ def register(mcp: FastMCP):
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
-        if not ticker or "." not in ticker:
-            raise ToolError("Parameter 'ticker' must be in 'SYMBOL.EXCHANGE' format (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         token = _token_override(api_token, api_key)
         start = _to_date(from_date)

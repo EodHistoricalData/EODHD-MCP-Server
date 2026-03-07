@@ -1,6 +1,5 @@
 #get_technical_indicators.py
 import json
-import re
 from datetime import datetime
 from typing import Optional, Union
 
@@ -8,10 +7,8 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
+from app.validators import validate_ticker, validate_date
 from mcp.types import ToolAnnotations
-
-
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}
 ALLOWED_AGG_PERIOD = {"d", "w", "m"}       # for splitadjusted only
@@ -51,14 +48,6 @@ SPLITADJ_ONLY_SUPPORTED = {
     "sma", "ema", "wma", "volatility", "rsi", "slope", "macd",
 }
 
-def _valid_date(s: str) -> bool:
-    if not isinstance(s, str) or not DATE_RE.match(s):
-        return False
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
 
 def _normalize_function(fn: str) -> Optional[str]:
     if not isinstance(fn, str) or not fn.strip():
@@ -139,8 +128,7 @@ def register(mcp: FastMCP):
         Args mirror API docs; only provided params are passed through.
         """
         # --- Required/typed validation ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         fn = _normalize_function(function)
         if not fn:
@@ -155,10 +143,8 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date is not None and not _valid_date(start_date):
-            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
-        if end_date is not None and not _valid_date(end_date):
-            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
+        validate_date(start_date, "start_date")
+        validate_date(end_date, "end_date")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
                 raise ToolError("'start_date' cannot be after 'end_date'.")

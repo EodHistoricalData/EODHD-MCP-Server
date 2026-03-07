@@ -8,6 +8,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
+from app.validators import validate_ticker
 from mcp.types import ToolAnnotations
 
 ALLOWED_INTERVALS = {"1m", "5m", "1h"}   # per docs
@@ -175,8 +176,7 @@ def register(mcp: FastMCP):
         """
 
         # --- Validate required/typed params ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         if interval not in ALLOWED_INTERVALS:
             raise ToolError(f"Invalid 'interval'. Allowed: {sorted(ALLOWED_INTERVALS)}")

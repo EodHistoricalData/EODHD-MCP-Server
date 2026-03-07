@@ -1,7 +1,6 @@
 #get_historical_stock_prices.py
 
 import json
-import re
 from datetime import datetime
 from typing import Optional
 
@@ -9,22 +8,13 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
+from app.validators import validate_ticker, validate_date
 from mcp.types import ToolAnnotations
 
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_PERIODS = {"d", "w", "m"}          # daily, weekly, monthly (per docs)
 ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}              # default is csv in API, but we default to json here
-
-def _valid_date(s: str) -> bool:
-    if not DATE_RE.match(s):
-        return False
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -56,8 +46,7 @@ def register(mcp: FastMCP):
                  If fmt='csv', returns CSV text embedded as a JSON string for consistency.
         """
         # --- Validate required/typed params ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         if period not in ALLOWED_PERIODS:
             raise ToolError(f"Invalid 'period'. Allowed values: {sorted(ALLOWED_PERIODS)}")
@@ -68,11 +57,8 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date is not None and not _valid_date(start_date):
-            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
-
-        if end_date is not None and not _valid_date(end_date):
-            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
+        validate_date(start_date, "start_date")
+        validate_date(end_date, "end_date")
 
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):

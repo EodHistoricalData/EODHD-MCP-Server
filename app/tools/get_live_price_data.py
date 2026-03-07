@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
+from app.validators import validate_ticker
 from mcp.types import ToolAnnotations
 
 ALLOWED_FMT = {"json", "csv"}
@@ -49,8 +50,7 @@ def register(mcp: FastMCP):
                  this tool wraps CSV into {"csv": "..."}; otherwise returns JSON from API.
         """
         # --- Validate inputs ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+        ticker = validate_ticker(ticker)
 
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
