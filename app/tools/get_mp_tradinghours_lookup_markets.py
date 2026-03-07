@@ -41,6 +41,13 @@ def register(mcp: FastMCP):
             group (str, optional): Filter results — 'core', 'extended', 'all', 'allowed'.
                 Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "find NASDAQ market" → q="NASDAQ"
+            "search for London Stock Exchange" → q="London Stock Exchange"
+            "markets in Japan, core tier" → q="Japan", group="core"
+
         """
         if group is not None:
             group = group.strip().lower()

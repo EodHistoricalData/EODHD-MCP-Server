@@ -44,6 +44,12 @@ async def _run_praams_balance_sheet_by_ticker(
 ) -> str:
     """
     Core runner for Praams Bank Balance Sheet by ticker.
+
+
+        Examples:
+            "JPMorgan balance sheet" → ticker="JPM"
+            "HSBC bank balance sheet" → ticker="HSBA.LSE"
+
     """
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)

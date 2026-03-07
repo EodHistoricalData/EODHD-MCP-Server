@@ -32,6 +32,13 @@ def register(mcp: FastMCP):
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "long-term treasury rates for 2024" → year=2024
+            "20-year bond rates this year, first 20 records" → year=2026, limit=20
+            "real long-term rate averages for 2022" → year=2022
+
         """
         url = f"{EODHD_API_BASE}/ust/long-term-rates?1=1"
 

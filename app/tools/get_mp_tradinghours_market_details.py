@@ -34,6 +34,13 @@ def register(mcp: FastMCP):
         Args:
             fin_id (str): Market FinID, case-insensitive (e.g. 'us.nyse', 'gb.lse').
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "NYSE market details" → fin_id="us.nyse"
+            "London Stock Exchange info" → fin_id="gb.lse"
+            "Tokyo Stock Exchange details" → fin_id="jp.jpx"
+
         """
         if not fin_id or not isinstance(fin_id, str):
             raise ToolError(

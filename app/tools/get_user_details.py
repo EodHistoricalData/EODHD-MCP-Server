@@ -25,6 +25,12 @@ def register(mcp: FastMCP):
         Args:
             api_token (str, optional): Per-call token override. If omitted, the
                                        env var EODHD_API_KEY is used.
+
+
+        Examples:
+            "What plan am I on?" → get_user_details()
+            "How many API calls have I used today?" → get_user_details()
+
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.

@@ -35,6 +35,13 @@ def register(mcp: FastMCP):
           - symbol: index ID from the list endpoint (e.g., GSPC.INDX)
           - fmt: 'json' (only)
           - api_token: optional override API token
+
+
+        Examples:
+            "what are the S&P 500 components" → symbol="GSPC.INDX"
+            "Dow Jones Industrial Average constituents" → symbol="DJI.INDX"
+            "S&P 400 MidCap index members" → symbol="SP400.INDX"
+
         """
         if not (symbol and symbol.strip()):
             raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")

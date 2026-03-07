@@ -34,6 +34,13 @@ def register(mcp: FastMCP):
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override.
+
+
+        Examples:
+            "Treasury bill rates for 2026" → get_ust_bill_rates(year=2026)
+            "Latest T-bill rates" → get_ust_bill_rates()
+            "T-bill rates for 2025, first 50 records" → get_ust_bill_rates(year=2025, limit=50)
+
         """
         url = f"{EODHD_API_BASE}/ust/bill-rates?1=1"
 

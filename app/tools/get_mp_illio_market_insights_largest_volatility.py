@@ -50,6 +50,12 @@ def _canon_id(v: str) -> Optional[str]:
 async def _run_largest_volatility(id: str, fmt: str, api_token: Optional[str]) -> str:
     """
     Internal runner for Largest Volatility Change chapter.
+
+
+        Examples:
+            "S&P 500 largest volatility changes" → id="SnP500"
+            "Nasdaq-100 biggest volatility movers" → id="NDX"
+
     """
     # Validate fmt
     fmt = (fmt or "json").lower()

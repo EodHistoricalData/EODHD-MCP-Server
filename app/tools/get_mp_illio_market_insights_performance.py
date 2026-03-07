@@ -93,6 +93,12 @@ def register(mcp: FastMCP):
         sector attribution, and relative performance data. Consumes 10 API calls per request.
         For portfolio-level performance attributes, use mp_illio_performance_insights.
         For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
+
+
+        Examples:
+            "S&P 500 performance vs market" → id="SnP500"
+            "Nasdaq-100 market performance chapter" → id="NDX"
+
         """
         return await _run_market_insights(id=id, fmt=fmt, api_token=api_token)
 

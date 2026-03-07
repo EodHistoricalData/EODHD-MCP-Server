@@ -54,6 +54,13 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON with sentiment grouped by ticker or {"error": "..."}.
+
+
+        Examples:
+            "Apple sentiment this month" → symbols="AAPL.US", start_date="2026-03-01", end_date="2026-03-06"
+            "Bitcoin and Ethereum sentiment" → symbols="BTC-USD.CC,ETH-USD.CC"
+            "Microsoft sentiment in Q4 2025" → symbols="MSFT.US", start_date="2025-10-01", end_date="2025-12-31"
+
         """
         # Validate required
         if not symbols or not isinstance(symbols, str):

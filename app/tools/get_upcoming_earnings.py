@@ -45,6 +45,13 @@ def register(mcp: FastMCP):
         Use when the user asks "when does X report earnings?" or wants an earnings calendar.
         For EPS/revenue trend analysis and analyst revisions, use get_earnings_trends instead.
         For macroeconomic events (GDP, CPI), use get_economic_events instead.
+
+
+        Examples:
+            "Apple earnings schedule" → symbols="AAPL.US"
+            "Earnings this week" → start_date="2026-03-02", end_date="2026-03-06"
+            "Microsoft and Google earnings" → symbols="MSFT.US,GOOG.US"
+
         """
         sym_param = _normalize_symbols(symbols)
 

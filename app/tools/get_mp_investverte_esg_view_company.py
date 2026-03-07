@@ -28,6 +28,12 @@ def register(mcp: FastMCP):
         Use get_mp_investverte_esg_list_companies first to discover available symbols.
         For country-level ESG, use get_mp_investverte_esg_view_country.
         For sector-level ESG, use get_mp_investverte_esg_view_sector.
+
+
+        Examples:
+            - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
+            - /api/mp/investverte/esg/000039.SZ
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'AAPL').")

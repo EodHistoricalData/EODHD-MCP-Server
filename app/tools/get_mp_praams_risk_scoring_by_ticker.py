@@ -41,6 +41,12 @@ def _canon_ticker(v: str) -> Optional[str]:
 async def _run_praams_equity_by_ticker(ticker: str, api_token: Optional[str]) -> str:
     """
     Core runner for Praams Equity Risk & Return Scoring by ticker.
+
+
+        Examples:
+            "Apple risk score" → ticker="AAPL"
+            "Tesla risk and return scoring" → ticker="TSLA"
+
     """
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)

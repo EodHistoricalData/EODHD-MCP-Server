@@ -48,6 +48,13 @@ def register(mcp: FastMCP):
             version (str, optional): '1.2' for single-symbol-like output format.
             fmt (str): 'json' (default) or 'csv'.
             api_token (str, optional): Per-call token override.
+
+
+        Examples:
+            "Fundamentals for all NASDAQ stocks" → get_bulk_fundamentals(exchange="NASDAQ")
+            "AAPL and MSFT fundamentals from NYSE" → get_bulk_fundamentals(exchange="US", symbols="AAPL,MSFT")
+            "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
+
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(

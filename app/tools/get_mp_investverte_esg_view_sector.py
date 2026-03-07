@@ -23,6 +23,12 @@ def register(mcp: FastMCP):
         Use get_mp_investverte_esg_list_sectors first to discover available sector names.
         For company-level ESG, use get_mp_investverte_esg_view_company.
         For country-level ESG, use get_mp_investverte_esg_view_country.
+
+
+        Examples:
+            "Airlines sector ESG data" → symbol="Airlines"
+            "Aerospace & Defense ESG ratings" → symbol="Aerospace & Defense"
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")

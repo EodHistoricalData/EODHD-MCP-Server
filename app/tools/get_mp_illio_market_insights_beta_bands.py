@@ -50,6 +50,12 @@ def _canon_id(v: str) -> Optional[str]:
 async def _run_beta_bands(id: str, fmt: str, api_token: Optional[str]) -> str:
     """
     Internal runner for Beta Bands chapter.
+
+
+        Examples:
+            "S&P 500 beta bands" → id="SnP500"
+            "Nasdaq-100 highest and lowest beta stocks" → id="NDX"
+
     """
     # Validate fmt
     fmt = (fmt or "json").lower()

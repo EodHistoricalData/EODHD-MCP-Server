@@ -43,6 +43,12 @@ def _canon_isin(v: str) -> Optional[str]:
 async def _run_praams_equity_by_isin(isin: str, api_token: Optional[str]) -> str:
     """
     Core runner for Praams Equity Risk & Return Scoring by ISIN.
+
+
+        Examples:
+            "Apple risk score by ISIN" → isin="US0378331005"
+            "Tesla risk scoring via ISIN" → isin="US88160R1014"
+
     """
     # Validate/normalize ISIN
     ci = _canon_isin(isin)

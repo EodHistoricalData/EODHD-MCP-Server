@@ -40,6 +40,13 @@ def register(mcp: FastMCP):
         Filter by date range. Each request consumes 10 API calls.
         Use when the user asks about market cap history, company valuation over time, or market cap trends.
         This is the only tool for historical market cap -- do not confuse with fundamental data or price history.
+
+
+        Examples:
+            "Apple market cap history in 2025" → ticker="AAPL.US", start_date="2025-01-01", end_date="2025-12-31"
+            "Microsoft market cap last 6 months" → ticker="MSFT.US", start_date="2025-09-06", end_date="2026-03-06"
+            "Google market cap since 2023" → ticker="GOOG.US", start_date="2023-01-01"
+
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

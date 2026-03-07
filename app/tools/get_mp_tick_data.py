@@ -43,6 +43,13 @@ def register(mcp: FastMCP):
             to_timestamp (int, optional): End UNIX time in seconds. Default: yesterday end.
             limit (int, optional): Max ticks to return (1-10000). Default: all in range.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "AAPL tick data for yesterday" → ticker="AAPL"
+            "first 500 TSLA ticks from March 3 2026" → ticker="TSLA", from_timestamp=1741003200, to_timestamp=1741089600, limit=500
+            "MSFT trade ticks, max 1000" → ticker="MSFT", limit=1000
+
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")

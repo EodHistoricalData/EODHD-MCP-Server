@@ -297,6 +297,12 @@ def register(mcp: FastMCP):
         Returns paginated matching equities with scores. Consumes 10 API calls per request.
         For bond screening, use get_mp_praams_smart_screener_bond.
         For deep analysis of a single equity, use get_mp_praams_risk_scoring_by_ticker.
+
+
+        Examples:
+            "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
+            "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:

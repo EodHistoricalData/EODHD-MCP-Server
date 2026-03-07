@@ -25,6 +25,12 @@ def register(mcp: FastMCP):
 
         For tickers listed on a specific exchange, use get_exchange_tickers.
         For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
+
+
+        Examples:
+            "List all available exchanges" → get_exchanges_list()
+            "What stock exchanges does EODHD support?" → get_exchanges_list()
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

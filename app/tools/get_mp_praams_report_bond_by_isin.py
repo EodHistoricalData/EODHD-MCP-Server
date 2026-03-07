@@ -80,6 +80,12 @@ def register(mcp: FastMCP):
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
+
+
+        Examples:
+            "Full bond report for Realty Income" → isin="US7593518852", email="user@example.com", is_full=True
+            "US Treasury bond PDF report" → isin="US91282CJN20", email="user@example.com"
+
         """
         return await _run_praams_report_bond_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token

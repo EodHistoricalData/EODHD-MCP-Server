@@ -65,6 +65,13 @@ def register(mcp: FastMCP):
         First find available contracts with get_us_options_contracts, then fetch pricing here.
         For the list of optionable tickers, use get_us_options_underlyings.
         Consumes 10 API calls per request.
+
+
+        Examples:
+            "AAPL end-of-day options for March 2026" → underlying_symbol="AAPL", tradetime_from="2026-03-01", tradetime_to="2026-03-31"
+            "MSFT puts EOD data, strike 300-400" → underlying_symbol="MSFT", type="put", strike_from=300, strike_to=400
+            "NVDA calls expiring 2026-06-20, compact" → underlying_symbol="NVDA", type="call", exp_date_eq="2026-06-20", compact=True
+
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

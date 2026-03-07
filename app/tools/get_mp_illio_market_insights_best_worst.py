@@ -96,6 +96,12 @@ def register(mcp: FastMCP):
         with dates, magnitudes, and affected instruments. Consumes 10 API calls per request.
         For overall constituent performance, use get_mp_illio_market_insights_performance.
         For volatility trends, use get_mp_illio_market_insights_volatility.
+
+
+        Examples:
+            "S&P 500 best and worst days" → id="SnP500"
+            "Nasdaq-100 largest single-day moves" → id="NDX"
+
         """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)
 
