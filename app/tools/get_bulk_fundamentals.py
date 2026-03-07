@@ -5,13 +5,10 @@ from typing import Optional, Union
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -32,31 +29,28 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,              # per-call override
     ) -> str:
         """
-        Bulk Fundamentals API
-        GET /api/bulk-fundamentals/{EXCHANGE}
+        Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
+        financials, valuation, or earnings data for many companies at once -- screening,
+        comparing sectors, or building dashboards across an entire exchange.
 
-        Retrieves fundamentals data for all stocks on an exchange in a single call.
-        Includes General, Highlights, Valuation, Technicals, SplitsDividends,
-        Earnings (last 4 quarters + 4 years), and Financials sections.
+        Returns General, Highlights, Valuation, Technicals, SplitsDividends, Earnings (last 4
+        quarters + 4 years), and Financials for up to 500 stocks per call. Stocks only (no ETFs
+        or mutual funds). Costs 100 API calls per request. Requires Extended Fundamentals plan.
+
+        For a single ticker's full fundamentals, use get_fundamentals_data instead.
+        For macro country-level economic data, use get_macro_indicator.
 
         Args:
             exchange (str): Exchange code (e.g., 'NASDAQ', 'NYSE', 'US', 'LSE').
-            symbols (str, optional): Comma-separated list of specific symbols.
-            offset (int, optional): Starting position for pagination (default 0).
-            limit (int, optional): Number of symbols to return (default 500, max 500).
-            version (str, optional): '1.2' for output closer to single-symbol template.
-            fmt (str): Response format: 'json' (default) or 'csv'.
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Requires Extended Fundamentals subscription plan.
-            - API cost: 100 calls per request (or 100 + number of symbols if using symbols param).
-            - Stocks only (no ETFs or Mutual Funds).
-            - Max pagination limit: 500.
-            - Historical data limited to 4 quarters and 4 years.
+            symbols (str, optional): Comma-separated list of specific symbols to filter.
+            offset (int, optional): Pagination start (default 0).
+            limit (int, optional): Max symbols to return (default 500, max 500).
+            version (str, optional): '1.2' for single-symbol-like output format.
+            fmt (str): 'json' (default) or 'csv'.
+            api_token (str, optional): Per-call token override.
         """
         if not exchange or not isinstance(exchange, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'exchange' is required and must be a non-empty string "
                 "(e.g., 'NASDAQ', 'NYSE', 'US')."
             )
@@ -66,7 +60,7 @@ def register(mcp: FastMCP):
         allowed_fmt = {"json", "csv"}
         fmt = (fmt or "json").lower()
         if fmt not in allowed_fmt:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(allowed_fmt)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(allowed_fmt)}")
 
         url = f"{EODHD_API_BASE}/bulk-fundamentals/{quote_plus(exchange)}?fmt={fmt}"
 
@@ -77,18 +71,18 @@ def register(mcp: FastMCP):
             try:
                 off = int(offset)
             except (ValueError, TypeError):
-                return _err("Parameter 'offset' must be a non-negative integer.")
+                raise ToolError("Parameter 'offset' must be a non-negative integer.")
             if off < 0:
-                return _err("Parameter 'offset' must be a non-negative integer.")
+                raise ToolError("Parameter 'offset' must be a non-negative integer.")
             url += f"&offset={off}"
 
         if limit is not None:
             try:
                 lim = int(limit)
             except (ValueError, TypeError):
-                return _err("Parameter 'limit' must be a positive integer (max 500).")
+                raise ToolError("Parameter 'limit' must be a positive integer (max 500).")
             if lim <= 0 or lim > 500:
-                return _err("Parameter 'limit' must be between 1 and 500.")
+                raise ToolError("Parameter 'limit' must be between 1 and 500.")
             url += f"&limit={lim}"
 
         if version:
@@ -100,13 +94,13 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str]) -> str:
     if val is None or val == "":
@@ -26,22 +23,20 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: List of Indices with Details
-        GET /api/mp/unicornbay/spglobal/list
-
-        Returns end-of-day details for 100+ S&P/Dow Jones indices.
-        One request = 10 API calls (Marketplace rules).
+        [Marketplace] List all available S&P and Dow Jones indices with end-of-day details.
+        Use when asked to browse or enumerate major stock market indices, or to find an index
+        symbol before fetching its components with mp_index_components.
+        Covers 100+ indices including S&P 500, Dow Jones, and sector indices.
+        For components/constituents of a specific index, use mp_index_components.
+        Consumes 10 API calls per request.
 
         Args:
           - fmt: 'json' (default). (CSV is not documented; keep JSON only.)
           - api_token: optional override API token
-
-        Response:
-          JSON string (pretty-printed) or {"error": "..."} on failure.
         """
         fmt = (fmt or "json").lower()
         if fmt != "json":
-            return _err("Only JSON is supported for this endpoint.")
+            raise ToolError("Only JSON is supported for this endpoint.")
 
         url = f"{EODHD_API_BASE}/mp/unicornbay/spglobal/list?1=1"
         url += _q("fmt", "json")
@@ -50,8 +45,11 @@ def register(mcp: FastMCP):
 
         data = await make_request(url)
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
+
+        if isinstance(data, dict) and data.get("error"):
+            raise ToolError(str(data["error"]))
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected JSON response format from API.")
+            raise ToolError("Unexpected JSON response format from API.")

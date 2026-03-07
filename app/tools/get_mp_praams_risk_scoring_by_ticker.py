@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -48,7 +45,7 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: Optional[str]) ->
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)
     if ct is None:
-        return _err("Invalid 'ticker'. It must be a non-empty string (e.g., 'AAPL').")
+        raise ToolError("Invalid 'ticker'. It must be a non-empty string (e.g., 'AAPL').")
 
     # Build URL
     # Example: /api/mp/praams/analyse/equity/ticker/AAPL?api_token=...  (JSON only)
@@ -59,15 +56,18 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: Optional[str]) ->
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The Praams API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -77,24 +77,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Equity Risk & Return Scoring by Ticker
-        GET /api/mp/praams/analyse/equity/ticker/{ticker}
-
-        Retrieves Praams' equity risk & return scoring for a single asset,
-        identified by its ticker (e.g., 'AAPL').
-
-        The response includes, among others:
-          - PRAAMS Ratio and total risk/return scores
-          - Valuation, performance, profitability, growth & momentum
-          - Dividend metrics and yields
-          - Volatility, stress-testing and liquidity assessment
-          - Country risk, solvency, and descriptive risk narratives
-          - Analyst view and price targets
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ticker symbol.
+        Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
+        growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        Use when assessing investment risk for a specific stock or ETF. Consumes 10 API calls per request.
+        For lookup by ISIN instead of ticker, use get_mp_praams_risk_scoring_by_isin.
+        For a full PDF report, use get_mp_praams_report_equity_by_ticker.
         """
         return await _run_praams_equity_by_ticker(ticker=ticker, api_token=api_token)
 

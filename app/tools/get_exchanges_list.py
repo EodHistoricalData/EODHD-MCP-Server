@@ -4,13 +4,11 @@ import json
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -19,14 +17,17 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override (env token otherwise)
     ) -> str:
         """
-        Get List of Exchanges (GET /api/exchanges-list/)
+        List all available stock exchanges worldwide. Use when the user asks which exchanges
+        are supported, needs exchange codes, or wants to browse markets by country.
 
-        Returns:
-            str: JSON array of exchanges, each with fields:
-                 Name, Code, OperatingMIC, Country, Currency, CountryISO2, CountryISO3
+        Covers 60+ global exchanges. Returns Name, Code, OperatingMIC, Country, Currency,
+        and ISO country codes for each exchange.
+
+        For tickers listed on a specific exchange, use get_exchange_tickers.
+        For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
         """
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         url = f"{EODHD_API_BASE}/exchanges-list/?fmt={fmt}"
         if api_token:
@@ -35,11 +36,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

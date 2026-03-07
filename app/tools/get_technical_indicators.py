@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -49,9 +50,6 @@ FUNC_ALIASES = {
 SPLITADJ_ONLY_SUPPORTED = {
     "sma", "ema", "wma", "volatility", "rsi", "slope", "macd",
 }
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _valid_date(s: str) -> bool:
     if not isinstance(s, str) or not DATE_RE.match(s):
@@ -132,41 +130,41 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Technical Indicators API (spec-aligned)
-
-        Notes:
-          - Each request consumes 5 API calls (Marketplace accounting).
-          - Supports all documented functions (sma, ema, wma, macd, rsi, stochastic, stochrsi, dmi/dx, adx, atr, cci, sar, beta, bbands, volatility, avgvol, avgvolccy, splitadjusted, format_amibroker).
-
-        Args mirror API docs; only provided params are passed through.
+        Compute technical indicators for any ticker over a date range.
+        Supported indicators: SMA, EMA, WMA, MACD, RSI, Stochastic, StochRSI, DMI/ADX, ATR,
+        CCI, Parabolic SAR, Beta, Bollinger Bands, Volatility, Average Volume, and split-adjusted prices.
+        Each indicator has configurable periods, and results include a time series of computed values.
+        Consumes 5 API calls per request.
+        For raw OHLCV price data, use get_historical_stock_prices instead.
+        For fundamental analysis, use get_fundamentals_data instead.
         """
         # --- Required/typed validation ---
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
 
         fn = _normalize_function(function)
         if not fn:
-            return _err(
+            raise ToolError(
                 "Invalid 'function'. Allowed: "
                 + ", ".join(sorted(ALLOWED_FUNCTIONS | set(FUNC_ALIASES.keys())))
             )
 
         if order not in ALLOWED_ORDER:
-            return _err(f"Invalid 'order'. Allowed values: {sorted(ALLOWED_ORDER)}")
+            raise ToolError(f"Invalid 'order'. Allowed values: {sorted(ALLOWED_ORDER)}")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
         if start_date is not None and not _valid_date(start_date):
-            return _err("Parameter 'start_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
         if end_date is not None and not _valid_date(end_date):
-            return _err("Parameter 'end_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+                raise ToolError("'start_date' cannot be after 'end_date'.")
 
         if filter and fmt != "json":
-            return _err("Parameter 'filter' works only with fmt='json'.")
+            raise ToolError("Parameter 'filter' works only with fmt='json'.")
 
         # period-like ints
         for name, val in [
@@ -181,7 +179,7 @@ def register(mcp: FastMCP):
         ]:
             msg = _validate_period(name, val)
             if msg:
-                return _err(msg)
+                raise ToolError(msg)
 
         # floats for SAR
         for name, val in [
@@ -190,14 +188,14 @@ def register(mcp: FastMCP):
         ]:
             msg = _validate_float(name, val)
             if msg:
-                return _err(msg)
+                raise ToolError(msg)
 
         # agg_period for splitadjusted only
         if agg_period is not None:
             if fn != "splitadjusted":
-                return _err("Parameter 'agg_period' is only valid when function='splitadjusted'.")
+                raise ToolError("Parameter 'agg_period' is only valid when function='splitadjusted'.")
             if agg_period not in ALLOWED_AGG_PERIOD:
-                return _err(f"Invalid 'agg_period'. Allowed: {sorted(ALLOWED_AGG_PERIOD)}")
+                raise ToolError(f"Invalid 'agg_period'. Allowed: {sorted(ALLOWED_AGG_PERIOD)}")
 
         # splitadjusted_only supported subset (we pass through if provided for others, but validate type)
         if splitadjusted_only is not None:
@@ -207,7 +205,7 @@ def register(mcp: FastMCP):
             else:
                 sval = str(splitadjusted_only).strip()
                 if sval not in {"0", "1"}:
-                    return _err("Parameter 'splitadjusted_only' must be 0/1, true/false.")
+                    raise ToolError("Parameter 'splitadjusted_only' must be 0/1, true/false.")
                 splitadjusted_only = sval
             # (Optional strictness) warn if function not in supported set — we'll just allow pass-through.
 
@@ -273,10 +271,10 @@ def register(mcp: FastMCP):
 
         # --- Normalize/return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
@@ -284,4 +282,4 @@ def register(mcp: FastMCP):
             if isinstance(data, str):
                 # For CSV (if make_request is updated to return text)
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

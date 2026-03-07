@@ -5,6 +5,7 @@ from datetime import datetime, date, timezone
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -18,10 +19,6 @@ MAX_RANGE_DAYS = {
     "5m": 600,
     "1h": 7200,
 }
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _to_unix_seconds(dt_obj: datetime) -> int:
@@ -158,7 +155,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Intraday Historical Stock Price Data API (spec-aligned).
+        Get historical intraday OHLCV candles at 1-minute, 5-minute, or 1-hour intervals.
+        Use for intraday price analysis, short-term patterns, and high-resolution charting.
+        Accepts date strings or Unix timestamps for the time range.
+        Max range depends on interval: 1m=120 days, 5m=600 days, 1h=7200 days.
+        For daily/weekly/monthly end-of-day bars, use get_historical_stock_prices instead.
+        For current live price, use get_live_price_data instead.
 
         Args:
             ticker (str): SYMBOL.EXCHANGE_ID, e.g. 'AAPL.US'.
@@ -179,25 +181,25 @@ def register(mcp: FastMCP):
 
         # --- Validate required/typed params ---
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
 
         if interval not in ALLOWED_INTERVALS:
-            return _err(f"Invalid 'interval'. Allowed: {sorted(ALLOWED_INTERVALS)}")
+            raise ToolError(f"Invalid 'interval'. Allowed: {sorted(ALLOWED_INTERVALS)}")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         # --- Coerce 'from'/'to' into Unix seconds (auto-detect strings, ms, etc.) ---
         from_ts, to_ts, err = _coerce_from_to(from_timestamp, to_timestamp)
         if err:
-            return _err(err)
+            raise ToolError(err)
 
         # --- Enforce documented maximum range ---
         if from_ts is not None and to_ts is not None:
             span_seconds = to_ts - from_ts
             max_days = MAX_RANGE_DAYS[interval]
             if span_seconds > max_days * 86400:
-                return _err(
+                raise ToolError(
                     f"Requested range exceeds maximum for interval '{interval}'. "
                     f"Max is {max_days} days."
                 )
@@ -222,10 +224,10 @@ def register(mcp: FastMCP):
 
         # --- Normalize errors / outputs ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # For csv: if you later adapt make_request to return text for fmt='csv',
         # we wrap it as {"csv": "..."} so the MCP tool consistently returns a JSON string.
@@ -234,4 +236,4 @@ def register(mcp: FastMCP):
         except Exception:
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

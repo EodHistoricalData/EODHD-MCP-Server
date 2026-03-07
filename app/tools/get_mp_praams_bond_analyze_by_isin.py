@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -50,7 +47,7 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
     # Validate/normalize ISIN
     ci = _canon_isin(isin)
     if ci is None:
-        return _err("Invalid 'isin'. It must be a non-empty string (e.g., 'US7593518852').")
+        raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g., 'US7593518852').")
 
     # Build URL
     # Example: /api/mp/praams/analyse/bond/US7593518852?api_token=...  (JSON only)
@@ -61,15 +58,18 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The Praams bond API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -79,24 +79,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Bond Risk & Return Analysis by ISIN
-        GET /api/mp/praams/analyse/bond/{isin}
-
-        Retrieves Praams' detailed bond analytics for a single instrument,
-        identified by its ISIN (e.g., 'US7593518852').
-
-        The response includes, among others:
-          - PRAAMS ratio & summarized risk/return assessment
-          - Coupon profile (fixed / floating, structure, notes)
-          - Credit / solvency, stress test, volatility & liquidity narratives
-          - Country and other risk descriptions
-          - Profitability, growth & momentum metrics at the issuer level
-          - Market view (spreads, yield/price history where available)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
+        Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-test results,
+        volatility, liquidity, country risk narratives, and issuer-level fundamentals.
+        Use for detailed bond-specific due diligence. Consumes 10 API calls per request.
+        For bond screening across multiple instruments, use get_mp_praams_smart_screener_bond.
+        For a full PDF bond report, use get_mp_praams_report_bond_by_isin.
         """
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)
 

@@ -3,15 +3,13 @@ import json
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_FMT = {"json", "csv"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
     if v is None:
@@ -33,45 +31,47 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override
     ) -> str:
         """
-        US Stock Market Tick Data API (GET /api/ticks)
-        Returns granular trade ticks for US equities across all venues.
+        Fetch historical tick-level trade data for US equities. Use when the user needs
+        individual trade records with exact timestamps, prices, volumes, and market venue
+        identifiers at the finest granularity available.
+
+        Returns individual trades (ticks) across all US venues for a given time range.
+        Fields include timestamp (ms), price, shares, market, sub-market, sequence number.
+        US stocks only. Costs 10 API calls per request.
+
+        For real-time streaming ticks, use capture_realtime_ws instead.
+        For daily/intraday OHLCV bars, use get_intraday_historical_data.
 
         Args:
-            ticker (str): e.g., 'AAPL' or 'AAPL.US' (US-only).
-            from_timestamp (int|str): Start UNIX time (seconds, UTC).
-            to_timestamp   (int|str): End   UNIX time (seconds, UTC).
-            limit (int): Max ticks to return. Example in docs uses 5. Default 1000.
+            ticker (str): US ticker, e.g., 'AAPL' or 'AAPL.US'.
+            from_timestamp (int|str): Start UNIX time in seconds (UTC).
+            to_timestamp (int|str): End UNIX time in seconds (UTC).
+            limit (int): Max ticks to return (default 1000).
             fmt (str): 'json' (default) or 'csv'.
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            • Endpoint shape:
-              /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
-            • Each request costs 10 API calls (any history depth).
-            • Response fields (arrays): mkt, price, seq, shares, sl, sub_mkt, ts (ms).
+            api_token (str, optional): Per-call token override.
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g., 'AAPL' or 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL' or 'AAPL.US').")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         try:
             f_ts = _to_int("from_timestamp", from_timestamp)
             t_ts = _to_int("to_timestamp", to_timestamp)
         except ValueError as ve:
-            return _err(str(ve))
+            raise ToolError(str(ve))
 
         if f_ts is None or t_ts is None:
-            return _err("'from_timestamp' and 'to_timestamp' are required (UNIX seconds).")
+            raise ToolError("'from_timestamp' and 'to_timestamp' are required (UNIX seconds).")
         if f_ts < 0 or t_ts < 0:
-            return _err("Timestamps must be non-negative UNIX seconds.")
+            raise ToolError("Timestamps must be non-negative UNIX seconds.")
         if f_ts > t_ts:
-            return _err("'from_timestamp' cannot be greater than 'to_timestamp'.")
+            raise ToolError("'from_timestamp' cannot be greater than 'to_timestamp'.")
 
         if not isinstance(limit, int) or limit <= 0:
-            return _err("'limit' must be a positive integer.")
+            raise ToolError("'limit' must be a positive integer.")
 
         # --- Build URL per docs ---
         # Example:
@@ -92,9 +92,9 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # For CSV, make_request may return text; wrap if needed. JSON is passed through.
         try:
@@ -102,4 +102,4 @@ def register(mcp: FastMCP):
         except Exception:
             if isinstance(data, str):
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

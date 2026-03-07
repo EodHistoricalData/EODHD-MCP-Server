@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str]) -> str:
@@ -29,22 +26,15 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override; otherwise env EODHD_API_KEY is used
     ) -> str:
         """
-        Upcoming IPOs API (/calendar/ipos)
-
-        Parameters:
-          - from_date (YYYY-MM-DD): start date (maps to 'from'); default = today if omitted by server
-          - to_date   (YYYY-MM-DD): end date   (maps to 'to');   default = today+7d if omitted by server
-          - fmt: 'json' or 'csv' (API default is csv). We default to 'json' for easier consumption.
-          - api_token: optional override for per-call token
-
-        Returns:
-          - JSON (stringified) when fmt='json'
-          - CSV (raw text wrapped as JSON string if the upstream returns text)
+        Get upcoming and recent IPO (Initial Public Offering) listings.
+        Returns IPO dates, company names, exchanges, share prices, and deal details within a date range (defaults to next 7 days).
+        Use when the user asks about new stock listings, companies going public, or IPO calendar.
+        For stock splits calendar, use get_upcoming_splits. For dividend calendar, use get_upcoming_dividends.
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):
-            return _err("Invalid 'fmt'. Allowed values: 'json', 'csv'.")
+            raise ToolError("Invalid 'fmt'. Allowed values: 'json', 'csv'.")
 
         # Build URL
         url = f"{EODHD_API_BASE}/calendar/ipos?1=1"
@@ -62,7 +52,7 @@ def register(mcp: FastMCP):
 
         # Handle response
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
         # If fmt=csv, many clients of make_request return raw text (str)
         if fmt == "csv":
@@ -70,11 +60,11 @@ def register(mcp: FastMCP):
                 # Wrap CSV in a small envelope for consistency
                 return json.dumps({"fmt": "csv", "data": data}, indent=2)
             # Unexpected structure
-            return _err("Unexpected CSV response format from API.")
+            raise ToolError("Unexpected CSV response format from API.")
 
         # fmt == json
         try:
             # data should be a dict/list already; ensure string output
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected JSON response format from API.")
+            raise ToolError("Unexpected JSON response format from API.")

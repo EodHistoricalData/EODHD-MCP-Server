@@ -4,13 +4,10 @@ import json
 from typing import Optional, Union
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def register(mcp: FastMCP):
@@ -22,23 +19,20 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
-        US Treasury Yield Rates API (Par Yield Curve)
-        GET /api/ust/yield-rates
+        Fetch daily US Treasury par yield curve rates. Use when the user asks about Treasury
+        yields, the yield curve, government bond rates, or interest rates across maturities.
 
-        Returns Daily Treasury Par Yield Curve Rates (nominal yield curve).
-        Tenors: 1M, 1.5M, 2M, 3M, 4M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y.
+        Returns nominal par yield curve rates for tenors: 1M, 1.5M, 2M, 3M, 4M, 6M, 1Y, 2Y,
+        3Y, 5Y, 7Y, 10Y, 20Y, 30Y. Fields include date, tenor, and rate. Filterable by year.
+        Costs 1 API call per request.
+
+        For short-term T-bill discount/coupon rates (4WK-52WK), use get_ust_bill_rates instead.
 
         Args:
-            year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
+            year (int, optional): Filter by year (1900+). Defaults to current year.
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - 1 API call per request.
-            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, rate.
-            - Full yield curve across multiple maturities.
+            api_token (str, optional): Per-call token override.
         """
         url = f"{EODHD_API_BASE}/ust/yield-rates?1=1"
 
@@ -46,27 +40,27 @@ def register(mcp: FastMCP):
             try:
                 y = int(year)
             except (ValueError, TypeError):
-                return _err("Parameter 'year' must be an integer (e.g. 2024).")
+                raise ToolError("Parameter 'year' must be an integer (e.g. 2024).")
             if y < 1900:
-                return _err("Parameter 'year' must be >= 1900.")
+                raise ToolError("Parameter 'year' must be >= 1900.")
             url += f"&filter[year]={y}"
 
         if limit is not None:
             try:
                 lim = int(limit)
             except (ValueError, TypeError):
-                return _err("Parameter 'limit' must be a positive integer.")
+                raise ToolError("Parameter 'limit' must be a positive integer.")
             if lim <= 0:
-                return _err("Parameter 'limit' must be a positive integer.")
+                raise ToolError("Parameter 'limit' must be a positive integer.")
             url += f"&page[limit]={lim}"
 
         if offset is not None:
             try:
                 off = int(offset)
             except (ValueError, TypeError):
-                return _err("Parameter 'offset' must be a non-negative integer.")
+                raise ToolError("Parameter 'offset' must be a non-negative integer.")
             if off < 0:
-                return _err("Parameter 'offset' must be a non-negative integer.")
+                raise ToolError("Parameter 'offset' must be a non-negative integer.")
             url += f"&page[offset]={off}"
 
         if api_token:
@@ -75,11 +69,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

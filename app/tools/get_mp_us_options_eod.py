@@ -5,6 +5,7 @@ from typing import Optional, Union, Sequence
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -13,9 +14,6 @@ from mcp.types import ToolAnnotations
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
 ALLOWED_FMT = {"json"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _q(key: str, val: Optional[Union[str, int, float]]) -> str:
     if val is None or val == "":
@@ -60,19 +58,23 @@ def register(mcp: FastMCP):
         fmt: Optional[str] = "json",
     ) -> str:
         """
-        Get end-of-day options data (mp/unicornbay/options/eod)
-
-        Returns JSON: meta, data[], links.next; supports 'compact' mode.
+        [Marketplace] Fetch end-of-day pricing data for US options contracts. Use when asked about
+        options prices, Greeks, open interest, volume, or implied volatility for stock/ETF options.
+        Returns OHLC, volume, open interest, and Greeks per contract per trading day.
+        Supports filtering by underlying symbol, expiration, strike, type (put/call), and trade date range.
+        First find available contracts with get_us_options_contracts, then fetch pricing here.
+        For the list of optionable tickers, use get_us_options_underlyings.
+        Consumes 10 API calls per request.
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:
-            return _err("Invalid 'type'. Allowed: 'put', 'call' or omit.")
+            raise ToolError("Invalid 'type'. Allowed: 'put', 'call' or omit.")
         if sort and sort not in ALLOWED_SORT:
-            return _err(f"Invalid 'sort'. Allowed: {sorted(ALLOWED_SORT)}")
+            raise ToolError(f"Invalid 'sort'. Allowed: {sorted(ALLOWED_SORT)}")
         if not isinstance(page_offset, int) or not (0 <= page_offset <= 10000):
-            return _err("'page_offset' must be an integer between 0 and 10000.")
+            raise ToolError("'page_offset' must be an integer between 0 and 10000.")
         if not isinstance(page_limit, int) or not (1 <= page_limit <= 1000):
-            return _err("'page_limit' must be an integer between 1 and 1000.")
+            raise ToolError("'page_limit' must be an integer between 1 and 1000.")
 
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/eod?1=1"
         # filters
@@ -105,10 +107,10 @@ def register(mcp: FastMCP):
         data = await make_request(base)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

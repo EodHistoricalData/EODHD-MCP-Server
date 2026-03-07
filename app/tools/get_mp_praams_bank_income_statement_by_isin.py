@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -51,7 +48,7 @@ async def _run_praams_income_statement_by_isin(
     # Validate/normalize ISIN
     ci = _canon_isin(isin)
     if ci is None:
-        return _err(
+        raise ToolError(
             "Invalid 'isin'. It must be a non-empty string "
             "(e.g., 'US46625H1005')."
         )
@@ -66,8 +63,11 @@ async def _run_praams_income_statement_by_isin(
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The API responds with:
     #   {"success": ..., "items": [...], "message": "...", "errors": [...]}
@@ -75,7 +75,7 @@ async def _run_praams_income_statement_by_isin(
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -85,28 +85,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Bank Income Statement by ISIN
-        GET /api/mp/praams/bank/income_statement/isin/{isin}
-
-        Retrieves the income statement data for a bank identified by its ISIN.
-
-        The Praams Bank Financials API provides bank-specific financials using a
-        methodology tailored to banking analysis, including (annual and quarterly):
-
-          - Core revenue
-          - Net interest income
-          - Net fee & commission income
-          - RIBPT (Recurring income before provisioning and taxes)
-          - Non-recurring income
-          - IBPT (Income before provisioning and taxes)
-          - Provisioning
-
-        This endpoint returns a time series of income statement entries under "items".
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Retrieve bank-specific income statement time series by ISIN code.
+        Returns annual and quarterly data: core revenue, net interest income, fee & commission income,
+        RIBPT, non-recurring income, IBPT, and provisioning. Tailored for banking sector analysis.
+        Consumes 10 API calls per request.
+        For lookup by ticker, use get_mp_praams_bank_income_statement_by_ticker.
+        For bank balance sheet data, use get_mp_praams_bank_balance_sheet_by_isin.
         """
         return await _run_praams_income_statement_by_isin(
             isin=isin,

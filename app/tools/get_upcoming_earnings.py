@@ -5,13 +5,10 @@ from typing import Optional, Union, List
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str]) -> str:
@@ -42,10 +39,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,          # per-call override
     ) -> str:
         """
-        Upcoming Earnings API (/calendar/earnings)
-
-        If 'symbols' is provided, API ignores 'from'/'to' (per docs).
-        Otherwise, optional date window defaults server-side to [today, today+7d].
+        Get upcoming and recent earnings report dates for stocks.
+        Returns scheduled earnings dates, EPS estimates, and actual results when available.
+        Filter by specific symbols or a date range (defaults to next 7 days).
+        Use when the user asks "when does X report earnings?" or wants an earnings calendar.
+        For EPS/revenue trend analysis and analyst revisions, use get_earnings_trends instead.
+        For macroeconomic events (GDP, CPI), use get_economic_events instead.
         """
         sym_param = _normalize_symbols(symbols)
 
@@ -70,13 +69,13 @@ def register(mcp: FastMCP):
 
         # Normalize output
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
             if isinstance(data, str):  # e.g., CSV
                 return json.dumps({"raw": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

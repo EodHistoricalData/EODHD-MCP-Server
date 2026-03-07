@@ -4,13 +4,10 @@ import json
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def register(mcp: FastMCP):
@@ -20,52 +17,17 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
-        Get list of CBOE indices (Europe & regional families)
-        (GET /api/cboe/indices)
+        List all available CBOE indices with their latest values. Use when the user wants to
+        browse CBOE European and regional index families, check which CBOE indices are available,
+        or find a CBOE index code.
 
-        This endpoint returns:
-            - EODHD index identifier (id, type)
-            - CBOE index code
-            - Region (country / market)
-            - Latest feed type and date
-            - Latest close value and index divisor
-            - Pagination info via 'links.next'
+        Returns index codes, regions, latest close values, index divisors, and feed metadata
+        for ~38 CBOE indices. Paginated via 'links.next'. Costs 10 API calls per request.
 
-        Example:
-            /api/cboe/indices?api_token=XXXX&fmt=json
-
-        Response example (trimmed):
-
-            {
-              "meta": {"total": 38},
-              "data": [
-                {
-                  "id": "BEZ50N",
-                  "type": "cboe-index",
-                  "attributes": {
-                    "region": "Eurozone",
-                    "index_code": "BEZ50N",
-                    "feed_type": "snapshot_official_closing",
-                    "date": "2017-07-11",
-                    "index_close": 15340.93,
-                    "index_divisor": 149428673.477155
-                  }
-                },
-                ...
-              ],
-              "links": {
-                "next": null    # or URL to the next page
-              }
-            }
-
-        Notes:
-            - Pagination:
-              If 'links.next' is not null, call that URL to get the next page.
-            - Rate limits:
-                * 10 API calls per request (CBOE dataset rule of thumb).
+        For detailed component-level data on a specific CBOE index, use get_cboe_index_data.
         """
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         # Base URL for CBOE indices list
         url = f"{EODHD_API_BASE}/cboe/indices?fmt={fmt}"
@@ -75,13 +37,13 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             # Propagate API error message
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             # Expected: dict with 'meta', 'data', 'links'
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

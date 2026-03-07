@@ -6,15 +6,13 @@ from datetime import datetime
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _valid_date(d: Optional[str]) -> bool:
     if d is None:
@@ -36,33 +34,28 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call token override
     ) -> str:
         """
-        Symbol Change History (US-only for now)
-        GET /api/symbol-change-history
+        Get ticker symbol change history -- tracks when US stocks changed their ticker symbol or company name.
+        Returns old symbol, new symbol, company name, exchange, and effective date. Data available from 2022-07-22, US exchanges only.
+        Use when the user asks about ticker renames, symbol changes, rebranding events, or needs to map old tickers to new ones.
+        This is the only tool for symbol/ticker change tracking.
 
         Args:
             start_date (str, optional): 'from' in YYYY-MM-DD (e.g., '2022-10-01').
             end_date (str, optional):   'to' in YYYY-MM-DD   (e.g., '2022-11-01').
             fmt (str): 'json' (default).
             api_token (str, optional): Per-call token override; env token used if omitted.
-
-        Notes:
-            - History starts from 2022-07-22; endpoint updated daily.
-            - Only **US** exchanges are supported currently.
-        Returns:
-            str: JSON array of changes with fields:
-                 exchange, old_symbol, new_symbol, company_name, effective
         """
         # Validate inputs
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         if not _valid_date(start_date):
-            return _err("'start_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
         if not _valid_date(end_date):
-            return _err("'end_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+                raise ToolError("'start_date' cannot be after 'end_date'.")
 
         # Build URL
         # Example:
@@ -80,11 +73,11 @@ def register(mcp: FastMCP):
 
         # Normalize / return
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

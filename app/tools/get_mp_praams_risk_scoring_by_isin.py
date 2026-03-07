@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -50,7 +47,7 @@ async def _run_praams_equity_by_isin(isin: str, api_token: Optional[str]) -> str
     # Validate/normalize ISIN
     ci = _canon_isin(isin)
     if ci is None:
-        return _err("Invalid 'isin'. It must be a non-empty string (e.g., 'US0378331005').")
+        raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g., 'US0378331005').")
 
     # Build URL
     # Example: /api/mp/praams/analyse/equity/isin/US0378331005?api_token=...  (JSON only)
@@ -61,15 +58,18 @@ async def _run_praams_equity_by_isin(isin: str, api_token: Optional[str]) -> str
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The Praams API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -79,24 +79,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Equity Risk & Return Scoring by ISIN
-        GET /api/mp/praams/analyse/equity/isin/{isin}
-
-        Retrieves Praams' equity risk & return scoring for a single asset,
-        identified by its ISIN (e.g., 'US0378331005').
-
-        The response includes, among others:
-          - PRAAMS Ratio and total risk/return scores
-          - Valuation, performance, profitability, growth & momentum
-          - Dividend metrics and yields
-          - Volatility, stress-testing and liquidity assessment
-          - Country risk, solvency, and descriptive risk narratives
-          - Analyst view and price targets
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ISIN code.
+        Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
+        growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        Use when assessing investment risk and you have the ISIN. Consumes 10 API calls per request.
+        For lookup by ticker instead of ISIN, use get_mp_praams_risk_scoring_by_ticker.
+        For a full PDF report, use get_mp_praams_report_equity_by_isin.
         """
         return await _run_praams_equity_by_isin(isin=isin, api_token=api_token)
 

@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
@@ -15,9 +16,6 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_PERIODS = {"d", "w", "m"}          # daily, weekly, monthly (per docs)
 ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}              # default is csv in API, but we default to json here
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _valid_date(s: str) -> bool:
     if not DATE_RE.match(s):
@@ -41,7 +39,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,        # per-call override
     ) -> str:
         """
-        End-Of-Day Historical Stock Market Data (EOD) — spec-aligned.
+        Get historical daily, weekly, or monthly OHLCV price data for any stock, ETF, index, or crypto.
+        Covers open, high, low, close, adjusted close, and volume for a date range.
+        Use for price history, charting, backtesting, and performance analysis.
+        For intraday candles (1min-1h), use get_intraday_historical_data instead.
+        For current/live prices, use get_live_price_data instead.
 
         Args:
             ticker (str): Symbol in SYMBOL.EXCHANGE format, e.g. 'AAPL.US'.
@@ -59,26 +61,26 @@ def register(mcp: FastMCP):
         """
         # --- Validate required/typed params ---
         if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
 
         if period not in ALLOWED_PERIODS:
-            return _err(f"Invalid 'period'. Allowed values: {sorted(ALLOWED_PERIODS)}")
+            raise ToolError(f"Invalid 'period'. Allowed values: {sorted(ALLOWED_PERIODS)}")
 
         if order not in ALLOWED_ORDER:
-            return _err(f"Invalid 'order'. Allowed values: {sorted(ALLOWED_ORDER)}")
+            raise ToolError(f"Invalid 'order'. Allowed values: {sorted(ALLOWED_ORDER)}")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
         if start_date is not None and not _valid_date(start_date):
-            return _err("Parameter 'start_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
 
         if end_date is not None and not _valid_date(end_date):
-            return _err("Parameter 'end_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
 
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+                raise ToolError("'start_date' cannot be after 'end_date'.")
 
         # --- Build URL per docs ---
         # Base: /api/eod/{ticker}
@@ -101,12 +103,11 @@ def register(mcp: FastMCP):
 
         # --- Transport/API errors ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
 
-        # If fmt=json, API returns JSON. If fmt=csv, httpx/json may return str or dict error.
-        # Normalize:
+
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         # For CSV, make_request() will attempt .json() and fail; but our make_request currently returns response.json().
         # If you need raw CSV support, consider updating make_request to return text for fmt=csv.
@@ -118,4 +119,4 @@ def register(mcp: FastMCP):
             if isinstance(data, str):
                 # Wrap CSV text into a JSON string for consistent MCP return type (string)
                 return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

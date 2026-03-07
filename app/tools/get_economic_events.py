@@ -5,15 +5,13 @@ from typing import Optional, Union
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_COMPARISON = {None, "mom", "qoq", "yoy"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _q(key: str, val: Optional[Union[str, int]]) -> str:
     if val is None or val == "":
@@ -34,21 +32,21 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call override
     ) -> str:
         """
-        Economic Events Data API (/economic-events)
-
-        Returns past/future economic events with optional filters:
-        date window, country (ISO2), comparison (mom|qoq|yoy), type text,
-        and pagination (offset/limit).
+        Fetch macroeconomic calendar events such as GDP, CPI, employment, and interest rate releases.
+        Returns scheduled and past economic indicators with actual, estimate, and previous values.
+        Covers global economies; filter by country (ISO-2), date range, comparison period (mom/qoq/yoy), and event type.
+        Use when the user asks about economic calendar, macro releases, or upcoming government data publications.
+        This tool covers macro events only -- for company-level earnings dates, use get_upcoming_earnings.
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:
-            return _err("Invalid 'comparison'. Allowed: 'mom', 'qoq', 'yoy' or omit.")
+            raise ToolError("Invalid 'comparison'. Allowed: 'mom', 'qoq', 'yoy' or omit.")
         if not isinstance(offset, int) or not (0 <= offset <= 1000):
-            return _err("'offset' must be an integer between 0 and 1000.")
+            raise ToolError("'offset' must be an integer between 0 and 1000.")
         if not isinstance(limit, int) or not (0 <= limit <= 1000):
-            return _err("'limit' must be an integer between 0 and 1000.")
+            raise ToolError("'limit' must be an integer between 0 and 1000.")
         if country is not None and (not isinstance(country, str) or len(country.strip()) != 2):
-            return _err("'country' must be a 2-letter ISO code (e.g., 'US').")
+            raise ToolError("'country' must be a 2-letter ISO code (e.g., 'US').")
 
         # --- build URL ---
         # Example:
@@ -70,9 +68,9 @@ def register(mcp: FastMCP):
 
         # --- return/normalize ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
@@ -80,4 +78,4 @@ def register(mcp: FastMCP):
             # If CSV or unexpected text returned, wrap it
             if isinstance(data, str):
                 return json.dumps({"raw": data}, indent=2)
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

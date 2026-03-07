@@ -3,13 +3,11 @@ import json
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -17,18 +15,16 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        User API (GET /api/user)
+        Retrieve EODHD account details for the current API token. Use when the user asks about
+        their subscription plan, API usage, rate limits, or account information.
 
-        Returns account information for the API token holder:
-        name, email, subscriptionType, paymentMethod, apiRequests, apiRequestsDate,
-        dailyRateLimit, extraLimit, inviteToken, inviteTokenClicked, subscriptionMode.
+        Returns account holder name, email, subscription type, payment method, API requests
+        consumed today, daily rate limit, and invite token. This is account metadata only --
+        does not return any financial market data.
 
         Args:
             api_token (str, optional): Per-call token override. If omitted, the
-                                       env var EODHD_API_KEY (via make_request) will be used.
-
-        Returns:
-            str: JSON string with user details or {"error": "..."} on failure.
+                                       env var EODHD_API_KEY is used.
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.
@@ -41,11 +37,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

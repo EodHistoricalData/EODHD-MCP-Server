@@ -4,13 +4,10 @@ import json
 from typing import Optional, Any, Tuple, Dict
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _is_int(v: Any) -> bool:
@@ -346,12 +343,15 @@ async def _run_explore_bond(
     )
 
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -412,9 +412,17 @@ def register(mcp: FastMCP):
         # auth
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        [PRAAMS] Screen and filter bonds using multi-factor risk-return criteria.
+        Filter by region, country, sector, currency, yield range, duration range, PRAAMS score ranges (1-7),
+        and exclude subordinated or perpetual bonds. Returns paginated matching bonds with scores.
+        Consumes 10 API calls per request.
+        For equity screening, use get_mp_praams_smart_screener_equity.
+        For deep analysis of a single bond, use get_mp_praams_bond_analyze_by_isin.
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
-            return _err(st_err)
+            raise ToolError(st_err)
 
         body, b_err = _build_body(
             main_ratio_min=mainRatioMin,
@@ -462,7 +470,7 @@ def register(mcp: FastMCP):
             order_by=orderBy,
         )
         if b_err:
-            return _err(b_err)
+            raise ToolError(b_err)
 
         return await _run_explore_bond(skip=skip, take=take, body=body, api_token=api_token)
 
@@ -485,9 +493,14 @@ def register(mcp: FastMCP):
         excludePerpetuals: Optional[bool] = None,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        [PRAAMS] Convenience alias for bond screening with common filters.
+        Screen bonds by region, sector, currency, yield, duration, and growth/market-view scores.
+        For full filter set, use get_mp_praams_smart_screener_bond.
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
-            return _err(st_err)
+            raise ToolError(st_err)
 
         body, b_err = _build_body(
             regions=regions,
@@ -505,6 +518,6 @@ def register(mcp: FastMCP):
             exclude_perpetuals=excludePerpetuals,
         )
         if b_err:
-            return _err(b_err)
+            raise ToolError(b_err)
 
         return await _run_explore_bond(skip=skip, take=take, body=body, api_token=api_token)

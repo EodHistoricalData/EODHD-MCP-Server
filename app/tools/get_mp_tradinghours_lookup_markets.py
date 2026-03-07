@@ -5,16 +5,13 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -31,10 +28,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override
     ) -> str:
         """
-        Marketplace: TradingHours — Lookup Markets
-        GET /api/mp/tradinghours/markets/lookup
-
-        Search for markets by name, MIC, country, or any free-form term.
+        [TradingHours] Search for markets by name, MIC code, country, or free-form query.
+        Use when the user asks to find a specific exchange or market by keyword (e.g. "Tokyo",
+        "XNYS", "Germany"). Covers 900+ global trading schedules.
+        To list all markets without searching, use get_mp_tradinghours_list_markets.
+        For full details on a found market, pass its fin_id to get_mp_tradinghours_market_details.
+        Consumes 10 API calls per request.
 
         Args:
             q (str, optional): Free-form search query (exchange name, market name, MIC,
@@ -42,16 +41,11 @@ def register(mcp: FastMCP):
             group (str, optional): Filter results — 'core', 'extended', 'all', 'allowed'.
                 Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Marketplace product: 10 API calls per request.
-            - Over 900 different trading schedules tracked.
-            - Omitting 'q' returns all markets (like list endpoint).
         """
         if group is not None:
             group = group.strip().lower()
             if group not in ALLOWED_GROUPS:
-                return _err(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
+                raise ToolError(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
 
         url = f"{EODHD_API_BASE}/mp/tradinghours/markets/lookup?1=1"
         if q:
@@ -64,11 +58,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

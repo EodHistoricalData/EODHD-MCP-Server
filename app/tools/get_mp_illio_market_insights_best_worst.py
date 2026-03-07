@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -54,12 +51,12 @@ async def _run_best_worst(id: str, fmt: str, api_token: Optional[str]) -> str:
     # Validate fmt
     fmt = (fmt or "json").lower()
     if fmt != "json":
-        return _err("Only JSON is supported for this endpoint (fmt must be 'json').")
+        raise ToolError("Only JSON is supported for this endpoint (fmt must be 'json').")
 
     # Validate/normalize id
     cid = _canon_id(id)
     if cid is None:
-        return _err(
+        raise ToolError(
             "Invalid 'id'. Allowed: ['SnP500', 'DJI', 'NDX'] "
             "(aliases like 'SP500', 'SPX', 'NASDAQ100' accepted)."
         )
@@ -74,13 +71,16 @@ async def _run_best_worst(id: str, fmt: str, api_token: Optional[str]) -> str:
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -91,18 +91,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Best & Worst Days (v1.0.0)
-        GET /api/mp/illio/chapters/best-and-worst/{id}
-
-        Returns chapter: Largest 1 Day Moves for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Get the largest single-day gains and losses for index constituents.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns best and worst 1-day moves
+        with dates, magnitudes, and affected instruments. Consumes 10 API calls per request.
+        For overall constituent performance, use get_mp_illio_market_insights_performance.
+        For volatility trends, use get_mp_illio_market_insights_volatility.
         """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)
 

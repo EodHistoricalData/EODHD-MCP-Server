@@ -6,14 +6,12 @@ from datetime import datetime
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def _valid_date(d: Optional[str]) -> bool:
     if d is None:
@@ -37,8 +35,10 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call token override
     ) -> str:
         """
-        Insider Transactions API (SEC Form 4)
-        GET /api/insider-transactions
+        Fetch SEC Form 4 insider trading transactions -- purchases and sales by company officers, directors, and major shareholders.
+        Returns transaction date, insider name, title, transaction type (P=Purchase, S=Sale), shares, and value.
+        Filter by ticker symbol and/or date range. Each request consumes 10 API calls.
+        Use when the user asks about insider buying/selling activity, executive stock transactions, or Form 4 filings.
 
         Args:
             start_date (str, optional): 'from' in YYYY-MM-DD. Defaults to ~1 year ago by API if omitted.
@@ -50,25 +50,21 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON array of insider transactions or {"error": "..."} on failure.
-
-        Notes:
-            • Each request consumes 10 API calls (per docs).
-            • Transaction codes in results include 'P' (Purchase) and 'S' (Sale).
         """
         # --- Validate inputs ---
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         if not isinstance(limit, int) or not (1 <= limit <= 1000):
-            return _err("'limit' must be an integer between 1 and 1000.")
+            raise ToolError("'limit' must be an integer between 1 and 1000.")
 
         if not _valid_date(start_date):
-            return _err("'start_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
         if not _valid_date(end_date):
-            return _err("'end_date' must be YYYY-MM-DD when provided.")
+            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
         if start_date and end_date:
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+                raise ToolError("'start_date' cannot be after 'end_date'.")
 
         # --- Build URL per docs ---
         # Example:
@@ -88,11 +84,11 @@ def register(mcp: FastMCP):
 
         # --- Normalize / return ---
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

@@ -10,6 +10,15 @@ from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
 
 logger = logging.getLogger("eodhd-mcp.api_client")
 
+# Shared HTTP client — reuses TCP+TLS connections across tool calls
+_http_client: httpx.AsyncClient = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+
+
+async def close_client() -> None:
+    """Shut down the shared HTTP client (call on server exit)."""
+    await _http_client.aclose()
+
+
 # Rate limiting
 _last_request_time: float = 0.0
 _rate_limit_delay: float = 0.1  # 100 ms between requests
@@ -154,42 +163,41 @@ async def make_request(
         try:
             await _rate_limit()
 
-            async with httpx.AsyncClient() as client:
-                logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, url[:120])
+            logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, url[:120])
 
-                if m == "GET":
-                    response = await client.get(url, headers=req_headers, timeout=timeout)
-                elif m == "POST":
-                    response = await client.post(url, json=json_body, headers=req_headers, timeout=timeout)
-                elif m == "PUT":
-                    response = await client.put(url, json=json_body, headers=req_headers, timeout=timeout)
-                else:  # DELETE
-                    response = await client.delete(url, headers=req_headers, timeout=timeout)
+            if m == "GET":
+                response = await _http_client.get(url, headers=req_headers, timeout=timeout)
+            elif m == "POST":
+                response = await _http_client.post(url, json=json_body, headers=req_headers, timeout=timeout)
+            elif m == "PUT":
+                response = await _http_client.put(url, json=json_body, headers=req_headers, timeout=timeout)
+            else:  # DELETE
+                response = await _http_client.delete(url, headers=req_headers, timeout=timeout)
 
-                # Handle rate limiting from the API
-                if response.status_code == 429:
-                    retry_after = int(response.headers.get("Retry-After", 60))
-                    logger.warning("Rate limited by API; waiting %ds (attempt %d/%d)",
-                                   retry_after, attempt + 1, retries + 1)
-                    await asyncio.sleep(retry_after)
-                    continue  # doesn't count as a failed attempt
+            # Handle rate limiting from the API
+            if response.status_code == 429:
+                retry_after = int(response.headers.get("Retry-After", 60))
+                logger.warning("Rate limited by API; waiting %ds (attempt %d/%d)",
+                               retry_after, attempt + 1, retries + 1)
+                await asyncio.sleep(retry_after)
+                continue  # doesn't count as a failed attempt
 
-                response.raise_for_status()
+            response.raise_for_status()
 
-                # Prefer JSON; if server returns non-JSON return a helpful error object
-                try:
-                    return response.json()
-                except Exception:
-                    ct = response.headers.get("content-type", "")
-                    text = response.text
-                    if text and len(text) > 2000:
-                        text = text[:2000] + "…"
-                    return {
-                        "error": "Response is not valid JSON.",
-                        "status_code": response.status_code,
-                        "content_type": ct,
-                        "text": text,
-                    }
+            # Prefer JSON; if server returns non-JSON return a helpful error object
+            try:
+                return response.json()
+            except Exception:
+                ct = response.headers.get("content-type", "")
+                text = response.text
+                if text and len(text) > 2000:
+                    text = text[:2000] + "…"
+                return {
+                    "error": "Response is not valid JSON.",
+                    "status_code": response.status_code,
+                    "content_type": ct,
+                    "text": text,
+                }
 
         except httpx.TimeoutException as e:
             last_error = e

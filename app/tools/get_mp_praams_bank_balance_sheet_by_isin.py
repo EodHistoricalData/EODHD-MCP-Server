@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
 
 def _q(key: str, val: Optional[str | int]) -> str:
     """
@@ -53,7 +50,7 @@ async def _run_praams_balance_sheet_by_isin(
     # Validate/normalize ISIN
     ci = _canon_isin(isin)
     if ci is None:
-        return _err("Invalid 'isin'. It must be a non-empty string (e.g., 'US46625H1005').")
+        raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g., 'US46625H1005').")
 
     # Build URL
     # Example:
@@ -65,8 +62,11 @@ async def _run_praams_balance_sheet_by_isin(
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     # The API responds with:
     #   {"success": ..., "items": [...], "message": "...", "errors": [...]}
@@ -74,7 +74,7 @@ async def _run_praams_balance_sheet_by_isin(
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -84,30 +84,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Bank Balance Sheet by ISIN
-        GET /api/mp/praams/bank/balance_sheet/isin/{isin}
-
-        Retrieves the balance sheet data for a bank identified by its ISIN.
-
-        The Praams Bank Financials API provides bank-specific financials using a
-        methodology tailored to banking analysis, including (annual and quarterly):
-
-          - Loans (gross, provisions, net)
-          - Cash & equivalents
-          - Deposits with banks
-          - Securities REPO (assets and liabilities)
-          - Investment portfolio / long-term investments
-          - Trading liabilities, payables, other liabilities
-          - Short-term and long-term debt
-          - Total assets, total equity, total equity & liabilities
-          - Interest-earning assets and interest-bearing liabilities
-
-        This endpoint returns a time series of balance sheet entries under "items".
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Retrieve bank-specific balance sheet time series by ISIN code.
+        Returns annual and quarterly data: loans, cash, deposits, securities REPO, investment portfolio,
+        debt, total assets/equity, interest-earning assets, and interest-bearing liabilities.
+        Tailored for banking sector analysis. Consumes 10 API calls per request.
+        For lookup by ticker, use get_mp_praams_bank_balance_sheet_by_ticker.
+        For bank income statement data, use get_mp_praams_bank_income_statement_by_isin.
         """
         return await _run_praams_balance_sheet_by_isin(
             isin=isin,

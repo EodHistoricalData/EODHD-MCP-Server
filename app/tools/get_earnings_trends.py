@@ -5,13 +5,10 @@ from typing import Optional, Union, List
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str]) -> str:
@@ -40,15 +37,15 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override (else uses env EODHD_API_KEY)
     ) -> str:
         """
-        Earnings Trends API (/calendar/trends)
-        Notes:
-          - 'symbols' is REQUIRED (one or more, comma-separated).
-          - Response is JSON only (fmt kept to mirror other tools).
-          - Each request consumes ~10 API calls under EODHD's system.
+        Get earnings trend data including EPS/revenue estimates, analyst revisions, and growth projections for specific stocks.
+        Returns quarterly and annual consensus estimates, number of analysts, and revision history.
+        Requires explicit symbol(s). Each request consumes ~10 API calls.
+        Use when the user asks about earnings expectations, analyst estimate changes, or EPS growth trends.
+        For earnings report dates and calendar, use get_upcoming_earnings instead.
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:
-            return _err("Parameter 'symbols' is required (e.g., 'AAPL.US' or ['AAPL.US','MSFT.US']).")
+            raise ToolError("Parameter 'symbols' is required (e.g., 'AAPL.US' or ['AAPL.US','MSFT.US']).")
 
         url = f"{EODHD_API_BASE}/calendar/trends?1=1"
         url += _q("symbols", sym_param)
@@ -61,12 +58,12 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
             # Trends should always be JSON; fallback just in case
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

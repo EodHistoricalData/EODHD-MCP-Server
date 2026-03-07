@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def register(mcp: FastMCP):
@@ -21,23 +18,20 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,        # per-call override
     ) -> str:
         """
-        Stock Market Logos API (SVG)
-        GET /api/logo-svg/{symbol}
+        Get a company logo in SVG vector format. Use when the user needs a scalable vector logo
+        for high-quality rendering, web embedding, or print.
 
-        Returns an SVG vector logo for the given symbol.
-        Coverage: US and TO (Toronto) exchanges only.
+        Limited to US and TO (Toronto) exchanges only. Costs 10 API calls per request.
+        Symbol must be in TICKER.EXCHANGE format (e.g., 'AAPL.US', 'RY.TO').
+
+        For PNG logos with broader exchange coverage (60+ exchanges), use get_stock_market_logos.
 
         Args:
-            symbol (str): Ticker in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Marketplace product: 10 API calls per request.
-            - Response is SVG image data (XML text).
-            - Limited to US and TO exchanges.
+            symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'RY.TO').
+            api_token (str, optional): Per-call token override.
         """
         if not symbol or not isinstance(symbol, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format "
                 "(e.g. 'AAPL.US', 'RY.TO')."
             )
@@ -51,11 +45,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

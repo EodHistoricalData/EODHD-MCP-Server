@@ -4,15 +4,13 @@ import json
 from typing import Optional
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 ALLOWED_TYPES = {"common_stock", "preferred_stock", "stock", "etf", "fund"}
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -24,20 +22,25 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override
     ) -> str:
         """
-        Get List of Tickers for an Exchange (GET /api/exchange-symbol-list/{EXCHANGE_CODE})
+        List all tickers (symbols) available on a given exchange. Use when the user needs to
+        enumerate stocks, ETFs, or funds on an exchange, or check if a specific instrument
+        is listed there.
 
-        Notes:
-            - By default, API returns tickers active in the last month.
-            - For US, you can use 'US' (unified) or specific venues (NYSE, NASDAQ, etc.).
+        Covers common stocks, preferred stocks, ETFs, and funds. By default returns tickers
+        active in the last month. Supports delisted tickers via the delisted flag. For US
+        markets, use 'US' (unified) or specific venues like NYSE, NASDAQ.
+
+        For the list of all exchanges, use get_exchanges_list.
+        For exchange metadata and trading hours, use get_exchange_details.
         """
         if not exchange_code or not isinstance(exchange_code, str):
-            return _err("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")
+            raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")
 
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         if type is not None and type not in ALLOWED_TYPES:
-            return _err(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
+            raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
 
         url = f"{EODHD_API_BASE}/exchange-symbol-list/{exchange_code}?fmt={fmt}"
         if delisted:
@@ -50,11 +53,11 @@ def register(mcp: FastMCP):
         data = await make_request(url)
 
         if data is None:
-            return _err("No response from API.")
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
+            raise ToolError(str(data["error"]))
 
         try:
             return json.dumps(data, indent=2)
         except Exception:
-            return _err("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.")

@@ -5,13 +5,10 @@ from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
 from app.config import EODHD_API_BASE
 from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 
 def _q(key: str, val: Optional[str | int]) -> str:
@@ -54,12 +51,12 @@ async def _run_market_insights(id: str, fmt: str, api_token: Optional[str]) -> s
     # Validate fmt
     fmt = (fmt or "json").lower()
     if fmt != "json":
-        return _err("Only JSON is supported for this endpoint (fmt must be 'json').")
+        raise ToolError("Only JSON is supported for this endpoint (fmt must be 'json').")
 
     # Validate/normalize id
     cid = _canon_id(id)
     if cid is None:
-        return _err("Invalid 'id'. Allowed: ['SnP500', 'DJI', 'NDX'] (aliases like 'SP500', 'SPX', 'NASDAQ100' accepted).")
+        raise ToolError("Invalid 'id'. Allowed: ['SnP500', 'DJI', 'NDX'] (aliases like 'SP500', 'SPX', 'NASDAQ100' accepted).")
 
     # Build URL
     # Example: /api/mp/illio/chapters/performance/NDX?api_token=...&fmt=json
@@ -71,13 +68,16 @@ async def _run_market_insights(id: str, fmt: str, api_token: Optional[str]) -> s
     # Call upstream
     data = await make_request(url)
     if data is None:
-        return _err("No response from API.")
+        raise ToolError("No response from API.")
 
+
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(str(data["error"]))
     # Normalize and return
     try:
         return json.dumps(data, indent=2)
     except Exception:
-        return _err("Unexpected JSON response format from API.")
+        raise ToolError("Unexpected JSON response format from API.")
 
 
 def register(mcp: FastMCP):
@@ -88,18 +88,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights (v1.0.0)
-        GET /api/mp/illio/chapters/performance/{id}
-
-        Returns chapter: Performance vs Market for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Analyze market-level performance of index constituents versus the overall market.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns constituent performance comparison,
+        sector attribution, and relative performance data. Consumes 10 API calls per request.
+        For portfolio-level performance attributes, use mp_illio_performance_insights.
+        For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
         """
         return await _run_market_insights(id=id, fmt=fmt, api_token=api_token)
 
