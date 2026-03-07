@@ -58,7 +58,7 @@ def register(mcp: FastMCP):
             "London Stock Exchange info" → fin_id="gb.lse"
             "Tokyo Stock Exchange details" → fin_id="jp.jpx"
 
-        
+
         """
         if not fin_id or not isinstance(fin_id, str):
             raise ToolError("Parameter 'fin_id' is required (e.g. 'us.nyse').")

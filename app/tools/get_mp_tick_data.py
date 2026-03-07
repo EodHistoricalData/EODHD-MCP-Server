@@ -65,7 +65,7 @@ def register(mcp: FastMCP):
             "first 500 TSLA ticks from March 3 2026" → ticker="TSLA", from_timestamp=1741003200, to_timestamp=1741089600, limit=500
             "MSFT trade ticks, max 1000" → ticker="MSFT", limit=1000
 
-        
+
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")

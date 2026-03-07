@@ -47,7 +47,7 @@ def register(mcp: FastMCP):
             "Splits in Q1 2026" → from_date="2026-01-01", to_date="2026-03-31"
             "Any splits next month" → from_date="2026-04-01", to_date="2026-04-30"
 
-        
+
         """
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):

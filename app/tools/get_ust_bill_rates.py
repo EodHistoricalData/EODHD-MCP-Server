@@ -61,7 +61,7 @@ def register(mcp: FastMCP):
             "Latest T-bill rates" → get_ust_bill_rates()
             "T-bill rates for 2025, first 50 records" → get_ust_bill_rates(year=2025, limit=50)
 
-        
+
         """
         url = f"{EODHD_API_BASE}/ust/bill-rates?1=1"
 

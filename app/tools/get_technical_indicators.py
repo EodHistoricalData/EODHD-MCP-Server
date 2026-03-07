@@ -158,7 +158,7 @@ def register(mcp: FastMCP):
             "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
             "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
 
-        
+
         """
         # --- Required/typed validation ---
         ticker = validate_ticker(ticker)

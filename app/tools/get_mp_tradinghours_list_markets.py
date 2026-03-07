@@ -63,7 +63,7 @@ def register(mcp: FastMCP):
             "show only G20 core markets" → group="core"
             "all equity and derivative markets" → group="all"
 
-        
+
         """
         if group is not None:
             group = group.strip().lower()

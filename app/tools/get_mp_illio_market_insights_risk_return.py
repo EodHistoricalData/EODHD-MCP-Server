@@ -115,7 +115,7 @@ def register(mcp: FastMCP):
             "S&P 500 risk-return insight" → id="SnP500"
             "Nasdaq-100 risk vs return" → id="NDX"
 
-        
+
         """
         return await _run_risk_return(id=id, fmt=fmt, api_token=api_token)
 

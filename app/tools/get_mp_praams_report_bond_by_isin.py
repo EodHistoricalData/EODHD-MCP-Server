@@ -104,7 +104,7 @@ def register(mcp: FastMCP):
             "Full bond report for Realty Income" → isin="US7593518852", email="user@example.com", is_full=True
             "US Treasury bond PDF report" → isin="US91282CJN20", email="user@example.com"
 
-        
+
         """
         return await _run_praams_report_bond_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)
 

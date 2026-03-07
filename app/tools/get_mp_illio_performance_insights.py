@@ -79,7 +79,7 @@ def register(mcp: FastMCP):
             "S&P 500 performance insights" → id="SnP500"
             "Nasdaq-100 performance attributes" → id="NDX"
 
-        
+
         """
         # Validate fmt
         fmt = (fmt or "json").lower()

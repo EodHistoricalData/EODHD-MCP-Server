@@ -65,7 +65,7 @@ def register(mcp: FastMCP):
             "Earnings this week" → start_date="2026-03-02", end_date="2026-03-06"
             "Microsoft and Google earnings" → symbols="MSFT.US,GOOG.US"
 
-        
+
         """
         sym_param = _normalize_symbols(symbols)
 

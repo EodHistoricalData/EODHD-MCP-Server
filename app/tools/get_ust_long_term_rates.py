@@ -53,7 +53,7 @@ def register(mcp: FastMCP):
             "20-year bond rates this year, first 20 records" → year=2026, limit=20
             "real long-term rate averages for 2022" → year=2022
 
-        
+
         """
         url = f"{EODHD_API_BASE}/ust/long-term-rates?1=1"
 

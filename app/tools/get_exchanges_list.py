@@ -41,7 +41,7 @@ def register(mcp: FastMCP):
             "List all available exchanges" → get_exchanges_list()
             "What stock exchanges does EODHD support?" → get_exchanges_list()
 
-        
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

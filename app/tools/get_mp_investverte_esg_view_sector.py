@@ -54,7 +54,7 @@ def register(mcp: FastMCP):
             "Airlines sector ESG data" → symbol="Airlines"
             "Aerospace & Defense ESG ratings" → symbol="Aerospace & Defense"
 
-        
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")

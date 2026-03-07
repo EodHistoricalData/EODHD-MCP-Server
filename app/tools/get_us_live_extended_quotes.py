@@ -95,7 +95,7 @@ def register(mcp: FastMCP):
             "Batch quotes for FAANG stocks" → symbols=["META.US", "AAPL.US", "AMZN.US", "NFLX.US", "GOOG.US"]
             "Tesla and Nvidia with pagination" → symbols=["TSLA.US", "NVDA.US"], page_limit=10, page_offset=0
 
-        
+
         """
         # --- Validate inputs ---
         syms = _normalize_symbols(symbols)

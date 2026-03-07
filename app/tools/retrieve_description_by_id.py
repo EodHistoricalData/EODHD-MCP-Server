@@ -440,7 +440,7 @@ def register(mcp: FastMCP):
             "how does the historical stock prices endpoint work" → type=2, id=12
             "explain rate limits" → type=3, id=22
 
-        
+
         """
         if type is None:
             page_type = 0

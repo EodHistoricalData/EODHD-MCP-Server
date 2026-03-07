@@ -57,7 +57,7 @@ def register(mcp: FastMCP):
             "German GDP year-over-year" → country="DE", comparison="yoy", type="GDP"
             "All events in March 2026, first 200" → start_date="2026-03-01", end_date="2026-03-31", limit=200
 
-        
+
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:

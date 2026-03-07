@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             "Ticker renames in 2025" → start_date="2025-01-01", end_date="2025-12-31"
             "Recent symbol changes last 90 days" → start_date="2025-12-06", end_date="2026-03-06"
 
-        
+
         """
         # Validate inputs
         if fmt != "json":

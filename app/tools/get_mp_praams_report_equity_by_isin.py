@@ -103,7 +103,7 @@ def register(mcp: FastMCP):
             "Full Apple equity report by ISIN" → isin="US0378331005", email="user@example.com", is_full=True
             "Tesla equity PDF via ISIN" → isin="US88160R1014", email="user@example.com"
 
-        
+
         """
         return await _run_praams_report_equity_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)
 

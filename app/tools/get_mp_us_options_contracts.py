@@ -113,7 +113,7 @@ def register(mcp: FastMCP):
             "SPY puts with strike between 400 and 450" → underlying_symbol="SPY", type="put", strike_from=400, strike_to=450
             "TSLA call contracts expiring in June 2026, sorted by strike" → underlying_symbol="TSLA", type="call", exp_date_from="2026-06-01", exp_date_to="2026-06-30", sort="strike"
 
-        
+
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             "Current yield rates" → get_ust_yield_rates()
             "2025 yield rates, page 2" → get_ust_yield_rates(year=2025, offset=100, limit=100)
 
-        
+
         """
         url = f"{EODHD_API_BASE}/ust/yield-rates?1=1"
 

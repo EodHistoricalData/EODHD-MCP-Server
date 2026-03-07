@@ -113,7 +113,7 @@ def register(mcp: FastMCP):
             "S&P 500 performance vs market" → id="SnP500"
             "Nasdaq-100 market performance chapter" → id="NDX"
 
-        
+
         """
         return await _run_market_insights(id=id, fmt=fmt, api_token=api_token)
 

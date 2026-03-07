@@ -54,7 +54,7 @@ def register(mcp: FastMCP):
             "Microsoft market cap last 6 months" → ticker="MSFT.US", start_date="2025-09-06", end_date="2026-03-06"
             "Google market cap since 2023" → ticker="GOOG.US", start_date="2023-01-01"
 
-        
+
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

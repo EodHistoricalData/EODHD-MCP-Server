@@ -43,7 +43,7 @@ def register(mcp: FastMCP):
             "List all ESG sectors" → (no params needed)
             "What sectors have ESG coverage?" → (no params needed)
 
-        
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

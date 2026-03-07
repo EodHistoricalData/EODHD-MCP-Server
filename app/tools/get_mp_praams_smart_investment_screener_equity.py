@@ -330,7 +330,7 @@ def register(mcp: FastMCP):
             "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
             "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
 
-        
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:

@@ -451,7 +451,7 @@ def register(mcp: FastMCP):
             "High-yield EUR bonds low risk" → currency=["EUR"], yieldMin=5, countryRiskMax=3
             "US investment-grade bonds short duration" → regions=[1], durationMax=3, solvencyMin=5
 
-        
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:

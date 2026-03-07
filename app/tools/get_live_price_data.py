@@ -69,7 +69,7 @@ def register(mcp: FastMCP):
             "Live quotes for Tesla, Google, and Amazon" → ticker="TSLA.US", additional_symbols=["GOOG.US", "AMZN.US"]
             "Bitcoin and Ethereum prices right now" → ticker="BTC-USD.CC", additional_symbols=["ETH-USD.CC"]
 
-        
+
         """
         # --- Validate inputs ---
         ticker = validate_ticker(ticker)

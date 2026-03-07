@@ -116,7 +116,7 @@ def register(mcp: FastMCP):
             "Dow Jones volatility bands" → id="DJI"
             "Nasdaq-100 volatility and day moves" → id="NDX"
 
-        
+
         """
         return await _run_volatility(id=id, fmt=fmt, api_token=api_token)
 

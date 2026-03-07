@@ -70,7 +70,7 @@ def register(mcp: FastMCP):
             "Recent insider transactions, top 50" → limit=50
             "Tesla insider buys and sells in Feb 2026" → symbol="TSLA.US", start_date="2026-02-01", end_date="2026-02-28"
 
-        
+
         """
         # --- Validate inputs ---
         if fmt != "json":

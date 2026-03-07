@@ -66,7 +66,7 @@ def register(mcp: FastMCP):
             "search for London Stock Exchange" → q="London Stock Exchange"
             "markets in Japan, core tier" → q="Japan", group="core"
 
-        
+
         """
         if group is not None:
             group = group.strip().lower()

@@ -47,7 +47,7 @@ def register(mcp: FastMCP):
             "show all S&P and Dow Jones indices" → (no params)
             "list available market indices with details" → (no params)
 
-        
+
         """
         fmt = (fmt or "json").lower()
         if fmt != "json":

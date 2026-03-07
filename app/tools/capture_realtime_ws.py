@@ -80,7 +80,7 @@ def register(mcp: FastMCP):
             ping_interval (float): WebSocket ping interval in seconds.
             ping_timeout (float): WebSocket ping timeout in seconds.
             connect_timeout (float): Overall connection timeout in seconds.
-        
+
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")

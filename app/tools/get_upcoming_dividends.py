@@ -55,7 +55,7 @@ def register(mcp: FastMCP):
             "All dividends on March 15" → date_eq="2026-03-15"
             "Microsoft dividends this quarter" → symbol="MSFT.US", date_from="2026-01-01", date_to="2026-03-31"
 
-        
+
         """
 
         # --- Validate basic args ---

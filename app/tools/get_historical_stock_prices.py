@@ -60,7 +60,7 @@ def register(mcp: FastMCP):
             "Weekly Tesla for 2025" → ticker="TSLA.US", period="w", start_date="2025-01-01", end_date="2025-12-31"
             "Monthly S&P 500 since 2020" → ticker="GSPC.INDX", period="m", start_date="2020-01-01"
 
-        
+
         """
         # --- Validate required/typed params ---
         ticker = validate_ticker(ticker)

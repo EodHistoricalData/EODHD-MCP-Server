@@ -59,7 +59,7 @@ def register(mcp: FastMCP):
             "Apple earnings trend" → symbols="AAPL.US"
             "Compare Tesla and Nvidia earnings trends" → symbols="TSLA.US,NVDA.US"
 
-        
+
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:

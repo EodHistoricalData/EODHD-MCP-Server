@@ -71,7 +71,7 @@ def register(mcp: FastMCP):
             "Crypto news, 50 results" → tag="crypto", limit=50
             "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
 
-        
+
         """
         # --- Validate required conditions ---
         if not ticker and not tag:

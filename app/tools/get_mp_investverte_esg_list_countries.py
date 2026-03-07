@@ -43,7 +43,7 @@ def register(mcp: FastMCP):
             "List all ESG countries" → (no params needed)
             "Which countries have ESG ratings?" → (no params needed)
 
-        
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

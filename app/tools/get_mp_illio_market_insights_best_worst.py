@@ -116,7 +116,7 @@ def register(mcp: FastMCP):
             "S&P 500 best and worst days" → id="SnP500"
             "Nasdaq-100 largest single-day moves" → id="NDX"
 
-        
+
         """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)
 

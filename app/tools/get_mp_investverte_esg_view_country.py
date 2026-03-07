@@ -57,7 +57,7 @@ def register(mcp: FastMCP):
             - /api/mp/investverte/country/US?year=2021&frequency=FY
             - /api/mp/investverte/country/US
 
-        
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")

@@ -95,7 +95,7 @@ def register(mcp: FastMCP):
             "Full Apple equity report" → ticker="AAPL", email="user@example.com", is_full=True
             "Tesla quick equity analysis" → ticker="TSLA", email="user@example.com"
 
-        
+
         """
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token

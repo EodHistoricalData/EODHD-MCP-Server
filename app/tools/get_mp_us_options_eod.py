@@ -95,7 +95,7 @@ def register(mcp: FastMCP):
             "MSFT puts EOD data, strike 300-400" → underlying_symbol="MSFT", type="put", strike_from=300, strike_to=400
             "NVDA calls expiring 2026-06-20, compact" → underlying_symbol="NVDA", type="call", exp_date_eq="2026-06-20", compact=True
 
-        
+
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:

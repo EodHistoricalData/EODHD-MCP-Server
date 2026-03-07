@@ -63,7 +63,7 @@ def register(mcp: FastMCP):
             "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
             "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
 
-        
+
         """
         # --- Validate ---
         if not query or not isinstance(query, str):

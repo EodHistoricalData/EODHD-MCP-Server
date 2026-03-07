@@ -73,7 +73,7 @@ def register(mcp: FastMCP):
             "AAPL and MSFT fundamentals from NYSE" → get_bulk_fundamentals(exchange="US", symbols="AAPL,MSFT")
             "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
 
-        
+
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(

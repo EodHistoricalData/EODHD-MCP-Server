@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             "Nvidia word weights, top 20" → ticker="NVDA.US", limit=20
             "Amazon news themes in Q1 2026" → ticker="AMZN.US", start_date="2026-01-01", end_date="2026-03-06"
 
-        
+
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")

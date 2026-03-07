@@ -344,7 +344,7 @@ def register(mcp: FastMCP):
             "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
             "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
 
-        
+
         """
         # --- Validate basics
         if fmt != "json":

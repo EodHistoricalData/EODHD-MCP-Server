@@ -52,7 +52,7 @@ def register(mcp: FastMCP):
             "List all CBOE indices" → get_cboe_indices_list()
             "What CBOE European indices are available?" → get_cboe_indices_list()
 
-        
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

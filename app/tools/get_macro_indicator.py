@@ -98,7 +98,7 @@ def register(mcp: FastMCP):
             "Germany unemployment rate" → get_macro_indicator(country="DEU", indicator="unemployment_total_percent")
             "France inflation (CPI)" → get_macro_indicator(country="FRA", indicator="inflation_consumer_prices_annual")
 
-        
+
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

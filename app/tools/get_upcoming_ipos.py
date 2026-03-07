@@ -53,7 +53,7 @@ def register(mcp: FastMCP):
             "IPOs in March 2026" → from_date="2026-03-01", to_date="2026-03-31"
             "Upcoming IPOs next 30 days" → from_date="2026-03-06", to_date="2026-04-05"
 
-        
+
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()

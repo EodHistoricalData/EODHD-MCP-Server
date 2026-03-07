@@ -44,7 +44,7 @@ def register(mcp: FastMCP):
             "list all tickers that have options" → (no params)
             "which stocks have options available" → (no params)
 
-        
+
         """
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/underlying-symbols?1=1"
         base += _q("page[offset]", page_offset)
