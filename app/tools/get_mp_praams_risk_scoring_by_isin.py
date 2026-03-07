@@ -79,24 +79,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Equity Risk & Return Scoring by ISIN
-        GET /api/mp/praams/analyse/equity/isin/{isin}
-
-        Retrieves Praams' equity risk & return scoring for a single asset,
-        identified by its ISIN (e.g., 'US0378331005').
-
-        The response includes, among others:
-          - PRAAMS Ratio and total risk/return scores
-          - Valuation, performance, profitability, growth & momentum
-          - Dividend metrics and yields
-          - Volatility, stress-testing and liquidity assessment
-          - Country risk, solvency, and descriptive risk narratives
-          - Analyst view and price targets
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ISIN code.
+        Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
+        growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        Use when assessing investment risk and you have the ISIN. Consumes 10 API calls per request.
+        For lookup by ticker instead of ISIN, use get_mp_praams_risk_scoring_by_ticker.
+        For a full PDF report, use get_mp_praams_report_equity_by_isin.
         """
         return await _run_praams_equity_by_isin(isin=isin, api_token=api_token)
 

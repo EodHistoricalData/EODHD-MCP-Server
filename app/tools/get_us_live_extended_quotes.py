@@ -55,12 +55,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,      # per-call override
     ) -> str:
         """
-        Live v2 for US Stocks: Extended Quotes (Delayed, exchange-compliant)
-        GET /api/us-quote-delayed
-
-        - 1 API call per ticker (batching supported via 's').
-        - Returns a per-symbol quote snapshot with last trade, bid/ask (+ sizes & event times),
-          rolling averages, 52w high/low, market cap, basic fundamentals, etc.
+        Get extended delayed quotes for US stocks with rich detail beyond basic live prices.
+        Returns last trade, bid/ask with sizes and event timestamps, rolling averages (50d/200d),
+        52-week high/low, market cap, EPS, PE ratio, dividend yield, and more per symbol.
+        Supports batching multiple US tickers in one call. 1 API call per ticker.
+        For non-US tickers or basic global live prices, use get_live_price_data instead.
+        For historical end-of-day data, use get_historical_stock_prices instead.
 
         Args:
           symbols: A single comma-separated string or a sequence of tickers (e.g., ["AAPL.US","TSLA.US"]).

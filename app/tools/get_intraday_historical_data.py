@@ -155,7 +155,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Intraday Historical Stock Price Data API (spec-aligned).
+        Get historical intraday OHLCV candles at 1-minute, 5-minute, or 1-hour intervals.
+        Use for intraday price analysis, short-term patterns, and high-resolution charting.
+        Accepts date strings or Unix timestamps for the time range.
+        Max range depends on interval: 1m=120 days, 5m=600 days, 1h=7200 days.
+        For daily/weekly/monthly end-of-day bars, use get_historical_stock_prices instead.
+        For current live price, use get_live_price_data instead.
 
         Args:
             ticker (str): SYMBOL.EXCHANGE_ID, e.g. 'AAPL.US'.

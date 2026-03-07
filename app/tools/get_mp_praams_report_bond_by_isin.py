@@ -67,27 +67,19 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override
     ) -> str:
         """
-        Marketplace: Praams Multi-Factor Bond Report by ISIN
-        GET /api/mp/praams/reports/bond/{isin}
-
-        Generates a comprehensive PDF report with multi-factor analysis
-        for a bond identified by its ISIN code.
+        [PRAAMS] Generate a comprehensive multi-factor PDF report for a bond by ISIN code.
+        Covers 120,000+ global bonds (corporate and sovereign). Report includes valuation,
+        performance, coupon analysis, profitability, growth, plus risk factors (volatility,
+        stress-test, liquidity, country, solvency). Requires an email for delivery notification.
+        Consumes 10 API calls per request.
+        For JSON bond analysis without PDF, use get_mp_praams_bond_analyze_by_isin.
+        For equity PDF reports, use get_mp_praams_report_equity_by_ticker or by_isin.
 
         Args:
             isin (str): ISIN code of the bond (e.g. 'US7593518852', 'US91282CJN20').
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Marketplace product: 10 API calls per request.
-            - Response is a PDF file download (application/pdf).
-            - Coverage: 120,000+ global bonds (corporate and sovereign).
-            - Return factors: valuation, performance, analyst view, profitability,
-              growth, dividends/coupons.
-            - Risk factors: default, volatility, stress-test, selling difficulty,
-              country, other risks.
-            - Demo ISINs: US7593518852, US91282CJN20.
         """
         return await _run_praams_report_bond_by_isin(
             isin=isin, email=email, is_full=is_full, api_token=api_token

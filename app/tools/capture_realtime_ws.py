@@ -43,34 +43,27 @@ def register(mcp: FastMCP):
         connect_timeout: float = 15.0,
     ) -> str:
         """
-        Capture real-time data via WebSockets for a fixed window, then return it.
+        Capture real-time streaming market data via WebSocket for a fixed time window. Use when
+        the user needs live tick-by-tick prices, real-time trades, bid/ask quotes, or streaming
+        forex/crypto rates.
+
+        Connects to EODHD WebSocket feeds (us_trades, us_quotes, forex, crypto), subscribes to
+        specified symbols, collects messages for the given duration, then returns all captured
+        data at once. Unlike get_live_price_data (REST snapshot), this streams continuous updates.
+
+        For a single REST-based price snapshot, use get_live_price_data instead.
+        For historical tick-level trade data (not real-time), use get_us_tick_data.
 
         Args:
             feed (str): One of {'us_trades','us_quotes','forex','crypto'}.
             symbols (str | list[str]): Single or comma-separated symbols, or a list.
-                Examples:
-                  - US trades/quotes: 'AAPL,MSFT,TSLA'
-                  - FOREX: 'EURUSD'
-                  - Crypto: 'ETH-USD,BTC-USD'
+                Examples: 'AAPL,MSFT,TSLA' (US), 'EURUSD' (forex), 'ETH-USD,BTC-USD' (crypto).
             duration_seconds (int): How long to capture messages (1..600). Default 5.
-            api_token (str, optional): WebSocket token; 'demo' supports AAPL, MSFT, TSLA, EURUSD, ETH-USD, BTC-USD.
+            api_token (str, optional): WebSocket token; 'demo' supports limited symbols.
             max_messages (int, optional): Stop early after N messages.
-            ping_interval (float): websockets.connect ping interval (seconds).
-            ping_timeout (float): websockets.connect ping timeout (seconds).
-            connect_timeout (float): Overall timeout to establish connection (seconds).
-
-        Returns:
-            str: JSON string with
-                {
-                  "feed": ...,
-                  "endpoint": ...,
-                  "symbols": [...],
-                  "duration_seconds": ...,
-                  "started_at": <epoch_ms>,
-                  "ended_at": <epoch_ms>,
-                  "message_count": N,
-                  "messages": [ {parsed message dicts...} ]
-                }
+            ping_interval (float): WebSocket ping interval in seconds.
+            ping_timeout (float): WebSocket ping timeout in seconds.
+            connect_timeout (float): Overall connection timeout in seconds.
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")

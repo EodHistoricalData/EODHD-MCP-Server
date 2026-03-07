@@ -16,23 +16,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
-        Get List of Companies available in Investverte ESG dataset
-        (GET /api/mp/investverte/companies)
-
-        Returns:
-            A JSON-formatted string containing an array of objects:
-            [
-              {"symbol": "000001.SZ", "name": "Ping An Bank Co., Ltd."},
-              {"symbol": "000002.SZ", "name": "China Vanke Co., Ltd."},
-              ...
-            ]
-
-        Notes:
-            - This endpoint lists all companies covered by the Investverte ESG dataset.
-            - Rate limits (Marketplace product):
-                * 100,000 API calls per 24 hours
-                * 1,000 API requests per minute
-                * 1 API request = 10 API calls
+        [InvestVerte] List all companies available in the ESG dataset.
+        Returns an array of symbol/name pairs for every company with ESG coverage.
+        Use as a reference lookup before calling get_mp_investverte_esg_view_company for detailed ESG scores.
+        Consumes 10 API calls per request.
+        For country or sector reference lists, use get_mp_investverte_esg_list_countries or list_sectors.
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

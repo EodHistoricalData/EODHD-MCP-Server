@@ -35,17 +35,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call override; env token otherwise
     ) -> str:
         """
-        Historical Market Capitalization API (GET /api/historical-market-cap/{TICKER})
-
-        Notes:
-            - Covers US stocks on NYSE/NASDAQ from 2020 (weekly points).
-            - 'ticker' can be SYMBOL or SYMBOL.EXCHANGE (e.g., 'AAPL' or 'AAPL.US').
-            - Optional 'from'/'to' filter by YYYY-MM-DD.
-            - Each symbol request costs 10 API calls (per docs).
-
-        Returns:
-            str: JSON string with weekly market cap data
-                 (or {"csv": "..."} if you later adapt make_request to return text for csv).
+        Get historical market capitalization data for a US stock over time.
+        Returns weekly market cap data points (from 2020 onward) for NYSE/NASDAQ tickers.
+        Filter by date range. Each request consumes 10 API calls.
+        Use when the user asks about market cap history, company valuation over time, or market cap trends.
+        This is the only tool for historical market cap -- do not confuse with fundamental data or price history.
         """
         # --- Validate inputs ---
         if not ticker or not isinstance(ticker, str):

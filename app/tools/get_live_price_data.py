@@ -33,7 +33,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Live (Delayed) Stock Prices API
+        Get the current (delayed ~15-20 min) price snapshot for one or more tickers.
+        Returns last trade price, change, change percent, volume, high, low, open, previous close, and timestamp.
+        Supports stocks, ETFs, indices, forex, and crypto. Batch up to 20 symbols in one call.
+        For US stocks with bid/ask, 52w range, and market cap, use get_us_live_extended_quotes instead.
+        For historical daily/weekly/monthly OHLCV, use get_historical_stock_prices instead.
 
         Args:
             ticker (str): Primary symbol in SYMBOL.EXCHANGE format (e.g., 'AAPL.US').

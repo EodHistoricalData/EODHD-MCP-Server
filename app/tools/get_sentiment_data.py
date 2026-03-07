@@ -39,7 +39,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Sentiment Data API (GET /api/sentiments)
+        Get aggregated sentiment scores for stocks based on news and social media analysis.
+        Returns daily sentiment polarity, news buzz, and weighted scores for one or more tickers over a date range.
+        Use when analyzing market mood, news impact, or sentiment-driven trading signals.
+        For raw news articles, use get_company_news instead.
+        For word frequency in news, use get_news_word_weights instead.
 
         Args:
             symbols (str): One or more comma-separated tickers (e.g., 'AAPL.US,BTC-USD.CC').

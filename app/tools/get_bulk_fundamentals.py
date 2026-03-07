@@ -29,28 +29,25 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,              # per-call override
     ) -> str:
         """
-        Bulk Fundamentals API
-        GET /api/bulk-fundamentals/{EXCHANGE}
+        Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
+        financials, valuation, or earnings data for many companies at once -- screening,
+        comparing sectors, or building dashboards across an entire exchange.
 
-        Retrieves fundamentals data for all stocks on an exchange in a single call.
-        Includes General, Highlights, Valuation, Technicals, SplitsDividends,
-        Earnings (last 4 quarters + 4 years), and Financials sections.
+        Returns General, Highlights, Valuation, Technicals, SplitsDividends, Earnings (last 4
+        quarters + 4 years), and Financials for up to 500 stocks per call. Stocks only (no ETFs
+        or mutual funds). Costs 100 API calls per request. Requires Extended Fundamentals plan.
+
+        For a single ticker's full fundamentals, use get_fundamentals_data instead.
+        For macro country-level economic data, use get_macro_indicator.
 
         Args:
             exchange (str): Exchange code (e.g., 'NASDAQ', 'NYSE', 'US', 'LSE').
-            symbols (str, optional): Comma-separated list of specific symbols.
-            offset (int, optional): Starting position for pagination (default 0).
-            limit (int, optional): Number of symbols to return (default 500, max 500).
-            version (str, optional): '1.2' for output closer to single-symbol template.
-            fmt (str): Response format: 'json' (default) or 'csv'.
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Requires Extended Fundamentals subscription plan.
-            - API cost: 100 calls per request (or 100 + number of symbols if using symbols param).
-            - Stocks only (no ETFs or Mutual Funds).
-            - Max pagination limit: 500.
-            - Historical data limited to 4 quarters and 4 years.
+            symbols (str, optional): Comma-separated list of specific symbols to filter.
+            offset (int, optional): Pagination start (default 0).
+            limit (int, optional): Max symbols to return (default 500, max 500).
+            version (str, optional): '1.2' for single-symbol-like output format.
+            fmt (str): 'json' (default) or 'csv'.
+            api_token (str, optional): Per-call token override.
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(

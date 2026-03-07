@@ -22,11 +22,16 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,   # per-call override
     ) -> str:
         """
-        Get List of Tickers for an Exchange (GET /api/exchange-symbol-list/{EXCHANGE_CODE})
+        List all tickers (symbols) available on a given exchange. Use when the user needs to
+        enumerate stocks, ETFs, or funds on an exchange, or check if a specific instrument
+        is listed there.
 
-        Notes:
-            - By default, API returns tickers active in the last month.
-            - For US, you can use 'US' (unified) or specific venues (NYSE, NASDAQ, etc.).
+        Covers common stocks, preferred stocks, ETFs, and funds. By default returns tickers
+        active in the last month. Supports delisted tickers via the delisted flag. For US
+        markets, use 'US' (unified) or specific venues like NYSE, NASDAQ.
+
+        For the list of all exchanges, use get_exchanges_list.
+        For exchange metadata and trading hours, use get_exchange_details.
         """
         if not exchange_code or not isinstance(exchange_code, str):
             raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")

@@ -57,27 +57,18 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,       # per-call override
     ) -> str:
         """
-        Marketplace: Praams Multi-Factor Equity Report by Ticker
-        GET /api/mp/praams/reports/equity/ticker/{ticker}
-
-        Generates a comprehensive PDF report with multi-factor analysis
-        for an equity identified by its ticker symbol.
+        [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ticker symbol.
+        Covers 120,000+ global equities. Report includes valuation, performance, profitability,
+        growth, dividends, analyst view, plus risk factors (volatility, stress-test, liquidity,
+        country, solvency). Requires an email for delivery notification. Consumes 10 API calls per request.
+        For report by ISIN, use get_mp_praams_report_equity_by_isin.
+        For JSON risk scoring without PDF, use get_mp_praams_risk_scoring_by_ticker.
 
         Args:
             ticker (str): Ticker symbol (e.g. 'AAPL', 'TSLA', 'AMZN').
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Marketplace product: 10 API calls per request.
-            - Response is a PDF file download (application/pdf).
-            - Coverage: 120,000+ global equities (stocks, ETFs).
-            - Return factors: valuation, performance, analyst view, profitability,
-              growth, dividends/coupons.
-            - Risk factors: default, volatility, stress-test, selling difficulty,
-              country, other risks.
-            - Demo tickers: AAPL, TSLA, AMZN.
         """
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token

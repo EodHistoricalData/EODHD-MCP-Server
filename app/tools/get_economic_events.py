@@ -32,11 +32,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call override
     ) -> str:
         """
-        Economic Events Data API (/economic-events)
-
-        Returns past/future economic events with optional filters:
-        date window, country (ISO2), comparison (mom|qoq|yoy), type text,
-        and pagination (offset/limit).
+        Fetch macroeconomic calendar events such as GDP, CPI, employment, and interest rate releases.
+        Returns scheduled and past economic indicators with actual, estimate, and previous values.
+        Covers global economies; filter by country (ISO-2), date range, comparison period (mom/qoq/yoy), and event type.
+        Use when the user asks about economic calendar, macro releases, or upcoming government data publications.
+        This tool covers macro events only -- for company-level earnings dates, use get_upcoming_earnings.
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:

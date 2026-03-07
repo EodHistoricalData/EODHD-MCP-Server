@@ -30,10 +30,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,                    # per-call override
     ) -> str:
         """
-        Marketplace: US Stock Market Tick Data
-        GET /api/mp/unicornbay/tickdata/ticks
-
-        Returns granular trade ticks for US equities via the Marketplace tick data provider.
+        [Marketplace] Fetch individual trade ticks (tick-by-tick data) for US stocks. Use when
+        asked about granular trade-level data, tick history, or microstructure analysis.
+        Returns timestamp (ms), price, shares, market center, and sequence for each trade.
+        Covers US equities only. Time range defaults to yesterday if not specified.
+        This is the paid Marketplace tick data provider. For free-tier tick data, use get_us_tick_data.
+        Consumes 10 API calls per request.
 
         Args:
             ticker (str): Ticker symbol, max 30 chars (e.g. 'AAPL', 'MSFT').
@@ -41,13 +43,6 @@ def register(mcp: FastMCP):
             to_timestamp (int, optional): End UNIX time in seconds. Default: yesterday end.
             limit (int, optional): Max ticks to return (1-10000). Default: all in range.
             api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - Marketplace product: 10 API calls per request.
-            - Columnar response format with fields: ts (milliseconds), price, shares,
-              mkt, seq, sl, sub_mkt.
-            - Timestamp params in seconds but response ts in milliseconds.
-            - US stocks only.
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")

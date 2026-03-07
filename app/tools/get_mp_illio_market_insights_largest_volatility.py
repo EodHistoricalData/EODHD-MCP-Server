@@ -98,24 +98,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Largest Volatility Change (v1.0.0)
-        GET /api/mp/illio/chapters/volume/{id}
-
-        Returns chapter: Largest Volatility Change over the past year for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        This insight highlights instruments with the largest increases and decreases
-        in 100-day volatility over the past year, including:
-          - Overall share of instruments with higher vs lower volatility.
-          - Top instruments by volatility increase.
-          - Top instruments by volatility decrease.
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Identify constituents with the largest year-over-year volatility changes.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns top instruments by 100-day volatility
+        increase and decrease, plus the overall share of instruments with rising vs falling volatility.
+        Consumes 10 API calls per request.
+        For current volatility bands and daily moves, use get_mp_illio_market_insights_volatility.
+        For beta-based market sensitivity, use get_mp_illio_market_insights_beta_bands.
         """
         return await _run_largest_volatility(id=id, fmt=fmt, api_token=api_token)
 
@@ -127,6 +115,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Alias for get_mp_illio_market_insights_largest_volatility.
+        [Illio] Alias for get_mp_illio_market_insights_largest_volatility.
+        Identify constituents with the largest year-over-year volatility changes in a major US index.
         """
         return await _run_largest_volatility(id=id, fmt=fmt, api_token=api_token)

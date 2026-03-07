@@ -289,17 +289,13 @@ def register(mcp: FastMCP):
         fmt: str = "json",
     ) -> str:
         """
-        Get Fundamentals for Stocks, ETFs, Mutual Funds, and Indices.
-
-        - Per-call auth override is OPTIONAL:
-            api_token (preferred) or api_key (alias).
-          If neither is provided, make_request() will inject the token from the MCP request or env.
-
-        - Auto-detects asset Type via 'General'.
-        - For Common Stock: if from/to are provided, prunes `outstandingShares`, `Earnings`, and `Financials`
-          outside the window. Financials are fetched only for in-range period end dates (from outstandingShares).
-        - For Indices: pass 'historical=1' and optional 'from'/'to' through `extra_params`.
-        - Always returns JSON (fmt must be 'json').
+        Retrieve fundamental data for a single stock, ETF, mutual fund, index, or crypto.
+        Auto-detects asset type. For stocks: returns financials (income statement, balance sheet, cash flow),
+        earnings, valuation, analyst ratings, holders, insider transactions, and outstanding shares.
+        For ETFs: returns holdings, asset allocation, sector/country weights. For mutual funds: fund-specific data.
+        Supports date-range pruning to limit financials and earnings to a specific window.
+        For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
+        For price data, use get_historical_stock_prices or get_live_price_data instead.
         """
         # --- Validate basics
         if fmt != "json":

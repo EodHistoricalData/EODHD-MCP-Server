@@ -39,10 +39,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,          # per-call override
     ) -> str:
         """
-        Upcoming Earnings API (/calendar/earnings)
-
-        If 'symbols' is provided, API ignores 'from'/'to' (per docs).
-        Otherwise, optional date window defaults server-side to [today, today+7d].
+        Get upcoming and recent earnings report dates for stocks.
+        Returns scheduled earnings dates, EPS estimates, and actual results when available.
+        Filter by specific symbols or a date range (defaults to next 7 days).
+        Use when the user asks "when does X report earnings?" or wants an earnings calendar.
+        For EPS/revenue trend analysis and analyst revisions, use get_earnings_trends instead.
+        For macroeconomic events (GDP, CPI), use get_economic_events instead.
         """
         sym_param = _normalize_symbols(symbols)
 

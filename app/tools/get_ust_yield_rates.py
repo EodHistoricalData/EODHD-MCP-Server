@@ -19,23 +19,20 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
-        US Treasury Yield Rates API (Par Yield Curve)
-        GET /api/ust/yield-rates
+        Fetch daily US Treasury par yield curve rates. Use when the user asks about Treasury
+        yields, the yield curve, government bond rates, or interest rates across maturities.
 
-        Returns Daily Treasury Par Yield Curve Rates (nominal yield curve).
-        Tenors: 1M, 1.5M, 2M, 3M, 4M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y.
+        Returns nominal par yield curve rates for tenors: 1M, 1.5M, 2M, 3M, 4M, 6M, 1Y, 2Y,
+        3Y, 5Y, 7Y, 10Y, 20Y, 30Y. Fields include date, tenor, and rate. Filterable by year.
+        Costs 1 API call per request.
+
+        For short-term T-bill discount/coupon rates (4WK-52WK), use get_ust_bill_rates instead.
 
         Args:
-            year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
+            year (int, optional): Filter by year (1900+). Defaults to current year.
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
-            api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - 1 API call per request.
-            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, rate.
-            - Full yield curve across multiple maturities.
+            api_token (str, optional): Per-call token override.
         """
         url = f"{EODHD_API_BASE}/ust/yield-rates?1=1"
 

@@ -91,18 +91,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Best & Worst Days (v1.0.0)
-        GET /api/mp/illio/chapters/best-and-worst/{id}
-
-        Returns chapter: Largest 1 Day Moves for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Get the largest single-day gains and losses for index constituents.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns best and worst 1-day moves
+        with dates, magnitudes, and affected instruments. Consumes 10 API calls per request.
+        For overall constituent performance, use get_mp_illio_market_insights_performance.
+        For volatility trends, use get_mp_illio_market_insights_volatility.
         """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)
 

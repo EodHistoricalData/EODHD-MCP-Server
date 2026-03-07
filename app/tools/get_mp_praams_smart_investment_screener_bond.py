@@ -412,6 +412,14 @@ def register(mcp: FastMCP):
         # auth
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        [PRAAMS] Screen and filter bonds using multi-factor risk-return criteria.
+        Filter by region, country, sector, currency, yield range, duration range, PRAAMS score ranges (1-7),
+        and exclude subordinated or perpetual bonds. Returns paginated matching bonds with scores.
+        Consumes 10 API calls per request.
+        For equity screening, use get_mp_praams_smart_screener_equity.
+        For deep analysis of a single bond, use get_mp_praams_bond_analyze_by_isin.
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)
@@ -485,6 +493,11 @@ def register(mcp: FastMCP):
         excludePerpetuals: Optional[bool] = None,
         api_token: Optional[str] = None,
     ) -> str:
+        """
+        [PRAAMS] Convenience alias for bond screening with common filters.
+        Screen bonds by region, sector, currency, yield, duration, and growth/market-view scores.
+        For full filter set, use get_mp_praams_smart_screener_bond.
+        """
         st_err = _validate_skip_take(skip, take)
         if st_err:
             raise ToolError(st_err)

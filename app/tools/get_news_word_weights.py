@@ -36,7 +36,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        News Word Weights API (GET /api/news-word-weights)
+        Get top weighted keywords from news articles for a given stock ticker over a date range.
+        Returns word frequency and importance scores, useful for identifying dominant themes and narratives in coverage.
+        Use when analyzing what topics or terms dominate news about a company.
+        For raw news articles, use get_company_news instead.
+        For aggregated sentiment scores, use get_sentiment_data instead.
 
         Args:
             ticker (str): Symbol to analyze (e.g., 'AAPL.US'); mapped to 's'.

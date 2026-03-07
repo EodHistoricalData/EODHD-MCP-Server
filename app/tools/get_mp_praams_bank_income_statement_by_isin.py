@@ -85,28 +85,12 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: Praams Bank Income Statement by ISIN
-        GET /api/mp/praams/bank/income_statement/isin/{isin}
-
-        Retrieves the income statement data for a bank identified by its ISIN.
-
-        The Praams Bank Financials API provides bank-specific financials using a
-        methodology tailored to banking analysis, including (annual and quarterly):
-
-          - Core revenue
-          - Net interest income
-          - Net fee & commission income
-          - RIBPT (Recurring income before provisioning and taxes)
-          - Non-recurring income
-          - IBPT (Income before provisioning and taxes)
-          - Provisioning
-
-        This endpoint returns a time series of income statement entries under "items".
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON only
+        [PRAAMS] Retrieve bank-specific income statement time series by ISIN code.
+        Returns annual and quarterly data: core revenue, net interest income, fee & commission income,
+        RIBPT, non-recurring income, IBPT, and provisioning. Tailored for banking sector analysis.
+        Consumes 10 API calls per request.
+        For lookup by ticker, use get_mp_praams_bank_income_statement_by_ticker.
+        For bank balance sheet data, use get_mp_praams_bank_balance_sheet_by_isin.
         """
         return await _run_praams_income_statement_by_isin(
             isin=isin,

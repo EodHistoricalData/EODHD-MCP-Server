@@ -91,18 +91,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Risk-Return (v1.0.0)
-        GET /api/mp/illio/chapters/risk/{id}
-
-        Returns Risk-Return Insight chapter for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Analyze market-level risk-return tradeoff for index constituents.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns risk-adjusted return metrics,
+        Sharpe-style analysis, and constituent risk-return scatter data. Consumes 10 API calls per request.
+        For portfolio-level risk attributes, use mp_illio_risk_insights.
+        For beta sensitivity analysis, use get_mp_illio_market_insights_beta_bands.
         """
         return await _run_risk_return(id=id, fmt=fmt, api_token=api_token)
 

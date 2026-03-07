@@ -98,23 +98,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
-        Marketplace: illio Market Insights – Beta Bands (v1.0.0)
-        GET /api/mp/illio/chapters/beta-bands/{id}
-
-        Returns Beta Bands insight for:
-          - SnP500 (S&P 500)
-          - DJI    (Dow Jones Industrial Average)
-          - NDX    (Nasdaq-100)
-
-        Insight:
-          - How instruments react to overall market moves based on Beta.
-          - Distribution of instruments across Beta brackets.
-          - Instruments with highest and lowest Beta (most / least sensitive to market moves).
-
-        Limits (Marketplace rules):
-          - 1 request = 10 API calls
-          - 100k calls / 24h, 1k requests / minute
-          - Output is JSON
+        [Illio] Analyze beta sensitivity distribution of index constituents relative to the market.
+        Covers S&P 500, Dow Jones, and Nasdaq-100. Returns beta bracket distribution, instruments with
+        highest/lowest beta, and how constituents react to overall market moves. Consumes 10 API calls per request.
+        For risk-return tradeoff analysis, use get_mp_illio_market_insights_risk_return.
+        For volatility trends, use get_mp_illio_market_insights_volatility.
         """
         return await _run_beta_bands(id=id, fmt=fmt, api_token=api_token)
 
@@ -126,6 +114,7 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,
     ) -> str:
         """
-        Alias for get_mp_illio_market_insights_beta_bands.
+        [Illio] Alias for get_mp_illio_market_insights_beta_bands.
+        Analyze beta sensitivity distribution of index constituents relative to the market.
         """
         return await _run_beta_bands(id=id, fmt=fmt, api_token=api_token)

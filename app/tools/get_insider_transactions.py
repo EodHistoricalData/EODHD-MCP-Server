@@ -35,8 +35,10 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,    # per-call token override
     ) -> str:
         """
-        Insider Transactions API (SEC Form 4)
-        GET /api/insider-transactions
+        Fetch SEC Form 4 insider trading transactions -- purchases and sales by company officers, directors, and major shareholders.
+        Returns transaction date, insider name, title, transaction type (P=Purchase, S=Sale), shares, and value.
+        Filter by ticker symbol and/or date range. Each request consumes 10 API calls.
+        Use when the user asks about insider buying/selling activity, executive stock transactions, or Form 4 filings.
 
         Args:
             start_date (str, optional): 'from' in YYYY-MM-DD. Defaults to ~1 year ago by API if omitted.
@@ -48,10 +50,6 @@ def register(mcp: FastMCP):
 
         Returns:
             str: JSON array of insider transactions or {"error": "..."} on failure.
-
-        Notes:
-            • Each request consumes 10 API calls (per docs).
-            • Transaction codes in results include 'P' (Purchase) and 'S' (Sale).
         """
         # --- Validate inputs ---
         if fmt != "json":

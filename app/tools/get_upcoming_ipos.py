@@ -26,17 +26,10 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,     # per-call override; otherwise env EODHD_API_KEY is used
     ) -> str:
         """
-        Upcoming IPOs API (/calendar/ipos)
-
-        Parameters:
-          - from_date (YYYY-MM-DD): start date (maps to 'from'); default = today if omitted by server
-          - to_date   (YYYY-MM-DD): end date   (maps to 'to');   default = today+7d if omitted by server
-          - fmt: 'json' or 'csv' (API default is csv). We default to 'json' for easier consumption.
-          - api_token: optional override for per-call token
-
-        Returns:
-          - JSON (stringified) when fmt='json'
-          - CSV (raw text wrapped as JSON string if the upstream returns text)
+        Get upcoming and recent IPO (Initial Public Offering) listings.
+        Returns IPO dates, company names, exchanges, share prices, and deal details within a date range (defaults to next 7 days).
+        Use when the user asks about new stock listings, companies going public, or IPO calendar.
+        For stock splits calendar, use get_upcoming_splits. For dividend calendar, use get_upcoming_dividends.
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()

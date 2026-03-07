@@ -19,23 +19,18 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,            # per-call override
     ) -> str:
         """
-        US Treasury Real Yield Rates API (Inflation-Adjusted)
-        GET /api/ust/real-yield-rates
-
-        Returns Daily Par Real Yield Curve Rates (inflation-adjusted yields).
-        Tenors: 5Y, 7Y, 10Y, 20Y, 30Y.
+        Fetch US Treasury inflation-adjusted (real) yield curve rates. Use when asked about TIPS yields,
+        real interest rates, or inflation-adjusted Treasury returns.
+        Covers 5Y, 7Y, 10Y, 20Y, 30Y tenors from the Daily Par Real Yield Curve.
+        For nominal Treasury yields use get_ust_yield_rates. For T-bill discount rates use get_ust_bill_rates.
+        For long-term rate averages (20Y+ composites) use get_ust_long_term_rates.
+        Consumes 1 API call per request.
 
         Args:
             year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
             limit (int, optional): Records per page.
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
-
-        Notes:
-            - 1 API call per request.
-            - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
-            - Response fields: date, tenor, rate.
-            - Compare with nominal yields for implied inflation expectations.
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
 

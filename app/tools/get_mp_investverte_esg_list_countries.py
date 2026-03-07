@@ -16,23 +16,11 @@ def register(mcp: FastMCP):
         api_token: Optional[str] = None,  # per-call override
     ) -> str:
         """
-        Get List of Countries available in Investverte ESG dataset
-        (GET /api/mp/investverte/countries)
-
-        Returns:
-            A JSON-formatted string containing an array of objects:
-            [
-              {"country_code": "AD", "country_descr": "Andorra"},
-              {"country_code": "AE", "country_descr": "United Arab Emirates"},
-              ...
-            ]
-
-        Notes:
-            - This endpoint lists all countries covered by the Investverte ESG dataset.
-            - Rate limits (Marketplace product):
-                * 100,000 API calls per 24 hours
-                * 1,000 API requests per minute
-                * 1 API request = 10 API calls
+        [InvestVerte] List all countries available in the ESG dataset.
+        Returns an array of country_code/country_descr pairs for every country with ESG coverage.
+        Use as a reference lookup before calling get_mp_investverte_esg_view_country for detailed ESG scores.
+        Consumes 10 API calls per request.
+        For company or sector reference lists, use get_mp_investverte_esg_list_companies or list_sectors.
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
