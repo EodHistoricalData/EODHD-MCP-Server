@@ -165,6 +165,7 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): SYMBOL.EXCHANGE_ID, e.g. 'AAPL.US'.
+                          If you only have a company name or ISIN, call resolve_ticker first.
             interval (str): One of {'1m','5m','1h'}. Default '5m'.
             from_timestamp (int|str, optional): Start as Unix seconds OR a date string
                 (auto-detected). Examples: 1704067200, '2024-01-01', '01-01-24', '01/01/2024',

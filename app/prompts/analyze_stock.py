@@ -15,6 +15,8 @@ def register(mcp: FastMCP):
         return (
             f"Perform a comprehensive analysis of {ticker}. "
             f"Use the following tools in order:\n\n"
+            f"0. If '{ticker}' is a company name (not in SYMBOL.EXCHANGE format), "
+            f"call **resolve_ticker** first to get the correct ticker symbol.\n"
             f"1. **get_fundamentals_data** for {ticker} — review valuation ratios, "
             f"financials, and balance sheet highlights.\n"
             f"2. **get_historical_stock_prices** for {ticker} over the last 6 months — "

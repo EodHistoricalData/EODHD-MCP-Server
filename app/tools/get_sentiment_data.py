@@ -48,6 +48,7 @@ def register(mcp: FastMCP):
 
         Args:
             symbols (str): One or more comma-separated tickers (e.g., 'AAPL.US,BTC-USD.CC').
+            If you only have a company name or ISIN, call resolve_ticker first.
             start_date (str, optional): YYYY-MM-DD, maps to 'from'.
             end_date (str, optional): YYYY-MM-DD, maps to 'to'.
             fmt (str): 'json' (default). (XML not documented for this endpoint.)

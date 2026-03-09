@@ -67,6 +67,7 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): Ticker symbol (e.g. 'AAPL', 'TSLA', 'AMZN').
+            If you only have a company name or ISIN, call resolve_ticker first.
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.

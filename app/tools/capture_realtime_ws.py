@@ -58,6 +58,7 @@ def register(mcp: FastMCP):
         Args:
             feed (str): One of {'us_trades','us_quotes','forex','crypto'}.
             symbols (str | list[str]): Single or comma-separated symbols, or a list.
+            If you only have a company name or ISIN, call resolve_ticker first.
                 Returns:
             Object with:
             - feed (str): feed name used

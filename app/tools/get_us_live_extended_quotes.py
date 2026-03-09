@@ -65,6 +65,7 @@ def register(mcp: FastMCP):
 
         Args:
           symbols: A single comma-separated string or a sequence of tickers (e.g., ["AAPL.US","TSLA.US"]).
+          If you only have a company name or ISIN, call resolve_ticker first.
           fmt: 'json' (default) or 'csv'.
           page_limit: Optional page size; max 100.
           page_offset: Optional offset for pagination; must be >= 0.

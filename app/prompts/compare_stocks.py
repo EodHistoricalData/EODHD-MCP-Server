@@ -15,6 +15,8 @@ def register(mcp: FastMCP):
         """
         return (
             f"Compare {ticker1} and {ticker2} side by side.\n\n"
+            f"If either ticker is a company name (not in SYMBOL.EXCHANGE format), "
+            f"call **resolve_ticker** first to get the correct ticker symbol.\n\n"
             f"For each stock, fetch:\n"
             f"1. **get_fundamentals_data** — valuation, profitability, growth metrics.\n"
             f"2. **get_historical_stock_prices** (last 12 months) — price performance.\n"

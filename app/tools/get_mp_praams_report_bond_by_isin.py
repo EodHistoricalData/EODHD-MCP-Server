@@ -78,6 +78,7 @@ def register(mcp: FastMCP):
 
         Args:
             isin (str): ISIN code of the bond (e.g. 'US7593518852', 'US91282CJN20').
+            If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
