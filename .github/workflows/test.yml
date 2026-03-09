@@ -53,8 +53,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install -r requirements.txt bandit pip-audit
+        run: pip install -r requirements.txt bandit pip-audit semgrep
       - name: Run bandit (SAST)
         run: bandit -r app/ -ll -ii -x app/resources/
+      - name: Run semgrep (SAST + taint)
+        run: semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
       - name: Run pip-audit (dependency vulns)
         run: pip-audit

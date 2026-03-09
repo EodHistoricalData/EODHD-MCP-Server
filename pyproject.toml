@@ -28,6 +28,7 @@ dev = [
     "mypy>=1.13",
     "bandit>=1.8",
     "pip-audit>=2.7",
+    "semgrep>=1.150",
 ]
 
 [build-system]
