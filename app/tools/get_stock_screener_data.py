@@ -71,6 +71,7 @@ def register(mcp: FastMCP):
         Consumes 5 API calls per request.
         Use this tool for stock discovery, screening by fundamentals/technicals, and building watchlists.
         For detailed data on a specific ticker, use get_fundamentals_data instead.
+        If user asks about a specific company, call resolve_ticker first to get the ticker, then use other tools.
 
         Args:
           - filters: list-of-lists or JSON string

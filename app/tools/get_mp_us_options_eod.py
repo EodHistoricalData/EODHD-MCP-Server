@@ -63,6 +63,7 @@ def register(mcp: FastMCP):
         options prices, Greeks, open interest, volume, or implied volatility for stock/ETF options.
         Returns OHLC, volume, open interest, and Greeks per contract per trading day.
         Supports filtering by underlying symbol, expiration, strike, type (put/call), and trade date range.
+        If you only have a company name or ISIN, call resolve_ticker first.
         First find available contracts with get_us_options_contracts, then fetch pricing here.
         For the list of optionable tickers, use get_us_options_underlyings.
         Consumes 10 API calls per request.

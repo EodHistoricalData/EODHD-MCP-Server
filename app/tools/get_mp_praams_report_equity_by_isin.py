@@ -77,6 +77,7 @@ def register(mcp: FastMCP):
 
         Args:
             isin (str): ISIN code (e.g. 'US0378331005' for Apple, 'US88160R1014' for Tesla).
+            If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.

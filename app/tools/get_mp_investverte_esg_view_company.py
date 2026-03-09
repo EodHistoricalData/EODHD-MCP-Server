@@ -26,6 +26,7 @@ def register(mcp: FastMCP):
         [InvestVerte] Get detailed ESG scores (E, S, G, and composite) for a specific company by symbol.
         Returns Environmental, Social, Governance, and combined ESG scores broken down by year and
         frequency (FY, Q1-Q4). Optionally filter by year and frequency. Consumes 10 API calls per request.
+        If you only have a company name or ISIN, call resolve_ticker first.
         Use get_mp_investverte_esg_list_companies first to discover available symbols.
         For country-level ESG, use get_mp_investverte_esg_view_country.
         For sector-level ESG, use get_mp_investverte_esg_view_sector.

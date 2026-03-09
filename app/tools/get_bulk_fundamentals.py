@@ -44,6 +44,7 @@ def register(mcp: FastMCP):
         Args:
             exchange (str): Exchange code (e.g., 'NASDAQ', 'NYSE', 'US', 'LSE').
             symbols (str, optional): Comma-separated list of specific symbols to filter.
+            If you only have a company name or ISIN, call resolve_ticker first.
             offset (int, optional): Pagination start (default 0).
             limit (int, optional): Max symbols to return (default 500, max 500).
             version (str, optional): '1.2' for single-symbol-like output format.
