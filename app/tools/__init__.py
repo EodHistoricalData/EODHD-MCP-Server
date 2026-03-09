@@ -47,6 +47,7 @@ MAIN_TOOLS: list[str] = [
     "get_ust_real_yield_rates",
     "get_ust_long_term_rates",
     "retrieve_description_by_id",
+    "get_support_resistance_levels",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [
