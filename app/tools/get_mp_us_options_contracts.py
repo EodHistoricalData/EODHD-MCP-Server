@@ -78,6 +78,7 @@ def register(mcp: FastMCP):
         [Marketplace] Get available US options contracts (calls and puts) for a stock or ETF.
         Returns strike prices, expiration dates, and contract symbols for the specified underlying ticker.
         Supports filtering by expiration date range, strike range, trade time, and option type (put/call).
+        If you only have a company name or ISIN, call resolve_ticker first.
         Use to discover which options exist before fetching pricing with get_us_options_eod.
         For the list of all tickers that have options, use get_us_options_underlyings.
         Consumes 10 API calls per request.

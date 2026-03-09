@@ -88,6 +88,7 @@ def register(mcp: FastMCP):
         [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ISIN code.
         Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
         growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Use when assessing investment risk and you have the ISIN. Consumes 10 API calls per request.
         For lookup by ticker instead of ISIN, use get_mp_praams_risk_scoring_by_ticker.
         For a full PDF report, use get_mp_praams_report_equity_by_isin.

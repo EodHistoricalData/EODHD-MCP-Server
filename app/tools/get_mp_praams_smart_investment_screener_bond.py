@@ -419,6 +419,7 @@ def register(mcp: FastMCP):
         Consumes 10 API calls per request.
         For equity screening, use get_mp_praams_smart_screener_equity.
         For deep analysis of a single bond, use get_mp_praams_bond_analyze_by_isin.
+        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
 
 
         Returns:

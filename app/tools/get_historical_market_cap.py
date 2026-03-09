@@ -42,6 +42,7 @@ def register(mcp: FastMCP):
         Filter by date range. Each request consumes 10 API calls.
         Use when the user asks about market cap history, company valuation over time, or market cap trends.
         This is the only tool for historical market cap -- do not confuse with fundamental data or price history.
+        If you only have a company name or ISIN, call resolve_ticker first.
 
 
         Returns:

@@ -129,6 +129,7 @@ def register(mcp: FastMCP):
         For raw OHLCV price data, use get_historical_stock_prices instead.
         For fundamental analysis, use get_fundamentals_data instead.
 
+        ticker: If you only have a company name or ISIN, call resolve_ticker first.
 
         Returns:
             Array of objects, each with 'date' (str, YYYY-MM-DD) plus indicator-specific fields:

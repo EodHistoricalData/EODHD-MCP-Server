@@ -42,6 +42,7 @@ def register(mcp: FastMCP):
         Get upcoming and recent earnings report dates for stocks.
         Returns scheduled earnings dates, EPS estimates, and actual results when available.
         Filter by specific symbols or a date range (defaults to next 7 days).
+        If you only have a company name or ISIN, call resolve_ticker first.
         Use when the user asks "when does X report earnings?" or wants an earnings calendar.
         For EPS/revenue trend analysis and analyst revisions, use get_earnings_trends instead.
         For macroeconomic events (GDP, CPI), use get_economic_events instead.

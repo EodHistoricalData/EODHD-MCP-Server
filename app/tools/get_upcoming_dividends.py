@@ -33,6 +33,7 @@ def register(mcp: FastMCP):
         Get historical and upcoming dividend payments for stocks.
         Returns ex-dividend dates, payment dates, dividend amounts, and currency for a given symbol or date.
         Requires at least one of 'symbol' or 'date_eq'. Supports date range filtering and pagination.
+        If you only have a company name or ISIN, call resolve_ticker first.
         Use when the user asks about dividend dates, payout history, yield data, or ex-dividend calendars.
         For IPO calendar, use get_upcoming_ipos. For stock splits calendar, use get_upcoming_splits.
 

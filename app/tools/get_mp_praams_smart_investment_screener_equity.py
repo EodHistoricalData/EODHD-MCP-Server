@@ -297,6 +297,7 @@ def register(mcp: FastMCP):
         Returns paginated matching equities with scores. Consumes 10 API calls per request.
         For bond screening, use get_mp_praams_smart_screener_bond.
         For deep analysis of a single equity, use get_mp_praams_risk_scoring_by_ticker.
+        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
 
 
         Returns:

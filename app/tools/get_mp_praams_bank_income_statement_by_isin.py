@@ -91,6 +91,7 @@ def register(mcp: FastMCP):
         [PRAAMS] Retrieve bank-specific income statement time series by ISIN code.
         Returns annual and quarterly data: core revenue, net interest income, fee & commission income,
         RIBPT, non-recurring income, IBPT, and provisioning. Tailored for banking sector analysis.
+        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Consumes 10 API calls per request.
         For lookup by ticker, use get_mp_praams_bank_income_statement_by_ticker.
         For bank balance sheet data, use get_mp_praams_bank_balance_sheet_by_isin.

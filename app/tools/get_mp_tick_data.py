@@ -39,6 +39,7 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): Ticker symbol, max 30 chars (e.g. 'AAPL', 'MSFT').
+            If you only have a company name or ISIN, call resolve_ticker first.
             from_timestamp (int, optional): Start UNIX time in seconds. Default: yesterday start.
             to_timestamp (int, optional): End UNIX time in seconds. Default: yesterday end.
             limit (int, optional): Max ticks to return (1-10000). Default: all in range.

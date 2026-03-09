@@ -93,6 +93,7 @@ def register(mcp: FastMCP):
         [PRAAMS] Retrieve bank-specific balance sheet time series by ISIN code.
         Returns annual and quarterly data: loans, cash, deposits, securities REPO, investment portfolio,
         debt, total assets/equity, interest-earning assets, and interest-bearing liabilities.
+        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Tailored for banking sector analysis. Consumes 10 API calls per request.
         For lookup by ticker, use get_mp_praams_bank_balance_sheet_by_ticker.
         For bank income statement data, use get_mp_praams_bank_income_statement_by_isin.

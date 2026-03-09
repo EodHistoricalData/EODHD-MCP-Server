@@ -310,6 +310,7 @@ def register(mcp: FastMCP):
         For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
         For price data, use get_historical_stock_prices or get_live_price_data instead.
 
+        - ticker: If you only have a company name or ISIN, call resolve_ticker first.
 
         Returns:
             Nested object; structure depends on asset Type:

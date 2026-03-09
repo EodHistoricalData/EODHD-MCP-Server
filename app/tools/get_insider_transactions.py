@@ -47,6 +47,7 @@ def register(mcp: FastMCP):
             end_date (str, optional):   'to'   in YYYY-MM-DD. Defaults to today by API if omitted.
             limit (int): Number of entries to return, 1..1000. Default 100.
             symbol (str, optional): Filter by ticker (API param 'code'), e.g. 'AAPL' or 'AAPL.US'.
+            If you only have a company name or ISIN, call resolve_ticker first.
             fmt (str): Only 'json' is supported by this tool.
             api_token (str, optional): Per-call token; env token used if omitted.
 

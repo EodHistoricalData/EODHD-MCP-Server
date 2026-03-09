@@ -45,6 +45,7 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): Symbol to analyze (e.g., 'AAPL.US'); mapped to 's'.
+            If you only have a company name or ISIN, call resolve_ticker first.
             start_date (str, optional): YYYY-MM-DD; mapped to filter[date_from].
             end_date (str, optional): YYYY-MM-DD; mapped to filter[date_to].
             limit (int, optional): Number of top words; mapped to page[limit].

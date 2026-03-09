@@ -88,6 +88,7 @@ def register(mcp: FastMCP):
         [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
         Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-test results,
         volatility, liquidity, country risk narratives, and issuer-level fundamentals.
+        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Use for detailed bond-specific due diligence. Consumes 10 API calls per request.
         For bond screening across multiple instruments, use get_mp_praams_smart_screener_bond.
         For a full PDF bond report, use get_mp_praams_report_bond_by_isin.

@@ -28,6 +28,7 @@ def register(mcp: FastMCP):
 
         Args:
             symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'BMW.XETRA').
+            If you only have a company name or ISIN, call resolve_ticker first.
             api_token (str, optional): Per-call token override.
 
 

@@ -40,6 +40,7 @@ def register(mcp: FastMCP):
         Get earnings trend data including EPS/revenue estimates, analyst revisions, and growth projections for specific stocks.
         Returns quarterly and annual consensus estimates, number of analysts, and revision history.
         Requires explicit symbol(s). Each request consumes ~10 API calls.
+        If you only have a company name or ISIN, call resolve_ticker first.
         Use when the user asks about earnings expectations, analyst estimate changes, or EPS growth trends.
         For earnings report dates and calendar, use get_upcoming_earnings instead.
 

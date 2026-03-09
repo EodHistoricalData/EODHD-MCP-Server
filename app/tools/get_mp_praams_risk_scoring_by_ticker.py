@@ -86,6 +86,7 @@ def register(mcp: FastMCP):
         [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ticker symbol.
         Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
         growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        If you only have a company name or ISIN, call resolve_ticker first.
         Use when assessing investment risk for a specific stock or ETF. Consumes 10 API calls per request.
         For lookup by ISIN instead of ticker, use get_mp_praams_risk_scoring_by_isin.
         For a full PDF report, use get_mp_praams_report_equity_by_ticker.
