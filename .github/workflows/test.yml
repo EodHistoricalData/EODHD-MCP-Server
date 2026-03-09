@@ -25,7 +25,6 @@ jobs:
         run: ruff format --check app/ server.py
       - name: Mypy
         run: mypy app/ server.py --ignore-missing-imports --explicit-package-bases
-        continue-on-error: true
 
   test:
     runs-on: ubuntu-latest

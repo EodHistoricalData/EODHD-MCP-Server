@@ -92,7 +92,7 @@ async def _rate_limit() -> None:
 
 def _backoff(attempt: int) -> float:
     """Exponential backoff: 1 s, 2 s, 4 s … capped at RETRY_DELAY_MAX."""
-    return min(RETRY_DELAY_BASE * (2**attempt), RETRY_DELAY_MAX)
+    return min(RETRY_DELAY_BASE * float(2**attempt), RETRY_DELAY_MAX)
 
 
 def set_rate_limit(delay: float) -> None:
@@ -171,7 +171,8 @@ async def make_request(
 
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
-                return response.json()
+                result: dict = response.json()
+                return result
             except ValueError:
                 ct = response.headers.get("content-type", "")
                 text = response.text

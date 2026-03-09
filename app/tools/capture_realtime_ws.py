@@ -3,12 +3,14 @@
 import asyncio
 import json
 import time
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 # WebSocket runtime
+websockets: Any
 try:
     import websockets
 except Exception:  # pragma: no cover

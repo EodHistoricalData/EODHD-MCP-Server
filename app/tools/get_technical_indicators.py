@@ -201,11 +201,11 @@ def register(mcp: FastMCP):
                 raise ToolError(msg)
 
         # floats for SAR
-        for name, val in [
+        for name, fval in [
             ("acceleration", acceleration),
             ("maximum", maximum),
         ]:
-            msg = _validate_float(name, val)
+            msg = _validate_float(name, fval)
             if msg:
                 raise ToolError(msg)
 
