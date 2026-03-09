@@ -8,24 +8,37 @@ Python 3.11+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Sem
 
 ## Commands
 
+**Always use Docker** — do not rely on local Python/pip. This matches CI exactly.
+
 ```bash
-# Tests
-pytest tests/ -v --tb=short
-pytest tests/ -v --cov=app --cov-report=term-missing   # with coverage
+# Helper: run any command in the project container
+# Usage: docker run --rm -v "$(pwd):/app" -w /app python:3.11-slim sh -c '...'
 
-# Lint & format
-ruff check app/ server.py
-ruff format --check app/ server.py
+# Install deps + run tests
+docker run --rm -v "$(pwd):/app" -w /app python:3.11-slim sh -c \
+  'pip install -r requirements.txt -r requirements-test.txt 2>&1 | tail -1 && \
+   EODHD_API_KEY=test_key_for_ci pytest tests/ -v --tb=short'
 
-# Type checking
-mypy app/ server.py --ignore-missing-imports --explicit-package-bases
+# Install deps + run tests with coverage
+docker run --rm -v "$(pwd):/app" -w /app python:3.11-slim sh -c \
+  'pip install -r requirements.txt -r requirements-test.txt 2>&1 | tail -1 && \
+   EODHD_API_KEY=test_key_for_ci pytest tests/ -v --cov=app --cov-report=term-missing'
 
-# Security
-bandit -r app/ -ll -ii -x app/resources/
-semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
-pip-audit
+# Lint + format + type check (all three)
+docker run --rm -v "$(pwd):/app" -w /app python:3.11-slim sh -c \
+  'pip install -r requirements.txt ruff mypy 2>&1 | tail -1 && \
+   ruff check app/ server.py && \
+   ruff format --check app/ server.py && \
+   mypy app/ server.py --ignore-missing-imports --explicit-package-bases'
 
-# Run server
+# Security scans
+docker run --rm -v "$(pwd):/app" -w /app python:3.11-slim sh -c \
+  'pip install -r requirements.txt bandit pip-audit semgrep 2>&1 | tail -1 && \
+   bandit -r app/ -ll -ii -x app/resources/ && \
+   semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/ && \
+   pip-audit'
+
+# Run server (local dev only)
 python server.py                     # HTTP (default, port 8000)
 python server.py --stdio             # stdio (Claude Desktop)
 python server.py --sse               # SSE
