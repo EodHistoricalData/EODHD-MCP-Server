@@ -3,18 +3,16 @@
 import asyncio
 import json
 import time
-from typing import List, Optional, Union
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-
 # WebSocket runtime
 try:
     import websockets
-except Exception as e:  # pragma: no cover
-    websockets = None  # We'll error nicely at runtime if unavailable.
+except Exception:  # pragma: no cover
+    websockets = None  # type: ignore[assignment]
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
 
@@ -25,7 +23,7 @@ FEED_ENDPOINTS = {
     "crypto": "crypto",
 }
 
-def _symbols_to_str(symbols: Union[str, List[str]]) -> str:
+def _symbols_to_str(symbols: str | list[str]) -> str:
     if isinstance(symbols, str):
         return symbols.replace(" ", "")
     return ",".join(s.strip() for s in symbols if s and str(s).strip())
@@ -34,10 +32,10 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def capture_realtime_ws(
         feed: str,
-        symbols: Union[str, List[str]],
+        symbols: str | list[str],
         duration_seconds: int = 5,
-        api_token: Optional[str] = None,
-        max_messages: Optional[int] = None,
+        api_token: str | None = None,
+        max_messages: int | None = None,
         ping_interval: float = 20.0,
         ping_timeout: float = 20.0,
         connect_timeout: float = 15.0,
@@ -104,7 +102,7 @@ def register(mcp: FastMCP):
         uri = f"{WS_BASE}/{endpoint}?api_token={token}"
 
         started_at = int(time.time() * 1000)
-        messages: List[dict] = []
+        messages: list[dict] = []
 
         async def _recv_loop(ws, stop_time):
             nonlocal messages
