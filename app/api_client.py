@@ -6,6 +6,7 @@ import time
 from typing import Optional
 
 import httpx
+from fastmcp.server.dependencies import get_http_request
 from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
 
 logger = logging.getLogger("eodhd-mcp.api_client")
@@ -50,9 +51,6 @@ RETRY_DELAY_MAX = 10.0   # seconds cap
 
 #    return req.query_params.get("api_key") or req.query_params.get("token")
 
-# app/api_client.py
-
-from fastmcp.server.dependencies import get_http_request
 
 def _resolve_eodhd_token_from_request() -> str | None:
     try:

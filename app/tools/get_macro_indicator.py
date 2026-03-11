@@ -111,7 +111,7 @@ def register(mcp: FastMCP):
         if use_indicator not in ALLOWED_INDICATORS:
             raise ToolError(
                 "Invalid 'indicator'. Provide one of the documented indicators "
-                f"or omit it to use 'gdp_current_usd'."
+                "or omit it to use 'gdp_current_usd'."
             )
 
         # --- Build URL ---

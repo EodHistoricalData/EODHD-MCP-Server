@@ -1,7 +1,7 @@
 #get_intraday_historical_data.py
 
 import json
-from datetime import datetime, date, timezone
+from datetime import datetime, timezone
 from typing import Optional, Union
 
 from fastmcp import FastMCP
