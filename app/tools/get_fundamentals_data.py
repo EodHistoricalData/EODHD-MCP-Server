@@ -2,7 +2,7 @@
 
 import json
 import datetime as dt
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
