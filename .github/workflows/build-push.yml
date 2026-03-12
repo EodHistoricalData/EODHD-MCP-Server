@@ -15,8 +15,23 @@ jobs:
         env:
           EODHD_API_KEY: test_key_for_ci
         run: python -m pytest tests/ -v --tb=short
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: Install dependencies
+        run: pip install -r requirements.txt bandit pip-audit
+      - name: Run bandit (SAST)
+        run: bandit -r app/ -ll -ii -x app/resources/
+      - name: Run semgrep (SAST + taint)
+        run: pipx run semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
+      - name: Run pip-audit
+        run: pip-audit
   build-push:
-    needs: test
+    needs: [test, security]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
