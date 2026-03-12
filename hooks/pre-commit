@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Pre-commit hook: run linters on staged files
+
+FAILED=0
+
+# --- YAML lint (staged .yml/.yaml only) ---
+if command -v yamllint &>/dev/null; then
+    YAML_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.ya?ml$')
+    if [ -n "$YAML_FILES" ]; then
+        echo "Running yamllint..."
+        echo "$YAML_FILES" | xargs yamllint -s || FAILED=1
+    fi
+else
+    echo "yamllint not found, skipping (pip install yamllint)"
+fi
+
+# --- Ruff check (staged .py only) ---
+if command -v ruff &>/dev/null; then
+    PY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$')
+    if [ -n "$PY_FILES" ]; then
+        echo "Running ruff check..."
+        echo "$PY_FILES" | xargs ruff check || FAILED=1
+        echo "Running ruff format --check..."
+        echo "$PY_FILES" | xargs ruff format --check || FAILED=1
+    fi
+else
+    echo "ruff not found, skipping (pip install ruff)"
+fi
+
+# --- Mypy (staged .py only, if any in app/ or server.py) ---
+if command -v mypy &>/dev/null; then
+    MYPY_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '(^app/.*\.py$|^server\.py$)')
+    if [ -n "$MYPY_FILES" ]; then
+        echo "Running mypy..."
+        echo "$MYPY_FILES" | xargs mypy --ignore-missing-imports --explicit-package-bases || FAILED=1
+    fi
+else
+    echo "mypy not found, skipping (pip install mypy)"
+fi
+
+if [ $FAILED -ne 0 ]; then
+    echo ""
+    echo "Pre-commit checks failed. Fix errors above or commit with --no-verify to skip."
+    exit 1
+fi
