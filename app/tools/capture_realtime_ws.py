@@ -12,7 +12,7 @@ from mcp.types import ToolAnnotations
 try:
     import websockets
 except Exception:  # pragma: no cover
-    websockets = None  # We'll error nicely at runtime if unavailable.
+    websockets = None  # type: ignore[assignment]  # We'll error nicely at runtime if unavailable.
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
 

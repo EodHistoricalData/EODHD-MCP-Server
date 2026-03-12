@@ -1,6 +1,7 @@
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -40,7 +41,7 @@ def _put(sec: dict, key: str, val):
         sec[f"{key} ({c})"] = val
 
 
-def _parse_markdown(text: str) -> dict:
+def _parse_markdown(text: str) -> dict[str, Any]:
     """Parse a markdown document into a nested dict / list structure.
 
     Mapping rules
@@ -149,8 +150,8 @@ def _parse_markdown(text: str) -> dict:
         # ── unordered list ─────────────────────────────────────────
         if _UL_RE.match(s):
             items: list[str] = []
-            while i < n and _UL_RE.match(lines[i].strip()):
-                items.append(_strip_md(_UL_RE.match(lines[i].strip()).group(1)))
+            while i < n and (m := _UL_RE.match(lines[i].strip())):
+                items.append(_strip_md(m.group(1)))
                 i += 1
             _put(cur(), "_items", items)
             continue
@@ -158,8 +159,8 @@ def _parse_markdown(text: str) -> dict:
         # ── ordered list ───────────────────────────────────────────
         if _OL_RE.match(s):
             items = []
-            while i < n and _OL_RE.match(lines[i].strip()):
-                items.append(_strip_md(_OL_RE.match(lines[i].strip()).group(1)))
+            while i < n and (m := _OL_RE.match(lines[i].strip())):
+                items.append(_strip_md(m.group(1)))
                 i += 1
             _put(cur(), "_items", items)
             continue
@@ -182,7 +183,7 @@ def _parse_markdown(text: str) -> dict:
         if buf:
             _put(cur(), "_text", _strip_md(" ".join(buf)))
 
-    return _simplify(root)
+    return dict(_simplify(root))
 
 
 def _simplify(obj):

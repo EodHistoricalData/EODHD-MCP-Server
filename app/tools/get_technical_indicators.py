@@ -198,7 +198,7 @@ def register(mcp: FastMCP):
                 raise ToolError(msg)
 
         # floats for SAR
-        for name, val in [
+        for name, val in [  # type: ignore[assignment]
             ("acceleration", acceleration),
             ("maximum", maximum),
         ]:

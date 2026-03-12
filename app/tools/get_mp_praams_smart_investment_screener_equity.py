@@ -373,6 +373,7 @@ def register(mcp: FastMCP):
         )
         if b_err:
             raise ToolError(b_err)
+        assert body is not None
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)
 
@@ -408,5 +409,6 @@ def register(mcp: FastMCP):
         )
         if b_err:
             raise ToolError(b_err)
+        assert body is not None
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)

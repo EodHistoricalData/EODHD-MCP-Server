@@ -133,7 +133,7 @@ def _parse_date_to_unix(value: int | float | str) -> int | None:
 def _coerce_from_to(
     from_raw: int | str | None,
     to_raw: int | str | None,
-) -> (int | None, int | None, str | None):
+) -> tuple[int | None, int | None, str | None]:
     """
     Convert 'from'/'to' inputs (which may be unix seconds or a date string) to (from_ts, to_ts).
     Returns (from_ts, to_ts, error_message).
