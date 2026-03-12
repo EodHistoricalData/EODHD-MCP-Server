@@ -16,6 +16,7 @@ except Exception:  # pragma: no cover
     websockets = None  # type: ignore[assignment]  # We'll error nicely at runtime if unavailable.
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
+MAX_MESSAGES_CAP = 100_000
 
 FEED_ENDPOINTS = {
     "us_trades": "us",  # trades (price, conditions, etc.)
@@ -95,6 +96,9 @@ def register(mcp: FastMCP):
         if not isinstance(duration_seconds, int) or not (1 <= duration_seconds <= 600):
             raise ToolError("'duration_seconds' must be an integer between 1 and 600.")
 
+        if max_messages is not None and (not isinstance(max_messages, int) or max_messages < 1 or max_messages > MAX_MESSAGES_CAP):
+            raise ToolError(f"'max_messages' must be an integer between 1 and {MAX_MESSAGES_CAP}.")
+
         endpoint = FEED_ENDPOINTS[feed]
         sym_str = _symbols_to_str(symbols)
         sym_list = [s for s in sym_str.split(",") if s]
@@ -105,6 +109,8 @@ def register(mcp: FastMCP):
 
         started_at = int(time.time() * 1000)
         messages: list[dict] = []
+
+        effective_cap = max_messages if max_messages is not None else MAX_MESSAGES_CAP
 
         async def _recv_loop(ws, stop_time):
             nonlocal messages
@@ -117,7 +123,7 @@ def register(mcp: FastMCP):
                 now = time.time()
                 if now >= stop_time:
                     break
-                if max_messages is not None and len(messages) >= max_messages:
+                if len(messages) >= effective_cap:
                     break
                 timeout_left = max(0.05, min(1.0, stop_time - now))
                 try:
@@ -138,7 +144,7 @@ def register(mcp: FastMCP):
                 ping_interval=ping_interval,
                 ping_timeout=ping_timeout,
                 close_timeout=5,
-                max_queue=None,  # do not artificially limit
+                max_queue=1024,
             )
             conn_task = asyncio.ensure_future(conn_coro)
             try:
