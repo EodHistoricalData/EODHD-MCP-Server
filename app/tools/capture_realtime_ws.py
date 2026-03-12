@@ -96,7 +96,9 @@ def register(mcp: FastMCP):
         if not isinstance(duration_seconds, int) or not (1 <= duration_seconds <= 600):
             raise ToolError("'duration_seconds' must be an integer between 1 and 600.")
 
-        if max_messages is not None and (not isinstance(max_messages, int) or max_messages < 1 or max_messages > MAX_MESSAGES_CAP):
+        if max_messages is not None and (
+            not isinstance(max_messages, int) or max_messages < 1 or max_messages > MAX_MESSAGES_CAP
+        ):
             raise ToolError(f"'max_messages' must be an integer between 1 and {MAX_MESSAGES_CAP}.")
 
         endpoint = FEED_ENDPOINTS[feed]

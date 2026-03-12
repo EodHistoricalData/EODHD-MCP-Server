@@ -110,8 +110,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not os.environ.get("EODHD_API_KEY", "").strip():
         logger.warning(
-            "EODHD_API_KEY is not set. All API calls will fail. "
-            "Set it via env var, .env file, or --apikey flag."
+            "EODHD_API_KEY is not set. All API calls will fail. Set it via env var, .env file, or --apikey flag."
         )
 
     if unknown:
