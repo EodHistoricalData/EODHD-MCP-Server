@@ -4,6 +4,7 @@ import asyncio
 import json
 import time
 
+from app.config import EODHD_API_KEY
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -99,7 +100,7 @@ def register(mcp: FastMCP):
         sym_list = [s for s in sym_str.split(",") if s]
 
         # Build WS URL with token
-        token = api_token or "demo"
+        token = api_token or EODHD_API_KEY
         uri = f"{WS_BASE}/{endpoint}?api_token={token}"
 
         started_at = int(time.time() * 1000)
@@ -132,16 +133,22 @@ def register(mcp: FastMCP):
 
         try:
             # Establish connection with overall timeout
-            conn_task = websockets.connect(
+            conn_coro = websockets.connect(
                 uri,
                 ping_interval=ping_interval,
                 ping_timeout=ping_timeout,
                 close_timeout=5,
                 max_queue=None,  # do not artificially limit
             )
+            conn_task = asyncio.ensure_future(conn_coro)
             try:
-                ws = await asyncio.wait_for(conn_task, timeout=connect_timeout)
+                ws = await asyncio.wait_for(asyncio.shield(conn_task), timeout=connect_timeout)
             except TimeoutError:
+                conn_task.cancel()
+                try:
+                    await conn_task
+                except (asyncio.CancelledError, Exception):
+                    pass
                 raise ToolError("Timed out while establishing WebSocket connection.")
         except Exception as e:
             raise ToolError(f"Failed to connect to WebSocket endpoint: {e!s}")
