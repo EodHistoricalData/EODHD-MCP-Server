@@ -65,9 +65,35 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+_PLACEHOLDER_SECRETS = frozenset(
+    {
+        "change_this_secret_in_production",
+        "changeme",
+        "secret",
+        "your_secret_here",
+    }
+)
+
+
+def _validate_oauth_secrets() -> None:
+    """Abort if OAuth is enabled but JWT/session secrets are weak or missing."""
+    oauth_on = os.getenv("OAUTH_ENABLED", "").lower() in ("1", "true", "yes")
+    if not oauth_on:
+        return
+
+    for name in ("JWT_SECRET", "SESSION_SECRET"):
+        value = os.getenv(name, "").strip()
+        if not value or value.lower() in _PLACEHOLDER_SECRETS:
+            sys.exit(
+                f"FATAL: {name} is empty or uses a placeholder value. "
+                f'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(32))"'
+            )
+
+
 def main(argv: list[str] | None = None) -> int:
     # Load .env before parsing so env defaults are available to argparse
     load_dotenv()
+    _validate_oauth_secrets()
     parser = build_parser()
     args, unknown = parser.parse_known_args(argv)
 
