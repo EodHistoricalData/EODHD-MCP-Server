@@ -1,20 +1,20 @@
-#get_sentiment_data.py
+# get_sentiment_data.py
 
 import json
 import re
+from collections.abc import Iterable
 from datetime import datetime
-from typing import Optional, Iterable
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -25,18 +25,20 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def _normalize_symbols(symbols: Iterable[str]) -> str:
     # Turn a sequence like ["AAPL.US","BTC-USD.CC"] into "AAPL.US,BTC-USD.CC"
     return ",".join(s.strip() for s in symbols if s and str(s).strip())
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_sentiment_data(
         symbols: str,
-        start_date: Optional[str] = None,  # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,    # maps to 'to'   (YYYY-MM-DD)
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
         fmt: str = "json",
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -48,7 +50,6 @@ def register(mcp: FastMCP):
 
         Args:
             symbols (str): One or more comma-separated tickers (e.g., 'AAPL.US,BTC-USD.CC').
-            If you only have a company name or ISIN, call resolve_ticker first.
             start_date (str, optional): YYYY-MM-DD, maps to 'from'.
             end_date (str, optional): YYYY-MM-DD, maps to 'to'.
             fmt (str): 'json' (default). (XML not documented for this endpoint.)
@@ -67,7 +68,7 @@ def register(mcp: FastMCP):
             "Bitcoin and Ethereum sentiment" → symbols="BTC-USD.CC,ETH-USD.CC"
             "Microsoft sentiment in Q4 2025" → symbols="MSFT.US", start_date="2025-10-01", end_date="2025-12-31"
 
-        
+
         """
         # Validate required
         if not symbols or not isinstance(symbols, str):

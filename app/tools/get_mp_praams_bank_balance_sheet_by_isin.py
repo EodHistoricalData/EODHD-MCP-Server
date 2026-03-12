@@ -1,16 +1,16 @@
-#get_mp_praams_bank_balance_sheet_by_isin.py
+# get_mp_praams_bank_balance_sheet_by_isin.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str | int]) -> str:
+
+def _q(key: str, val: str | int | None) -> str:
     """
     Helper to build query parameters safely.
     Skips None/empty, URL-encodes values.
@@ -20,7 +20,7 @@ def _q(key: str, val: Optional[str | int]) -> str:
     return f"&{key}={quote_plus(str(val))}"
 
 
-def _canon_isin(v: str) -> Optional[str]:
+def _canon_isin(v: str) -> str | None:
     """
     Very light validation/normalization for Praams bank ISIN path param.
 
@@ -42,7 +42,7 @@ def _canon_isin(v: str) -> Optional[str]:
 
 async def _run_praams_balance_sheet_by_isin(
     isin: str,
-    api_token: Optional[str],
+    api_token: str | None,
 ) -> str:
     """
     Core runner for Praams Bank Balance Sheet by ISIN.
@@ -70,7 +70,6 @@ async def _run_praams_balance_sheet_by_isin(
     if data is None:
         raise ToolError("No response from API.")
 
-
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     # Normalize and return
@@ -86,15 +85,14 @@ async def _run_praams_balance_sheet_by_isin(
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_praams_bank_balance_sheet_by_isin(
-        isin: str,                       # e.g. 'US46625H1005', 'US0605051046'
-        api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
+        isin: str,  # e.g. 'US46625H1005', 'US0605051046'
+        api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
 
         [PRAAMS] Retrieve bank-specific balance sheet time series by ISIN code.
         Returns annual and quarterly data: loans, cash, deposits, securities REPO, investment portfolio,
         debt, total assets/equity, interest-earning assets, and interest-bearing liabilities.
-        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Tailored for banking sector analysis. Consumes 10 API calls per request.
         For lookup by ticker, use get_mp_praams_bank_balance_sheet_by_ticker.
         For bank income statement data, use get_mp_praams_bank_income_statement_by_isin.
@@ -137,7 +135,7 @@ def register(mcp: FastMCP):
     @mcp.tool()
     async def mp_praams_bank_balance_sheet_by_isin(
         isin: str,
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         return await _run_praams_balance_sheet_by_isin(
             isin=isin,

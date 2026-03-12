@@ -2,7 +2,7 @@ import asyncio
 from app.tools import ALL_TOOLS, MAIN_TOOLS, MARKETPLACE_TOOLS, THIRD_PARTY_TOOLS
 
 def test_all_tools_list_not_empty():
-    assert len(ALL_TOOLS) == 74
+    assert len(ALL_TOOLS) == 75
 
 def test_no_duplicate_tools():
     assert len(ALL_TOOLS) == len(set(ALL_TOOLS))

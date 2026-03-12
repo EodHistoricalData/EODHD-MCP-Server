@@ -1,16 +1,15 @@
-#get_mp_tick_data.py
+# get_mp_tick_data.py
 
 import json
-from typing import Optional, Union
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
+def _to_int(name: str, v: int | str | None) -> int | None:
     if v is None:
         return None
     if isinstance(v, int):
@@ -23,11 +22,11 @@ def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_tick_data(
-        ticker: str,                                # maps to s=, e.g. "AAPL"
-        from_timestamp: Optional[Union[int, str]] = None,   # UNIX seconds (UTC)
-        to_timestamp: Optional[Union[int, str]] = None,     # UNIX seconds (UTC)
-        limit: Optional[Union[int, str]] = None,            # 1-10000
-        api_token: Optional[str] = None,                    # per-call override
+        ticker: str,  # maps to s=, e.g. "AAPL"
+        from_timestamp: int | str | None = None,  # UNIX seconds (UTC)
+        to_timestamp: int | str | None = None,  # UNIX seconds (UTC)
+        limit: int | str | None = None,  # 1-10000
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -40,7 +39,6 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): Ticker symbol, max 30 chars (e.g. 'AAPL', 'MSFT').
-            If you only have a company name or ISIN, call resolve_ticker first.
             from_timestamp (int, optional): Start UNIX time in seconds. Default: yesterday start.
             to_timestamp (int, optional): End UNIX time in seconds. Default: yesterday end.
             limit (int, optional): Max ticks to return (1-10000). Default: all in range.
@@ -67,7 +65,7 @@ def register(mcp: FastMCP):
             "first 500 TSLA ticks from March 3 2026" → ticker="TSLA", from_timestamp=1741003200, to_timestamp=1741089600, limit=500
             "MSFT trade ticks, max 1000" → ticker="MSFT", limit=1000
 
-        
+
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")

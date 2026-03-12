@@ -83,6 +83,7 @@ def register_all(mcp) -> None:
             def _make_reader(fp: Path):
                 def _read() -> str:
                     return fp.read_text(encoding="utf-8")
+
                 return _read
 
             mcp.resource(

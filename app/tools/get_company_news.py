@@ -1,21 +1,20 @@
-#get_company_news.py
+# get_company_news.py
 
 import json
 import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_FMT = {"json", "xml"}
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -26,17 +25,18 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_company_news(
-        ticker: Optional[str] = None,        # maps to 's'
-        tag: Optional[str] = None,           # maps to 't'
-        start_date: Optional[str] = None,    # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,      # maps to 'to' (YYYY-MM-DD)
-        limit: int = 50,                     # 1..1000 (API default 50)
-        offset: int = 0,                     # default 0
-        fmt: str = "json",                   # 'json' or 'xml' (API default json)
-        api_token: Optional[str] = None,     # per-call override
+        ticker: str | None = None,  # maps to 's'
+        tag: str | None = None,  # maps to 't'
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to' (YYYY-MM-DD)
+        limit: int = 50,  # 1..1000 (API default 50)
+        offset: int = 0,  # default 0
+        fmt: str = "json",  # 'json' or 'xml' (API default json)
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -48,7 +48,6 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str, optional): SYMBOL.EXCHANGE_ID (e.g., 'AAPL.US'). Mapped to 's'.
-                          If you only have a company name or ISIN, call resolve_ticker first.
             tag (str, optional): Topic tag (e.g., 'technology'). Mapped to 't'.
             start_date (str, optional): YYYY-MM-DD. Mapped to 'from'.
             end_date (str, optional): YYYY-MM-DD. Mapped to 'to'.
@@ -72,7 +71,7 @@ def register(mcp: FastMCP):
             "Crypto news, 50 results" → tag="crypto", limit=50
             "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
 
-        
+
         """
         # --- Validate required conditions ---
         if not ticker and not tag:
@@ -125,4 +124,3 @@ def register(mcp: FastMCP):
             if isinstance(data, str):
                 return json.dumps({"xml": data}, indent=2)
             raise ToolError("Unexpected response format from API.")
-

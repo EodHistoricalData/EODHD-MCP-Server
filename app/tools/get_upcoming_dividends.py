@@ -1,17 +1,16 @@
-#get_upcoming_dividends.py
+# get_upcoming_dividends.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -20,21 +19,20 @@ def _q(key: str, val: Optional[str | int]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_upcoming_dividends(
-        symbol: Optional[str] = None,          # maps to filter[symbol]
-        date_eq: Optional[str] = None,         # maps to filter[date_eq], YYYY-MM-DD
-        date_from: Optional[str] = None,       # maps to filter[date_from], YYYY-MM-DD
-        date_to: Optional[str] = None,         # maps to filter[date_to],   YYYY-MM-DD
-        page_limit: Optional[int] = None,      # maps to page[limit], 1..1000, default 1000
-        page_offset: Optional[int] = None,     # maps to page[offset], >=0, default 0
-        fmt: str = "json",                     # API supports JSON only
-        api_token: Optional[str] = None,       # per-call override; else env EODHD_API_KEY
+        symbol: str | None = None,  # maps to filter[symbol]
+        date_eq: str | None = None,  # maps to filter[date_eq], YYYY-MM-DD
+        date_from: str | None = None,  # maps to filter[date_from], YYYY-MM-DD
+        date_to: str | None = None,  # maps to filter[date_to],   YYYY-MM-DD
+        page_limit: int | None = None,  # maps to page[limit], 1..1000, default 1000
+        page_offset: int | None = None,  # maps to page[offset], >=0, default 0
+        fmt: str = "json",  # API supports JSON only
+        api_token: str | None = None,  # per-call override; else env EODHD_API_KEY
     ) -> str:
         """
 
         Get historical and upcoming dividend payments for stocks.
         Returns ex-dividend dates, payment dates, dividend amounts, and currency for a given symbol or date.
         Requires at least one of 'symbol' or 'date_eq'. Supports date range filtering and pagination.
-        If you only have a company name or ISIN, call resolve_ticker first.
         Use when the user asks about dividend dates, payout history, yield data, or ex-dividend calendars.
         For IPO calendar, use get_upcoming_ipos. For stock splits calendar, use get_upcoming_splits.
 
@@ -57,7 +55,7 @@ def register(mcp: FastMCP):
             "All dividends on March 15" → date_eq="2026-03-15"
             "Microsoft dividends this quarter" → symbol="MSFT.US", date_from="2026-01-01", date_to="2026-03-31"
 
-        
+
         """
 
         # --- Validate basic args ---

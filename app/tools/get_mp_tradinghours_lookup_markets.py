@@ -1,20 +1,18 @@
-#get_mp_tradinghours_lookup_markets.py
+# get_mp_tradinghours_lookup_markets.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
+def _q(key: str, val: str | int | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
@@ -23,9 +21,9 @@ def _q(key: str, val: Optional[str | int]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_tradinghours_lookup_markets(
-        q: Optional[str] = None,              # free-form search term
-        group: Optional[str] = None,           # core, extended, all, allowed (default: all)
-        api_token: Optional[str] = None,       # per-call override
+        q: str | None = None,  # free-form search term
+        group: str | None = None,  # core, extended, all, allowed (default: all)
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -68,7 +66,7 @@ def register(mcp: FastMCP):
             "search for London Stock Exchange" → q="London Stock Exchange"
             "markets in Japan, core tier" → q="Japan", group="core"
 
-        
+
         """
         if group is not None:
             group = group.strip().lower()

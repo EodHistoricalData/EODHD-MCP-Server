@@ -1,28 +1,27 @@
-#get_stocks_from_search.py
+# get_stocks_from_search.py
 
 import json
-from typing import Optional
 from urllib.parse import quote
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-
 ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_stocks_from_search(
         query: str,
-        limit: int = 15,                         # per docs: default 15, max 500
-        bonds_only: Optional[bool] = None,       # maps to bonds_only=1
-        exchange: Optional[str] = None,          # e.g., "US", "PA", "FOREX", "NYSE", "NASDAQ"
-        type: Optional[str] = None,              # one of ALLOWED_TYPES
-        fmt: str = "json",                       # API supports json here
-        api_token: Optional[str] = None,         # per-call override
+        limit: int = 15,  # per docs: default 15, max 500
+        bonds_only: bool | None = None,  # maps to bonds_only=1
+        exchange: str | None = None,  # e.g., "US", "PA", "FOREX", "NYSE", "NASDAQ"
+        type: str | None = None,  # one of ALLOWED_TYPES
+        fmt: str = "json",  # API supports json here
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -64,7 +63,7 @@ def register(mcp: FastMCP):
             "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
             "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
 
-        
+
         """
         # --- Validate ---
         if not query or not isinstance(query, str):
