@@ -64,6 +64,11 @@ server.py             — entry point, transport selection, argparse
 ## CI Pipeline (GitHub Actions)
 Three parallel jobs: lint (ruff + mypy), test (matrix 3.10/3.11/3.12/3.13), security (bandit + semgrep + pip-audit).
 Concurrency: cancel-in-progress per ref.
+## Git Hooks
+- **pre-commit**: ruff check, ruff format --check, mypy — must all pass before commit
+- **pre-push**: pytest — must pass before push
+- Do NOT skip hooks with `--no-verify`
+- If a hook fails, fix the issue and create a NEW commit (never amend the previous one to work around it)
 ## Forbidden
 - `print()` in app code (use `logging`; enforced by T20 rule)
 - Direct API calls without going through `make_request()` in `api_client.py`
