@@ -11,6 +11,25 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_NEWS_CONTENT_MAX_LEN = 5000
+
+
+def _sanitize_articles(data: list) -> list:
+    """Strip HTML tags from title/content and truncate content to reduce injection surface."""
+    for article in data:
+        if not isinstance(article, dict):
+            continue
+        for field in ("title", "content"):
+            val = article.get(field)
+            if isinstance(val, str):
+                val = _HTML_TAG_RE.sub("", val)
+                if field == "content" and len(val) > _NEWS_CONTENT_MAX_LEN:
+                    val = val[:_NEWS_CONTENT_MAX_LEN]
+                article[field] = val
+    return data
+
+
 ALLOWED_FMT = {"json", "xml"}
 
 
@@ -115,6 +134,10 @@ def register(mcp: FastMCP):
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
+
+        # Sanitize article text fields before returning
+        if isinstance(data, list):
+            data = _sanitize_articles(data)
 
         # Typical 'json' path: API returns a list of articles (or an object).
         try:

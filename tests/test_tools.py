@@ -330,3 +330,75 @@ async def test_fundamentals_url_and_general_call(mcp):
     parsed = json.loads(text)
     assert parsed["General"]["Type"] == "Common Stock"
     assert call_count >= 2  # at least General + sections
+
+
+# ---------------------------------------------------------------------------
+# 6. Sanitization — invisible chars, recursive stripping, news HTML/truncation
+# ---------------------------------------------------------------------------
+
+
+class TestStripInvisibleChars:
+    def test_removes_zero_width_chars(self):
+        from app.response import _strip_invisible_chars
+
+        text = "hello\u200bworld\u200ctest\ufeff"
+        assert _strip_invisible_chars(text) == "helloworldtest"
+
+    def test_preserves_normal_text(self):
+        from app.response import _strip_invisible_chars
+
+        text = "Hello, World! 123 àéîöü"
+        assert _strip_invisible_chars(text) == text
+
+    def test_removes_rtl_ltr_overrides(self):
+        from app.response import _strip_invisible_chars
+
+        text = "price\u202eis\u202d100"
+        assert _strip_invisible_chars(text) == "priceis100"
+
+
+class TestSanitizeData:
+    def test_recursive_dict_and_list(self):
+        from app.response import _sanitize_data
+
+        data = {
+            "name": "test\u200b",
+            "items": ["\u200bhidden", {"nested": "val\ufeff"}],
+            "count": 42,
+        }
+        result = _sanitize_data(data)
+        assert result == {
+            "name": "test",
+            "items": ["hidden", {"nested": "val"}],
+            "count": 42,
+        }
+
+    def test_passthrough_non_string(self):
+        from app.response import _sanitize_data
+
+        assert _sanitize_data(42) == 42
+        assert _sanitize_data(None) is None
+        assert _sanitize_data(3.14) == 3.14
+
+
+class TestNewsArticleSanitization:
+    @pytest.mark.asyncio
+    async def test_html_stripped_and_content_truncated(self, mcp):
+        long_content = "<p>" + "A" * 6000 + "</p>"
+        articles = [
+            {
+                "title": "<b>Breaking</b> News",
+                "content": long_content,
+                "link": "https://example.com",
+            }
+        ]
+        text, _ = await _call(
+            mcp, "get_company_news", {"ticker": "AAPL.US"},
+            "get_company_news", mock_return=articles,
+        )
+        parsed = json.loads(text)
+        article = parsed[0]
+        assert "<b>" not in article["title"]
+        assert article["title"] == "Breaking News"
+        assert "<p>" not in article["content"]
+        assert len(article["content"]) == 5000
