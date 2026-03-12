@@ -1,10 +1,10 @@
 # get_mp_index_components.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -22,7 +22,7 @@ def register(mcp: FastMCP):
         symbol: str,  # e.g., "GSPC.INDX" from mp_indices_list
         fmt: str = "json",  # JSON only (per docs)
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         [Marketplace] Get constituent stocks of a specific S&P or Dow Jones index, including
@@ -77,6 +77,6 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected JSON response format from API.")

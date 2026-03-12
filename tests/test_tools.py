@@ -41,7 +41,9 @@ async def _call(mcp, tool_name, args, mock_module, mock_return=None):
     mock = AsyncMock(return_value=mock_return if mock_return is not None else API_SUCCESS)
     with patch(target, mock):
         result = await mcp.call_tool(tool_name, args)
-    text = result.content[0].text
+    content = result.content[0]
+    # Tools return EmbeddedResource (application/json) for prompt-injection defense
+    text = content.resource.text if hasattr(content, "resource") else content.text
     return text, mock
 
 
@@ -323,7 +325,8 @@ async def test_fundamentals_url_and_general_call(mcp):
     target = _mock_path("get_fundamentals_data")
     with patch(target, side_effect=_side_effect):
         result = await mcp.call_tool("get_fundamentals_data", {"ticker": "AAPL.US"})
-    text = result.content[0].text
+    content = result.content[0]
+    text = content.resource.text if hasattr(content, "resource") else content.text
     parsed = json.loads(text)
     assert parsed["General"]["Type"] == "Common Stock"
     assert call_count >= 2  # at least General + sections

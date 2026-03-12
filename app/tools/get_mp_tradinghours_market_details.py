@@ -1,10 +1,10 @@
 # get_mp_tradinghours_market_details.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -21,7 +21,7 @@ def register(mcp: FastMCP):
     async def get_mp_tradinghours_market_details(
         fin_id: str,  # e.g. "us.nyse"
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         [TradingHours] Get detailed metadata for a specific market by its FinID. Use when asked
@@ -76,6 +76,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")

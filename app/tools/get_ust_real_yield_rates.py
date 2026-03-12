@@ -1,9 +1,9 @@
 # get_ust_real_yield_rates.py
 
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -16,7 +16,7 @@ def register(mcp: FastMCP):
         limit: int | str | None = None,  # page[limit]
         offset: int | str | None = None,  # page[offset]
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         Fetch US Treasury inflation-adjusted (real) yield curve rates. Use when asked about TIPS yields,
@@ -94,6 +94,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")

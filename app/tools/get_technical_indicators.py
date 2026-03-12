@@ -1,10 +1,10 @@
 # get_technical_indicators.py
-import json
 from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.formatter import sanitize_ticker
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -118,7 +118,7 @@ def register(mcp: FastMCP):
         code2: str | None = None,
         # token
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         """
 
         Compute technical indicators for any ticker over a date range.
@@ -293,9 +293,9 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             if isinstance(data, str):
                 # For CSV (if make_request is updated to return text)
-                return json.dumps({"csv": data}, indent=2)
+                return format_json_response({"csv": data})
             raise ToolError("Unexpected response format from API.")

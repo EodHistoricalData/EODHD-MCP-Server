@@ -1,10 +1,10 @@
 # get_mp_praams_bank_balance_sheet_by_isin.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -43,7 +43,7 @@ def _canon_isin(v: str) -> str | None:
 async def _run_praams_balance_sheet_by_isin(
     isin: str,
     api_token: str | None,
-) -> str:
+) -> list:
     """
     Core runner for Praams Bank Balance Sheet by ISIN.
 
@@ -77,7 +77,7 @@ async def _run_praams_balance_sheet_by_isin(
     #   {"success": ..., "items": [...], "message": "...", "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected JSON response format from API.")
 
@@ -87,7 +87,7 @@ def register(mcp: FastMCP):
     async def get_mp_praams_bank_balance_sheet_by_isin(
         isin: str,  # e.g. 'US46625H1005', 'US0605051046'
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> str:
+    ) -> list:
         """
 
         [PRAAMS] Retrieve bank-specific balance sheet time series by ISIN code.
@@ -136,7 +136,7 @@ def register(mcp: FastMCP):
     async def mp_praams_bank_balance_sheet_by_isin(
         isin: str,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         return await _run_praams_balance_sheet_by_isin(
             isin=isin,
             api_token=api_token,

@@ -1,10 +1,10 @@
 # get_upcoming_ipos.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -23,7 +23,7 @@ def register(mcp: FastMCP):
         to_date: str | None = None,  # format YYYY-MM-DD (mapped to 'to')
         fmt: str = "json",  # 'json' or 'csv' (default per API is csv; we default to json for dev-friendliness)
         api_token: str | None = None,  # per-call override; otherwise env EODHD_API_KEY is used
-    ) -> str:
+    ) -> list:
         """
 
         Get upcoming and recent IPO (Initial Public Offering) listings.
@@ -82,13 +82,13 @@ def register(mcp: FastMCP):
         if fmt == "csv":
             if isinstance(data, str):
                 # Wrap CSV in a small envelope for consistency
-                return json.dumps({"fmt": "csv", "data": data}, indent=2)
+                return format_json_response({"fmt": "csv", "data": data})
             # Unexpected structure
             raise ToolError("Unexpected CSV response format from API.")
 
         # fmt == json
         try:
             # data should be a dict/list already; ensure string output
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected JSON response format from API.")

@@ -1,10 +1,10 @@
 # get_mp_praams_report_equity_by_ticker.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -18,7 +18,7 @@ def _q(key: str, val: str | int | None) -> str:
 
 async def _run_praams_report_equity_by_ticker(
     ticker: str, email: str, is_full: bool | None, api_token: str | None
-) -> str:
+) -> list:
     if not ticker or not isinstance(ticker, str):
         raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL', 'TSLA').")
     if not email or not isinstance(email, str):
@@ -41,7 +41,7 @@ async def _run_praams_report_equity_by_ticker(
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected response format from API.")
 
@@ -53,7 +53,7 @@ def register(mcp: FastMCP):
         email: str,  # email for notifications
         is_full: bool | None = None,  # full or partial report
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ticker symbol.
@@ -107,7 +107,7 @@ def register(mcp: FastMCP):
         email: str,
         is_full: bool | None = None,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         return await _run_praams_report_equity_by_ticker(
             ticker=ticker, email=email, is_full=is_full, api_token=api_token
         )
