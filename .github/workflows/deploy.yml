@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Login to Registry
-        run: docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+        run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKER_USER }} --password-stdin
       - name: Build & push
         run: |
           docker build -t ${{ vars.DOCKER_REGISTRY }}/${{ vars.IMAGE_NAME }}:latest .
@@ -37,7 +37,7 @@ jobs:
           username: ${{ vars.DEPLOY_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKER_USER }} -p ${{ secrets.DOCKER_PASSWORD }}
+            echo "${{ secrets.DOCKER_PASSWORD }}" | docker login ${{ vars.DOCKER_REGISTRY }} -u ${{ secrets.DOCKER_USER }} --password-stdin
             docker pull ${{ vars.DOCKER_REGISTRY }}/${{ vars.IMAGE_NAME }}:latest
             cd ${{ vars.DEPLOY_PATH }}
             docker compose up -d --no-deps --force-recreate ${{ vars.DEPLOY_SERVICE }}

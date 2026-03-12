@@ -4,23 +4,24 @@ MCP server exposing 74 EODHD financial data API tools via HTTP, SSE, and stdio t
 Python 3.10+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
 ## Commands
 ```bash
+# Always prefer .venv tools over system-wide
 # Tests
-pytest tests/ -v --tb=short
-pytest tests/ -v --cov=app --cov-report=term-missing   # with coverage
+.venv/bin/pytest tests/ -v --tb=short
+.venv/bin/pytest tests/ -v --cov=app --cov-report=term-missing   # with coverage
 # Lint & format
-ruff check app/ server.py
-ruff format --check app/ server.py
+.venv/bin/ruff check app/ server.py
+.venv/bin/ruff format --check app/ server.py
 # Type checking
-mypy app/ server.py --ignore-missing-imports --explicit-package-bases
+.venv/bin/mypy app/ server.py --ignore-missing-imports --explicit-package-bases
 # Security
-bandit -r app/ -ll -ii -x app/resources/
+.venv/bin/bandit -r app/ -ll -ii -x app/resources/
 semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
-pip-audit
+.venv/bin/pip-audit
 # Run server
-python server.py                     # HTTP (default, port 8000)
-python server.py --stdio             # stdio (Claude Desktop)
-python server.py --sse               # SSE
-python server.py --http --port 9000  # custom port
+.venv/bin/python server.py                     # HTTP (default, port 8000)
+.venv/bin/python server.py --stdio             # stdio (Claude Desktop)
+.venv/bin/python server.py --sse               # SSE
+.venv/bin/python server.py --http --port 9000  # custom port
 ```
 ## Architecture
 ```

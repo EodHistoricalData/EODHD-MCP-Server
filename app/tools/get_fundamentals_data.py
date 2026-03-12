@@ -93,6 +93,8 @@ async def _fetch_filtered_block(
             params[k] = v
     url = _build_url(ticker, params)
     data = await make_request(url)
+    if isinstance(data, dict) and data.get("error"):
+        raise ToolError(f"API error for '{filter_expr}': {data['error']}")
     return data
 
 
