@@ -1,5 +1,6 @@
 # app/prompts/market_overview.py
 
+from app.formatter import sanitize_prompt_param
 from fastmcp import FastMCP
 
 
@@ -12,6 +13,7 @@ def register(mcp: FastMCP):
         Args:
             exchange: Exchange code (e.g. 'US', 'LSE', 'NSE'). Defaults to 'US'.
         """
+        exchange = sanitize_prompt_param(exchange, "exchange")
         return (
             f"Provide a market overview for the {exchange} exchange.\n\n"
             f"Use these tools:\n"
