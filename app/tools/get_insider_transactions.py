@@ -1,19 +1,19 @@
-#get_insider_transactions.py
+# get_insider_transactions.py
 
 import json
 import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -24,15 +24,16 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_insider_transactions(
-        start_date: Optional[str] = None,   # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,     # maps to 'to'   (YYYY-MM-DD)
-        limit: int = 100,                   # 1..1000, default 100
-        symbol: Optional[str] = None,       # maps to 'code' (e.g., 'AAPL' or 'AAPL.US')
-        fmt: str = "json",                  # API returns json; we gate to json
-        api_token: Optional[str] = None,    # per-call token override
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
+        limit: int = 100,  # 1..1000, default 100
+        symbol: str | None = None,  # maps to 'code' (e.g., 'AAPL' or 'AAPL.US')
+        fmt: str = "json",  # API returns json; we gate to json
+        api_token: str | None = None,  # per-call token override
     ) -> str:
         """
 
@@ -46,7 +47,6 @@ def register(mcp: FastMCP):
             end_date (str, optional):   'to'   in YYYY-MM-DD. Defaults to today by API if omitted.
             limit (int): Number of entries to return, 1..1000. Default 100.
             symbol (str, optional): Filter by ticker (API param 'code'), e.g. 'AAPL' or 'AAPL.US'.
-            If you only have a company name or ISIN, call resolve_ticker first.
             fmt (str): Only 'json' is supported by this tool.
             api_token (str, optional): Per-call token; env token used if omitted.
 
@@ -70,7 +70,7 @@ def register(mcp: FastMCP):
             "Recent insider transactions, top 50" → limit=50
             "Tesla insider buys and sells in Feb 2026" → symbol="TSLA.US", start_date="2026-02-01", end_date="2026-02-28"
 
-        
+
         """
         # --- Validate inputs ---
         if fmt != "json":

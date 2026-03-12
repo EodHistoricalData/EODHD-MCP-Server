@@ -1,13 +1,12 @@
 # app/tools/resolve_ticker.py
 
 import json
-from typing import Optional
 from urllib.parse import quote
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
@@ -15,9 +14,9 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def resolve_ticker(
         query: str,
-        preferred_exchange: Optional[str] = None,
-        asset_type: Optional[str] = None,
-        api_token: Optional[str] = None,
+        preferred_exchange: str | None = None,
+        asset_type: str | None = None,
+        api_token: str | None = None,
     ) -> str:
         """
         Resolve a company name, partial ticker, or ISIN to SYMBOL.EXCHANGE format (and ISIN).
@@ -86,13 +85,15 @@ def register(mcp: FastMCP):
                 key = f"{item.get('Code')}.{item.get('Exchange')}"
                 if key not in seen and key != resolved:
                     seen.add(key)
-                    alternatives.append({
-                        "ticker": key,
-                        "name": item.get("Name", ""),
-                        "isin": item.get("ISIN", ""),
-                        "type": item.get("Type", ""),
-                        "exchange": item.get("Exchange", ""),
-                    })
+                    alternatives.append(
+                        {
+                            "ticker": key,
+                            "name": item.get("Name", ""),
+                            "isin": item.get("ISIN", ""),
+                            "type": item.get("Type", ""),
+                            "exchange": item.get("Exchange", ""),
+                        }
+                    )
 
         result = {
             "resolved": resolved,

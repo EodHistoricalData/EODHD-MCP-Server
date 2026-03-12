@@ -1,12 +1,11 @@
 import json
 import re
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
 
 _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "references"
 
@@ -14,21 +13,20 @@ _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "referen
 # Markdown → nested-dict parser
 # ---------------------------------------------------------------------------
 
-_HEADING_RE = re.compile(r'^(#{1,6})\s+(.*)')
-_BOLD_KV_RE = re.compile(r'^\*\*(.+?)\*\*\s*:\s*(.*)')
-_UL_RE = re.compile(r'^[-*]\s+(.*)')
-_OL_RE = re.compile(r'^\d+\.\s+(.*)')
-_TABLE_SEP_RE = re.compile(r'^\s*\|[\s\-:|]+\|\s*$')
-_HR_RE = re.compile(r'^[-*_]{3,}\s*$')
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)")
+_BOLD_KV_RE = re.compile(r"^\*\*(.+?)\*\*\s*:\s*(.*)")
+_UL_RE = re.compile(r"^[-*]\s+(.*)")
+_OL_RE = re.compile(r"^\d+\.\s+(.*)")
+_TABLE_SEP_RE = re.compile(r"^\s*\|[\s\-:|]+\|\s*$")
+_HR_RE = re.compile(r"^[-*_]{3,}\s*$")
 
 
 def _strip_md(text: str) -> str:
     """Remove inline markdown formatting, keeping plain text."""
-    text = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', text)   # [link](url)
-    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)            # **bold**
-    text = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)',
-                  r'\1', text)                               # *italic*
-    text = re.sub(r'`(.+?)`', r'\1', text)                  # `code`
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)  # [link](url)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)  # **bold**
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text)  # *italic*
+    text = re.sub(r"`(.+?)`", r"\1", text)  # `code`
     return text.strip()
 
 
@@ -43,7 +41,7 @@ def _put(sec: dict, key: str, val):
         sec[f"{key} ({c})"] = val
 
 
-def _parse_markdown(text: str) -> dict:
+def _parse_markdown(text: str) -> dict[str, Any]:
     """Parse a markdown document into a nested dict / list structure.
 
     Mapping rules
@@ -60,7 +58,7 @@ def _parse_markdown(text: str) -> dict:
     text, or note) are "unwrapped" so the section value becomes the
     block itself rather than a single-key dict.
     """
-    lines = text.split('\n')
+    lines = text.split("\n")
     root: dict = {}
     stack: list[tuple[int, dict]] = [(0, root)]
     i, n = 0, len(lines)
@@ -77,17 +75,17 @@ def _parse_markdown(text: str) -> dict:
             continue
 
         # ── fenced code block ──────────────────────────────────────
-        if s.startswith('```'):
+        if s.startswith("```"):
             lang = s[3:].strip()
             buf: list[str] = []
             i += 1
-            while i < n and not lines[i].strip().startswith('```'):
+            while i < n and not lines[i].strip().startswith("```"):
                 buf.append(lines[i])
                 i += 1
             if i < n:
                 i += 1
             key = f"example_{lang}" if lang else "example"
-            _put(cur(), key, '\n'.join(buf))
+            _put(cur(), key, "\n".join(buf))
             continue
 
         # ── heading ────────────────────────────────────────────────
@@ -103,21 +101,15 @@ def _parse_markdown(text: str) -> dict:
             continue
 
         # ── table ──────────────────────────────────────────────────
-        if s.startswith('|') and s.endswith('|') and s.count('|') >= 3:
-            hdrs = [h.strip() for h in s.split('|')[1:-1]]
+        if s.startswith("|") and s.endswith("|") and s.count("|") >= 3:
+            hdrs = [h.strip() for h in s.split("|")[1:-1]]
             i += 1
             if i < n and _TABLE_SEP_RE.match(lines[i]):
                 i += 1
             rows: list[dict] = []
-            while (i < n
-                   and lines[i].strip().startswith('|')
-                   and lines[i].strip().endswith('|')):
-                cells = [c.strip()
-                         for c in lines[i].strip().split('|')[1:-1]]
-                rows.append({
-                    hdrs[j]: _strip_md(cells[j]) if j < len(cells) else ""
-                    for j in range(len(hdrs))
-                })
+            while i < n and lines[i].strip().startswith("|") and lines[i].strip().endswith("|"):
+                cells = [c.strip() for c in lines[i].strip().split("|")[1:-1]]
+                rows.append({hdrs[j]: _strip_md(cells[j]) if j < len(cells) else "" for j in range(len(hdrs))})
                 i += 1
             _put(cur(), "_table", rows)
             continue
@@ -132,35 +124,34 @@ def _parse_markdown(text: str) -> dict:
                 j = i
                 while j < n and not lines[j].strip():
                     j += 1
-                if j < n and lines[j].strip().startswith('```'):
+                if j < n and lines[j].strip().startswith("```"):
                     lang = lines[j].strip()[3:].strip()
                     buf = []
                     j += 1
-                    while j < n and not lines[j].strip().startswith('```'):
+                    while j < n and not lines[j].strip().startswith("```"):
                         buf.append(lines[j])
                         j += 1
                     if j < n:
                         j += 1
-                    val = '\n'.join(buf)
+                    val = "\n".join(buf)
                     i = j
             _put(cur(), key, val)
             continue
 
         # ── blockquote ─────────────────────────────────────────────
-        if s.startswith('>'):
+        if s.startswith(">"):
             buf = []
-            while i < n and lines[i].strip().startswith('>'):
-                buf.append(lines[i].strip().lstrip('>').strip())
+            while i < n and lines[i].strip().startswith(">"):
+                buf.append(lines[i].strip().lstrip(">").strip())
                 i += 1
-            _put(cur(), "_note", _strip_md(' '.join(buf)))
+            _put(cur(), "_note", _strip_md(" ".join(buf)))
             continue
 
         # ── unordered list ─────────────────────────────────────────
         if _UL_RE.match(s):
             items: list[str] = []
-            while i < n and _UL_RE.match(lines[i].strip()):
-                items.append(
-                    _strip_md(_UL_RE.match(lines[i].strip()).group(1)))
+            while i < n and (m := _UL_RE.match(lines[i].strip())):
+                items.append(_strip_md(m.group(1)))
                 i += 1
             _put(cur(), "_items", items)
             continue
@@ -168,9 +159,8 @@ def _parse_markdown(text: str) -> dict:
         # ── ordered list ───────────────────────────────────────────
         if _OL_RE.match(s):
             items = []
-            while i < n and _OL_RE.match(lines[i].strip()):
-                items.append(
-                    _strip_md(_OL_RE.match(lines[i].strip()).group(1)))
+            while i < n and (m := _OL_RE.match(lines[i].strip())):
+                items.append(_strip_md(m.group(1)))
                 i += 1
             _put(cur(), "_items", items)
             continue
@@ -179,17 +169,21 @@ def _parse_markdown(text: str) -> dict:
         buf = []
         while i < n:
             ln = lines[i].strip()
-            if (not ln
-                    or ln.startswith(('#', '|', '```', '>'))
-                    or _UL_RE.match(ln) or _OL_RE.match(ln)
-                    or _BOLD_KV_RE.match(ln) or _HR_RE.match(ln)):
+            if (
+                not ln
+                or ln.startswith(("#", "|", "```", ">"))
+                or _UL_RE.match(ln)
+                or _OL_RE.match(ln)
+                or _BOLD_KV_RE.match(ln)
+                or _HR_RE.match(ln)
+            ):
                 break
             buf.append(ln)
             i += 1
         if buf:
-            _put(cur(), "_text", _strip_md(' '.join(buf)))
+            _put(cur(), "_text", _strip_md(" ".join(buf)))
 
-    return _simplify(root)
+    return dict(_simplify(root))
 
 
 def _simplify(obj):
@@ -203,13 +197,10 @@ def _simplify(obj):
     if not isinstance(obj, dict):
         return obj
 
-    result = {
-        k: _simplify(v) if isinstance(v, dict) else v
-        for k, v in obj.items()
-    }
+    result = {k: _simplify(v) if isinstance(v, dict) else v for k, v in obj.items()}
 
-    internal = [k for k in result if k.startswith('_')]
-    regular = [k for k in result if not k.startswith('_')]
+    internal = [k for k in result if k.startswith("_")]
+    regular = [k for k in result if not k.startswith("_")]
 
     # single anonymous block, no named children → unwrap
     if not regular and len(internal) == 1:
@@ -360,8 +351,7 @@ def _serve_global_readme(fallback: bool = False) -> str:
         structured = _parse_markdown(content)
     except Exception as e:
         structured = {"parsing_error": str(e)}
-    result = {"type": 0, "id": 0, "title": "Global Readme",
-              "content": structured, "raw": content}
+    result = {"type": 0, "id": 0, "title": "Global Readme", "content": structured, "raw": content}
     if fallback:
         result["fallback"] = True
     return json.dumps(result, indent=2)
@@ -370,9 +360,9 @@ def _serve_global_readme(fallback: bool = False) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def retrieve_description_by_id(
-        type: Optional[Union[int, str]] = 0,
-        id: Optional[Union[int, str]] = None,
-        api_token: Optional[str] = None,
+        type: int | str | None = 0,
+        id: int | str | None = None,
+        api_token: str | None = None,  # noqa: ARG001 — kept for MCP tool interface parity
     ) -> str:
         """
 
@@ -451,7 +441,7 @@ def register(mcp: FastMCP):
             "how does the historical stock prices endpoint work" → type=2, id=12
             "explain rate limits" → type=3, id=22
 
-        
+
         """
         if type is None:
             page_type = 0
@@ -498,7 +488,6 @@ def register(mcp: FastMCP):
             structured = {"parsing_error": str(e)}
 
         return json.dumps(
-            {"type": page_type, "id": page_id, "title": title,
-             "content": structured, "raw": content},
+            {"type": page_type, "id": page_id, "title": title, "content": structured, "raw": content},
             indent=2,
         )

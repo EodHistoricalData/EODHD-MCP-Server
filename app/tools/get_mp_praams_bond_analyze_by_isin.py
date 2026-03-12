@@ -1,16 +1,16 @@
-#get_mp_praams_bond_analyze_by_isin.py
+# get_mp_praams_bond_analyze_by_isin.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str | int]) -> str:
+
+def _q(key: str, val: str | int | None) -> str:
     """
     Helper to build query parameters safely.
     Skips None/empty, URL-encodes values.
@@ -20,7 +20,7 @@ def _q(key: str, val: Optional[str | int]) -> str:
     return f"&{key}={quote_plus(str(val))}"
 
 
-def _canon_isin(v: str) -> Optional[str]:
+def _canon_isin(v: str) -> str | None:
     """
     Very light validation/normalization for Praams bond ISIN path param.
 
@@ -40,7 +40,7 @@ def _canon_isin(v: str) -> Optional[str]:
     return s.upper()
 
 
-async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
+async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> str:
     """
     Core runner for Praams Bond Risk & Return analysis by ISIN.
 
@@ -66,7 +66,6 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
     if data is None:
         raise ToolError("No response from API.")
 
-
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     # Normalize and return
@@ -81,15 +80,14 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_praams_bond_analyze_by_isin(
-        isin: str,                       # e.g. 'US7593518852' (demo supports US7593518852, US91282CJN20)
-        api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
+        isin: str,  # e.g. 'US7593518852' (demo supports US7593518852, US91282CJN20)
+        api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
     ) -> str:
         """
 
         [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
         Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-test results,
         volatility, liquidity, country risk narratives, and issuer-level fundamentals.
-        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Use for detailed bond-specific due diligence. Consumes 10 API calls per request.
         For bond screening across multiple instruments, use get_mp_praams_smart_screener_bond.
         For a full PDF bond report, use get_mp_praams_report_bond_by_isin.
@@ -128,6 +126,6 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_praams_bond_analyze_by_isin(
         isin: str,
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)

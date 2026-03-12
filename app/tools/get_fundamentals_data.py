@@ -1,21 +1,22 @@
 # get_fundamentals_data.py
 
-import json
 import datetime as dt
-from typing import Any, Dict, List, Optional, Tuple, Union
+import json
+from typing import Any
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.formatter import sanitize_ticker
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 # --------------------------------
 # Utilities & small helpers
 # --------------------------------
 
-def _to_date(s: Optional[str]) -> Optional[dt.date]:
+
+def _to_date(s: str | None) -> dt.date | None:
     if not s:
         return None
     try:
@@ -23,7 +24,8 @@ def _to_date(s: Optional[str]) -> Optional[dt.date]:
     except Exception:
         return None
 
-def _in_range(date_str: str, start: Optional[dt.date], end: Optional[dt.date]) -> bool:
+
+def _in_range(date_str: str, start: dt.date | None, end: dt.date | None) -> bool:
     """
     Inclusive date range check. Accepts YYYY-MM-DD.
     If start or end is None -> unbounded on that side.
@@ -39,9 +41,10 @@ def _in_range(date_str: str, start: Optional[dt.date], end: Optional[dt.date]) -
         return False
     return True
 
-def _build_url(ticker: str, params: Dict[str, Any]) -> str:
+
+def _build_url(ticker: str, params: dict[str, Any]) -> str:
     base = f"{EODHD_API_BASE}/fundamentals/{ticker}?fmt=json"
-    parts: List[str] = []
+    parts: list[str] = []
     for k, v in params.items():
         if v is None:
             continue
@@ -53,13 +56,14 @@ def _build_url(ticker: str, params: Dict[str, Any]) -> str:
         return base + "&" + "&".join(parts)
     return base
 
-def _merge_tree(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
+
+def _merge_tree(dest: dict[str, Any], src: dict[str, Any]) -> None:
     """Shallow-merge top-level dicts (right wins on conflicts)."""
     for k, v in src.items():
         dest[k] = v
 
 
-def _token_override(api_token: Optional[str], api_key: Optional[str]) -> Optional[str]:
+def _token_override(api_token: str | None, api_key: str | None) -> str | None:
     """
     Accept api_token (preferred) and api_key (alias) as per-call overrides.
     """
@@ -74,13 +78,14 @@ def _token_override(api_token: Optional[str], api_key: Optional[str]) -> Optiona
 # Fetchers
 # --------------------------------
 
+
 async def _fetch_filtered_block(
     ticker: str,
-    api_token: Optional[str],
+    api_token: str | None,
     filter_expr: str,
-    extra_params: Optional[Dict[str, Any]] = None,
+    extra_params: dict[str, Any] | None = None,
 ) -> Any:
-    params: Dict[str, Any] = {"filter": filter_expr}
+    params: dict[str, Any] = {"filter": filter_expr}
     if api_token:
         params["api_token"] = api_token
     if extra_params:
@@ -90,19 +95,21 @@ async def _fetch_filtered_block(
     data = await make_request(url)
     return data
 
-async def _fetch_general(ticker: str, api_token: Optional[str]) -> Dict[str, Any]:
+
+async def _fetch_general(ticker: str, api_token: str | None) -> dict[str, Any]:
     url = _build_url(ticker, {"filter": "General", "api_token": api_token} if api_token else {"filter": "General"})
     data = await make_request(url)
     if not isinstance(data, dict) or "Type" not in data:
         raise RuntimeError("Unexpected 'General' response: missing 'Type'")
     return data
 
+
 async def _fetch_sections_bulk(
     ticker: str,
-    api_token: Optional[str],
-    sections: List[str],
-    extra_params: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    api_token: str | None,
+    sections: list[str],
+    extra_params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Request multiple top-level sections with comma-separated filter.
     Returns a dict (top-level keys = requested sections).
@@ -116,19 +123,20 @@ async def _fetch_sections_bulk(
     # If a single section came back as a direct block, wrap it to keep the shape predictable.
     return {sections[0]: data}
 
+
 async def _discover_financial_dates_from_outstanding_shares(
     ticker: str,
-    api_token: Optional[str],
-    start: Optional[dt.date],
-    end: Optional[dt.date],
-) -> Tuple[List[str], List[str], Dict[str, Any]]:
+    api_token: str | None,
+    start: dt.date | None,
+    end: dt.date | None,
+) -> tuple[list[str], list[str], dict[str, Any]]:
     """
     Returns (quarterly_dates, annual_dates, full_outstandingShares_block)
     The dates returned are taken from 'dateFormatted' and filtered by [start, end].
     """
     os_block = await _fetch_filtered_block(ticker, api_token, "outstandingShares")
-    q_dates: List[str] = []
-    a_dates: List[str] = []
+    q_dates: list[str] = []
+    a_dates: list[str] = []
 
     if isinstance(os_block, dict):
         for kind in ("quarterly", "annual"):
@@ -147,16 +155,17 @@ async def _discover_financial_dates_from_outstanding_shares(
 
     return q_dates, a_dates, os_block if isinstance(os_block, dict) else {}
 
+
 async def _fetch_financials_for_dates(
     ticker: str,
-    api_token: Optional[str],
-    quarter_dates: List[str],
-    annual_dates: List[str],
-) -> Dict[str, Any]:
+    api_token: str | None,
+    quarter_dates: list[str],
+    annual_dates: list[str],
+) -> dict[str, Any]:
     """
     Fetch leaves for Financials statements on the specific dates discovered via outstandingShares.
     """
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "Financials": {
             "Balance_Sheet": {"quarterly": {}, "yearly": {}},
             "Cash_Flow": {"quarterly": {}, "yearly": {}},
@@ -181,11 +190,12 @@ async def _fetch_financials_for_dates(
 
     return result
 
+
 def _prune_common_stock_by_date(
-    assembled: Dict[str, Any],
-    start: Optional[dt.date],
-    end: Optional[dt.date],
-) -> Dict[str, Any]:
+    assembled: dict[str, Any],
+    start: dt.date | None,
+    end: dt.date | None,
+) -> dict[str, Any]:
     """
     Applies pruning rules:
     1) outstandingShares annual/quarterly — remove nodes with dateFormatted outside [from, to]
@@ -237,7 +247,8 @@ def _prune_common_stock_by_date(
 
     return assembled
 
-def _default_sections_for_type(asset_type: str) -> List[str]:
+
+def _default_sections_for_type(asset_type: str) -> list[str]:
     t = asset_type.strip().lower()
     if t == "common stock":
         return [
@@ -269,19 +280,20 @@ def _default_sections_for_type(asset_type: str) -> List[str]:
 # MCP Tool
 # --------------------------------
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_fundamentals_data(
-        ticker: str,                                   # "AAPL.US", "VTI.US", "SWPPX.US", "GSPC.INDX", etc.
-        api_token: Optional[str] = None,               # per-call override (preferred name)
-        api_key: Optional[str] = None,                 # per-call override (alias)
+        ticker: str,  # "AAPL.US", "VTI.US", "SWPPX.US", "GSPC.INDX", etc.
+        api_token: str | None = None,  # per-call override (preferred name)
+        api_key: str | None = None,  # per-call override (alias)
         # Common Stock date pruning window (inclusive). For Indices, pass 'from'/'to' via extra_params.
-        from_date: Optional[str] = None,               # "YYYY-MM-DD"
-        to_date: Optional[str] = None,                 # "YYYY-MM-DD"
+        from_date: str | None = None,  # "YYYY-MM-DD"
+        to_date: str | None = None,  # "YYYY-MM-DD"
         # Explicit sections (top-level) to fetch; if omitted, defaults by detected Type.
-        sections: Optional[List[str]] = None,          # e.g. ["General","Highlights","Earnings"]
+        sections: list[str] | None = None,  # e.g. ["General","Highlights","Earnings"]
         # For indices or extra flags: {"historical": 1, "from": "2020-01-01", "to": "2023-01-01"}
-        extra_params: Optional[Dict[str, Any]] = None,
+        extra_params: dict[str, Any] | None = None,
         # For Common Stock, whether to include Financials. When a date window is provided,
         # the tool only fetches leaves for in-range dates discovered via outstandingShares.
         include_financials: bool = True,
@@ -298,7 +310,6 @@ def register(mcp: FastMCP):
         For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
         For price data, use get_historical_stock_prices or get_live_price_data instead.
 
-        - ticker: If you only have a company name or ISIN, call resolve_ticker first.
 
         Returns:
             Nested object; structure depends on asset Type:
@@ -333,14 +344,13 @@ def register(mcp: FastMCP):
             "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
             "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
 
-        
+
         """
         # --- Validate basics
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
-        if not ticker or "." not in ticker:
-            raise ToolError("Parameter 'ticker' must be in 'SYMBOL.EXCHANGE' format (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         token = _token_override(api_token, api_key)
         start = _to_date(from_date)
@@ -362,10 +372,10 @@ def register(mcp: FastMCP):
         chosen_sections = sections if sections else _default_sections_for_type(asset_type)
         non_general_sections = [s for s in chosen_sections if s != "General"]
 
-        assembled: Dict[str, Any] = {"General": general}
+        assembled: dict[str, Any] = {"General": general}
 
         # --- 3) Fetch non-Financials in bulk where possible
-        non_financial_sections: List[str] = []
+        non_financial_sections: list[str] = []
         try:
             # We never ask for 'Financials' in the bulk; we fetch that separately below.
             for s in non_general_sections:
@@ -398,7 +408,7 @@ def register(mcp: FastMCP):
                     _merge_tree(assembled, fin_tree)
                 else:
                     # No date window -> download full maps (quarterly & yearly) for each statement
-                    fin_full: Dict[str, Any] = {"Financials": {}}
+                    fin_full: dict[str, Any] = {"Financials": {}}
                     for stmt in ("Balance_Sheet", "Cash_Flow", "Income_Statement"):
                         fin_full["Financials"].setdefault(stmt, {})
                         for period in ("quarterly", "yearly"):

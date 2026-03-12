@@ -1,21 +1,20 @@
-#get_stock_market_logos_svg.py
+# get_stock_market_logos_svg.py
 
 import json
-from typing import Optional
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_stock_market_logos_svg(
-        symbol: str,                            # e.g. "AAPL.US", "RY.TO"
-        api_token: Optional[str] = None,        # per-call override
+        symbol: str,  # e.g. "AAPL.US", "RY.TO"
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -29,7 +28,6 @@ def register(mcp: FastMCP):
 
         Args:
             symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'RY.TO').
-            If you only have a company name or ISIN, call resolve_ticker first.
             api_token (str, optional): Per-call token override.
 
 
@@ -45,13 +43,10 @@ def register(mcp: FastMCP):
             "Apple SVG logo" → get_stock_market_logos_svg(symbol="AAPL.US")
             "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
 
-        
+
         """
         if not symbol or not isinstance(symbol, str):
-            raise ToolError(
-                "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format "
-                "(e.g. 'AAPL.US', 'RY.TO')."
-            )
+            raise ToolError("Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').")
 
         symbol = symbol.strip().upper()
 

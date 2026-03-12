@@ -1,20 +1,19 @@
-#get_symbol_change_history.py
+# get_symbol_change_history.py
 
 import json
 import re
 from datetime import datetime
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
-
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
-def _valid_date(d: Optional[str]) -> bool:
+
+def _valid_date(d: str | None) -> bool:
     if d is None:
         return True
     if not DATE_RE.match(d):
@@ -25,13 +24,14 @@ def _valid_date(d: Optional[str]) -> bool:
     except ValueError:
         return False
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_symbol_change_history(
-        start_date: Optional[str] = None,  # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,    # maps to 'to'   (YYYY-MM-DD)
-        fmt: str = "json",                 # API returns json here; we gate to json
-        api_token: Optional[str] = None,   # per-call token override
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
+        fmt: str = "json",  # API returns json here; we gate to json
+        api_token: str | None = None,  # per-call token override
     ) -> str:
         """
 
@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             "Ticker renames in 2025" → start_date="2025-01-01", end_date="2025-12-31"
             "Recent symbol changes last 90 days" → start_date="2025-12-06", end_date="2026-03-06"
 
-        
+
         """
         # Validate inputs
         if fmt != "json":

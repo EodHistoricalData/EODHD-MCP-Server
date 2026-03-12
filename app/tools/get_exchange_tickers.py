@@ -1,25 +1,24 @@
-#get_exchange_tickers.py
+# get_exchange_tickers.py
 
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-
 ALLOWED_TYPES = {"common_stock", "preferred_stock", "stock", "etf", "fund"}
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_exchange_tickers(
-        exchange_code: str,                # e.g., "US", "LSE", "XETRA", "WAR"
-        delisted: Optional[bool] = None,   # adds delisted=1 when True
-        type: Optional[str] = None,        # one of ALLOWED_TYPES
-        fmt: str = "json",                 # API supports csv; we default to json
-        api_token: Optional[str] = None,   # per-call override
+        exchange_code: str,  # e.g., "US", "LSE", "XETRA", "WAR"
+        delisted: bool | None = None,  # adds delisted=1 when True
+        type: str | None = None,  # one of ALLOWED_TYPES
+        fmt: str = "json",  # API supports csv; we default to json
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -50,7 +49,7 @@ def register(mcp: FastMCP):
             "Show me delisted US stocks" → get_exchange_tickers(exchange_code="US", delisted=True)
             "ETFs trading on XETRA" → get_exchange_tickers(exchange_code="XETRA", type="etf")
 
-        
+
         """
         if not exchange_code or not isinstance(exchange_code, str):
             raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")
