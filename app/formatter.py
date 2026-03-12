@@ -17,8 +17,29 @@ logger = logging.getLogger("eodhd-mcp.formatter")
 # Characters that would break a URL path segment or query string.
 _URL_UNSAFE_RE = re.compile(r"[?&#/\s]")
 
+# Strict allowlist for values interpolated into prompt text.
+# Only letters, digits, dots, hyphens, and underscores — max 20 chars.
+_PROMPT_SAFE_RE = re.compile(r"^[A-Za-z0-9._-]{1,20}$")
+
 
 # ── Ticker / exchange sanitisers ─────────────────────────────────────────
+
+
+def sanitize_prompt_param(value: str, param_name: str = "parameter") -> str:
+    """Validate and return a value safe for interpolation into prompt text.
+
+    Only allows alphanumeric characters, dots, hyphens, and underscores
+    (max 20 chars). Rejects anything that could be used for prompt injection.
+    """
+    if not value or not isinstance(value, str):
+        raise ToolError(f"Parameter '{param_name}' is required and must be a non-empty string.")
+    value = value.strip().upper()
+    if not _PROMPT_SAFE_RE.match(value):
+        raise ToolError(
+            f"Parameter '{param_name}' must contain only letters, digits, dots, hyphens, "
+            f"or underscores (max 20 chars). Got: {value!r}"
+        )
+    return value
 
 
 def sanitize_ticker(ticker: str, param_name: str = "ticker") -> str:

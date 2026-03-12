@@ -1,5 +1,6 @@
 # app/prompts/analyze_stock.py
 
+from app.formatter import sanitize_prompt_param
 from fastmcp import FastMCP
 
 
@@ -12,6 +13,7 @@ def register(mcp: FastMCP):
         Args:
             ticker: Stock symbol in SYMBOL.EXCHANGE format (e.g. 'AAPL.US').
         """
+        ticker = sanitize_prompt_param(ticker, "ticker")
         return (
             f"Perform a comprehensive analysis of {ticker}. "
             f"Use the following tools in order:\n\n"

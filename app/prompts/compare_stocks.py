@@ -1,5 +1,6 @@
 # app/prompts/compare_stocks.py
 
+from app.formatter import sanitize_prompt_param
 from fastmcp import FastMCP
 
 
@@ -13,6 +14,8 @@ def register(mcp: FastMCP):
             ticker1: First stock symbol in SYMBOL.EXCHANGE format (e.g. 'AAPL.US').
             ticker2: Second stock symbol in SYMBOL.EXCHANGE format (e.g. 'MSFT.US').
         """
+        ticker1 = sanitize_prompt_param(ticker1, "ticker1")
+        ticker2 = sanitize_prompt_param(ticker2, "ticker2")
         return (
             f"Compare {ticker1} and {ticker2} side by side.\n\n"
             f"If either ticker is a company name (not in SYMBOL.EXCHANGE format), "
