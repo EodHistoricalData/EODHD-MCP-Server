@@ -1,20 +1,19 @@
-#get_cboe_indices_list.py
+# get_cboe_indices_list.py
 
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_cboe_indices_list(
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -53,7 +52,7 @@ def register(mcp: FastMCP):
             "List all CBOE indices" → get_cboe_indices_list()
             "What CBOE European indices are available?" → get_cboe_indices_list()
 
-        
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

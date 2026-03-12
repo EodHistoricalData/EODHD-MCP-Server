@@ -1,12 +1,12 @@
 # get_mp_praams_smart_investment_screener_equity.py
 
 import json
-from typing import Optional, Any, Dict, Tuple
+from typing import Any
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
@@ -14,7 +14,7 @@ def _is_int(v: Any) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def _canon_list_ints(v: Any) -> Optional[list[int]]:
+def _canon_list_ints(v: Any) -> list[int] | None:
     if v is None:
         return None
     if not isinstance(v, (list, tuple)):
@@ -30,7 +30,7 @@ def _canon_list_ints(v: Any) -> Optional[list[int]]:
     return out
 
 
-def _canon_list_strs(v: Any) -> Optional[list[str]]:
+def _canon_list_strs(v: Any) -> list[str] | None:
     if v is None:
         return None
     if not isinstance(v, (list, tuple)):
@@ -45,7 +45,7 @@ def _canon_list_strs(v: Any) -> Optional[list[str]]:
     return out if out else None
 
 
-def _canon_range_1_7(_name: str, v: Any) -> Optional[int]:
+def _canon_range_1_7(_name: str, v: Any) -> int | None:
     """
     Canonicalize scoring filters that must be int in [1..7].
     Returns:
@@ -66,7 +66,7 @@ def _canon_range_1_7(_name: str, v: Any) -> Optional[int]:
     return -1
 
 
-def _validate_skip_take(skip: Any, take: Any) -> Optional[str]:
+def _validate_skip_take(skip: Any, take: Any) -> str | None:
     if skip is None:
         return None
     if not _is_int(skip) or skip < 0:
@@ -113,11 +113,11 @@ def _build_body(
     sectors: Any = None,
     industries: Any = None,
     capitalisation: Any = None,  # 1/2/3
-    currency: Any = None,        # ISO Alpha-3 strings
+    currency: Any = None,  # ISO Alpha-3 strings
     # sorting
     order_by: Any = None,
-) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-    body: Dict[str, Any] = {}
+) -> tuple[dict[str, Any] | None, str | None]:
+    body: dict[str, Any] = {}
 
     # --- 1..7 scoring fields ---
     scale_fields = [
@@ -153,7 +153,7 @@ def _build_body(
         if v is None:
             continue
         if v == -1:
-            return None, "Parameter '{}' must be an integer in [1..7].".format(key)
+            return None, f"Parameter '{key}' must be an integer in [1..7]."
         body[key] = v
 
     # --- list fields ---
@@ -212,18 +212,18 @@ def _build_body(
 
 
 async def _run_explore_equity(
-    skip: Optional[int],
-    take: Optional[int],
-    body: Dict[str, Any],
-    api_token: Optional[str],
+    skip: int | None,
+    take: int | None,
+    body: dict[str, Any],
+    api_token: str | None,
 ) -> str:
-    url = "{}/mp/praams/explore/equity?1=1".format(EODHD_API_BASE)
+    url = f"{EODHD_API_BASE}/mp/praams/explore/equity?1=1"
     if skip is not None:
-        url += "&skip={}".format(int(skip))
+        url += f"&skip={int(skip)}"
     if take is not None:
-        url += "&take={}".format(int(take))
+        url += f"&take={int(take)}"
     if api_token:
-        url += "&api_token={}".format(api_token)
+        url += f"&api_token={api_token}"
 
     data = await make_request(
         url,
@@ -234,7 +234,6 @@ async def _run_explore_equity(
 
     if data is None:
         raise ToolError("No response from API.")
-
 
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
@@ -248,47 +247,47 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_praams_smart_screener_equity(
         # pagination
-        skip: Optional[int] = 0,
-        take: Optional[int] = 50,
+        skip: int | None = 0,
+        take: int | None = 50,
         # geography / classification
-        regions: Optional[list[int]] = None,
-        countries: Optional[list[int]] = None,
-        sectors: Optional[list[int]] = None,
-        industries: Optional[list[int]] = None,
-        capitalisation: Optional[list[int]] = None,  # 1=small,2=mid,3=large
-        currency: Optional[list[str]] = None,        # ISO Alpha-3
+        regions: list[int] | None = None,
+        countries: list[int] | None = None,
+        sectors: list[int] | None = None,
+        industries: list[int] | None = None,
+        capitalisation: list[int] | None = None,  # 1=small,2=mid,3=large
+        currency: list[str] | None = None,  # ISO Alpha-3
         # ratio / return factors (1..7)
-        mainRatioMin: Optional[int] = None,
-        mainRatioMax: Optional[int] = None,
-        valuationMin: Optional[int] = None,
-        valuationMax: Optional[int] = None,
-        performanceMin: Optional[int] = None,
-        performanceMax: Optional[int] = None,
-        profitabilityMin: Optional[int] = None,
-        profitabilityMax: Optional[int] = None,
-        growthMomMin: Optional[int] = None,
-        growthMomMax: Optional[int] = None,
-        otherMin: Optional[int] = None,
-        otherMax: Optional[int] = None,
-        analystViewMin: Optional[int] = None,
-        analystViewMax: Optional[int] = None,
-        dividendsMin: Optional[int] = None,
-        dividendsMax: Optional[int] = None,
+        mainRatioMin: int | None = None,
+        mainRatioMax: int | None = None,
+        valuationMin: int | None = None,
+        valuationMax: int | None = None,
+        performanceMin: int | None = None,
+        performanceMax: int | None = None,
+        profitabilityMin: int | None = None,
+        profitabilityMax: int | None = None,
+        growthMomMin: int | None = None,
+        growthMomMax: int | None = None,
+        otherMin: int | None = None,
+        otherMax: int | None = None,
+        analystViewMin: int | None = None,
+        analystViewMax: int | None = None,
+        dividendsMin: int | None = None,
+        dividendsMax: int | None = None,
         # risk factors (1..7)
-        countryRiskMin: Optional[int] = None,
-        countryRiskMax: Optional[int] = None,
-        liquidityMin: Optional[int] = None,
-        liquidityMax: Optional[int] = None,
-        stressTestMin: Optional[int] = None,
-        stressTestMax: Optional[int] = None,
-        volatilityMin: Optional[int] = None,
-        volatilityMax: Optional[int] = None,
-        solvencyMin: Optional[int] = None,
-        solvencyMax: Optional[int] = None,
+        countryRiskMin: int | None = None,
+        countryRiskMax: int | None = None,
+        liquidityMin: int | None = None,
+        liquidityMax: int | None = None,
+        stressTestMin: int | None = None,
+        stressTestMax: int | None = None,
+        volatilityMin: int | None = None,
+        volatilityMax: int | None = None,
+        solvencyMin: int | None = None,
+        solvencyMax: int | None = None,
         # sorting
-        orderBy: Optional[str] = None,
+        orderBy: str | None = None,
         # auth
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -298,7 +297,6 @@ def register(mcp: FastMCP):
         Returns paginated matching equities with scores. Consumes 10 API calls per request.
         For bond screening, use get_mp_praams_smart_screener_bond.
         For deep analysis of a single equity, use get_mp_praams_risk_scoring_by_ticker.
-        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
 
 
         Returns:
@@ -332,7 +330,7 @@ def register(mcp: FastMCP):
             "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
             "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
 
-        
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
@@ -375,21 +373,22 @@ def register(mcp: FastMCP):
         )
         if b_err:
             raise ToolError(b_err)
+        assert body is not None
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)
 
     # Optional alias (compact, mirrors your curl example)
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def mp_praams_smart_screener_equity(
-        skip: Optional[int] = 0,
-        take: Optional[int] = 50,
-        countries: Optional[list[int]] = None,
-        sectors: Optional[list[int]] = None,
-        dividendsMin: Optional[int] = None,
-        dividendsMax: Optional[int] = None,
-        solvencyMin: Optional[int] = None,
-        solvencyMax: Optional[int] = None,
-        api_token: Optional[str] = None,
+        skip: int | None = 0,
+        take: int | None = 50,
+        countries: list[int] | None = None,
+        sectors: list[int] | None = None,
+        dividendsMin: int | None = None,
+        dividendsMax: int | None = None,
+        solvencyMin: int | None = None,
+        solvencyMax: int | None = None,
+        api_token: str | None = None,
     ) -> str:
         """
         [PRAAMS] Convenience alias for equity screening with common filters.
@@ -410,5 +409,6 @@ def register(mcp: FastMCP):
         )
         if b_err:
             raise ToolError(b_err)
+        assert body is not None
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)

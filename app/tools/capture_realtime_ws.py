@@ -1,4 +1,4 @@
-#capture_realtime_ws.py
+# capture_realtime_ws.py
 
 import asyncio
 import json
@@ -12,21 +12,23 @@ from mcp.types import ToolAnnotations
 try:
     import websockets
 except Exception:  # pragma: no cover
-    websockets = None  # type: ignore[assignment]
+    websockets = None  # type: ignore[assignment]  # We'll error nicely at runtime if unavailable.
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
 
 FEED_ENDPOINTS = {
-    "us_trades": "us",         # trades (price, conditions, etc.)
-    "us_quotes": "us-quote",   # quotes (bid/ask)
+    "us_trades": "us",  # trades (price, conditions, etc.)
+    "us_quotes": "us-quote",  # quotes (bid/ask)
     "forex": "forex",
     "crypto": "crypto",
 }
+
 
 def _symbols_to_str(symbols: str | list[str]) -> str:
     if isinstance(symbols, str):
         return symbols.replace(" ", "")
     return ",".join(s.strip() for s in symbols if s and str(s).strip())
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -56,7 +58,6 @@ def register(mcp: FastMCP):
         Args:
             feed (str): One of {'us_trades','us_quotes','forex','crypto'}.
             symbols (str | list[str]): Single or comma-separated symbols, or a list.
-            If you only have a company name or ISIN, call resolve_ticker first.
                 Returns:
             Object with:
             - feed (str): feed name used
@@ -79,7 +80,7 @@ def register(mcp: FastMCP):
             ping_interval (float): WebSocket ping interval in seconds.
             ping_timeout (float): WebSocket ping timeout in seconds.
             connect_timeout (float): Overall connection timeout in seconds.
-        
+
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")
@@ -120,7 +121,7 @@ def register(mcp: FastMCP):
                 timeout_left = max(0.05, min(1.0, stop_time - now))
                 try:
                     msg = await asyncio.wait_for(ws.recv(), timeout=timeout_left)
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     continue  # loop to check time again
                 except Exception:
                     break
@@ -140,10 +141,10 @@ def register(mcp: FastMCP):
             )
             try:
                 ws = await asyncio.wait_for(conn_task, timeout=connect_timeout)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 raise ToolError("Timed out while establishing WebSocket connection.")
         except Exception as e:
-            raise ToolError(f"Failed to connect to WebSocket endpoint: {str(e)}")
+            raise ToolError(f"Failed to connect to WebSocket endpoint: {e!s}")
 
         try:
             stop_time = time.time() + duration_seconds

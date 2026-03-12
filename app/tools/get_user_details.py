@@ -1,18 +1,17 @@
-#get_user_details.py
+# get_user_details.py
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_user_details(
-        api_token: Optional[str] = None,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -46,7 +45,7 @@ def register(mcp: FastMCP):
             "What plan am I on?" → get_user_details()
             "How many API calls have I used today?" → get_user_details()
 
-        
+
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.

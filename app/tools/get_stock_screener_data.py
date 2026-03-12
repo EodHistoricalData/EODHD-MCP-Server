@@ -1,23 +1,23 @@
-#get_stock_screener_data.py
+# get_stock_screener_data.py
 
 import json
-from typing import Optional, Union, List, Any
+from typing import Any
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
 
-def _q(key: str, val: Optional[str]) -> str:
+def _q(key: str, val: str | None) -> str:
     if val is None or val == "":
         return ""
     return f"&{key}={quote_plus(str(val))}"
 
 
-def _normalize_filters(filters: Optional[Union[str, List[List[Any]]]]) -> Optional[str]:
+def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
     """
     Accepts either:
       - a raw (already-encoded) string like:
@@ -37,7 +37,7 @@ def _normalize_filters(filters: Optional[Union[str, List[List[Any]]]]) -> Option
         return None
 
 
-def _normalize_signals(signals: Optional[Union[str, List[str]]]) -> Optional[str]:
+def _normalize_signals(signals: str | list[str] | None) -> str | None:
     """
     Accepts either a comma-separated string or a list of strings.
     Returns a comma-separated string or None.
@@ -54,13 +54,13 @@ def _normalize_signals(signals: Optional[Union[str, List[str]]]) -> Optional[str
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def stock_screener(
-        filters: Optional[Union[str, List[List[Any]]]] = None,
-        signals: Optional[Union[str, List[str]]] = None,
-        sort: Optional[str] = None,             # e.g. "market_capitalization.desc"
-        limit: int = 50,                         # 1..100
-        offset: int = 0,                         # 0..999
-        fmt: Optional[str] = None,               # NEW: accept fmt to avoid validation errors
-        api_token: Optional[str] = None,         # per-call override (else env)
+        filters: str | list[list[Any]] | None = None,
+        signals: str | list[str] | None = None,
+        sort: str | None = None,  # e.g. "market_capitalization.desc"
+        limit: int = 50,  # 1..100
+        offset: int = 0,  # 0..999
+        fmt: str | None = None,  # NEW: accept fmt to avoid validation errors
+        api_token: str | None = None,  # per-call override (else env)
     ) -> str:
         """
 
@@ -71,7 +71,6 @@ def register(mcp: FastMCP):
         Consumes 5 API calls per request.
         Use this tool for stock discovery, screening by fundamentals/technicals, and building watchlists.
         For detailed data on a specific ticker, use get_fundamentals_data instead.
-        If user asks about a specific company, call resolve_ticker first to get the ticker, then use other tools.
 
         Args:
           - filters: list-of-lists or JSON string
@@ -101,7 +100,7 @@ def register(mcp: FastMCP):
             "Stocks hitting new 52-week highs" → signals=["52weekhigh"], limit=50
             "Undervalued healthcare with high volume" → filters=[["sector","=","Healthcare"],["pe_ratio","<",15],["avgvol_200d",">",1000000]], sort="pe_ratio.asc"
 
-        
+
         """
 
         # --- fmt handling (for compatibility with callers passing fmt) ---

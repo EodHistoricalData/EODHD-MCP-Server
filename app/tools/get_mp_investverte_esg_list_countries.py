@@ -1,19 +1,19 @@
-#get_mp_investverte_esg_list_countries.py
+# get_mp_investverte_esg_list_countries.py
 
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_investverte_esg_list_countries(
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -43,7 +43,7 @@ def register(mcp: FastMCP):
             "List all ESG countries" → (no params needed)
             "Which countries have ESG ratings?" → (no params needed)
 
-        
+
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

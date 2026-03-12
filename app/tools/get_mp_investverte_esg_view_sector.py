@@ -1,20 +1,20 @@
-#get_mp_investverte_esg_view_sector.py
+# get_mp_investverte_esg_view_sector.py
 
 import json
-from typing import Optional
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_mp_investverte_esg_view_sector(
-        symbol: str,                    # e.g., "Airlines"
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
+        symbol: str,  # e.g., "Airlines"
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
     ) -> str:
         """
 
@@ -54,7 +54,7 @@ def register(mcp: FastMCP):
             "Airlines sector ESG data" → symbol="Airlines"
             "Aerospace & Defense ESG ratings" → symbol="Aerospace & Defense"
 
-        
+
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")

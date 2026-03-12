@@ -3,11 +3,11 @@ import logging
 import os
 import sys
 
+from app.prompts import register_all as register_all_prompts
+from app.resources import register_all as register_all_resources
+from app.tools import register_all as register_all_tools
 from dotenv import load_dotenv
 from fastmcp import FastMCP
-from app.tools import register_all as register_all_tools
-from app.resources import register_all as register_all_resources
-from app.prompts import register_all as register_all_prompts
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,7 +56,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p.add_argument(
-        "--apikey", "--api-key",
+        "--apikey",
+        "--api-key",
         dest="api_key",
         help="EODHD API key",
     )
@@ -74,16 +75,15 @@ def main(argv: list[str] | None = None) -> int:
     if args.api_key:
         os.environ["EODHD_API_KEY"] = args.api_key
 
-    if unknown:
-        # Don’t print secrets; just show shapes
-        print(f"Ignoring extra args from client: {len(unknown)} item(s)", file=sys.stderr)
-
     logging.basicConfig(
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr,
     )
     logger = logging.getLogger("eodhd-mcp")
+
+    if unknown:
+        logger.warning("Ignoring extra args from client: %d item(s)", len(unknown))
 
     mcp = FastMCP("eodhd-datasets")
     register_all_tools(mcp)
@@ -148,8 +148,10 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     finally:
         # Best-effort: close the shared HTTP client
-        from app.api_client import close_client
         import asyncio
+
+        from app.api_client import close_client
+
         try:
             asyncio.get_event_loop().run_until_complete(close_client())
         except Exception:

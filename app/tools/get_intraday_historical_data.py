@@ -1,16 +1,16 @@
-#get_intraday_historical_data.py
+# get_intraday_historical_data.py
 
 import json
 from datetime import datetime, timezone
-from typing import Optional, Union
 
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.formatter import sanitize_ticker
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-ALLOWED_INTERVALS = {"1m", "5m", "1h"}   # per docs
+ALLOWED_INTERVALS = {"1m", "5m", "1h"}  # per docs
 ALLOWED_FMT = {"json", "csv"}
 
 # Max allowed “from->to” span per docs (in days)
@@ -30,7 +30,7 @@ def _to_unix_seconds(dt_obj: datetime) -> int:
     return int(dt_obj.timestamp())
 
 
-def _parse_date_to_unix(value: Union[int, float, str]) -> Optional[int]:
+def _parse_date_to_unix(value: int | float | str) -> int | None:
     """
     Best-effort parser:
       - If it's numeric: treat as seconds (10+ digits) or ms (13 digits) and coerce to seconds.
@@ -80,27 +80,42 @@ def _parse_date_to_unix(value: Union[int, float, str]) -> Optional[int]:
     # and assume 00:00:00 UTC.
     date_formats = [
         # ISO date
-        "%Y-%m-%d", "%Y/%m/%d", "%Y.%m.%d",
-
+        "%Y-%m-%d",
+        "%Y/%m/%d",
+        "%Y.%m.%d",
         # Day-first
-        "%d-%m-%Y", "%d/%m/%Y", "%d.%m.%Y",
-        "%d-%m-%y", "%d/%m/%y", "%d.%m.%y",
-
+        "%d-%m-%Y",
+        "%d/%m/%Y",
+        "%d.%m.%Y",
+        "%d-%m-%y",
+        "%d/%m/%y",
+        "%d.%m.%y",
         # Month-first (US)
-        "%m-%d-%Y", "%m/%d/%Y", "%m.%d.%Y",
-        "%m-%d-%y", "%m/%d/%y", "%m.%d.%y",
-
+        "%m-%d-%Y",
+        "%m/%d/%Y",
+        "%m.%d.%Y",
+        "%m-%d-%y",
+        "%m/%d/%y",
+        "%m.%d.%y",
         # With time (no timezone)
-        "%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S",
-        "%d-%m-%Y %H:%M", "%d-%m-%Y %H:%M:%S",
-        "%m/%d/%Y %H:%M", "%m/%d/%Y %H:%M:%S",
-
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d %H:%M:%S",
+        "%d-%m-%Y %H:%M",
+        "%d-%m-%Y %H:%M:%S",
+        "%m/%d/%Y %H:%M",
+        "%m/%d/%Y %H:%M:%S",
         # Month names
-        "%b %d, %Y", "%d %b %Y", "%B %d, %Y", "%d %B %Y",
-        "%b %d, %y", "%d %b %y", "%B %d, %y", "%d %B %y",
-
+        "%b %d, %Y",
+        "%d %b %Y",
+        "%B %d, %Y",
+        "%d %B %Y",
+        "%b %d, %y",
+        "%d %b %y",
+        "%B %d, %y",
+        "%d %B %y",
         # T-separated without timezone
-        "%Y-%m-%dT%H:%M", "%Y-%m-%dT%H:%M:%S",
+        "%Y-%m-%dT%H:%M",
+        "%Y-%m-%dT%H:%M:%S",
     ]
 
     for fmt in date_formats:
@@ -116,9 +131,9 @@ def _parse_date_to_unix(value: Union[int, float, str]) -> Optional[int]:
 
 
 def _coerce_from_to(
-    from_raw: Optional[Union[int, str]],
-    to_raw: Optional[Union[int, str]],
-) -> (Optional[int], Optional[int], Optional[str]):
+    from_raw: int | str | None,
+    to_raw: int | str | None,
+) -> tuple[int | None, int | None, str | None]:
     """
     Convert 'from'/'to' inputs (which may be unix seconds or a date string) to (from_ts, to_ts).
     Returns (from_ts, to_ts, error_message).
@@ -148,11 +163,11 @@ def register(mcp: FastMCP):
         ticker: str,
         interval: str = "5m",
         # Now accept unix seconds or date strings for both:
-        from_timestamp: Optional[Union[int, str]] = None,
-        to_timestamp: Optional[Union[int, str]] = None,
+        from_timestamp: int | str | None = None,
+        to_timestamp: int | str | None = None,
         fmt: str = "json",
-        split_dt: Optional[bool] = False,
-        api_token: Optional[str] = None,
+        split_dt: bool | None = False,
+        api_token: str | None = None,
     ) -> str:
         """
 
@@ -165,7 +180,6 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str): SYMBOL.EXCHANGE_ID, e.g. 'AAPL.US'.
-                          If you only have a company name or ISIN, call resolve_ticker first.
             interval (str): One of {'1m','5m','1h'}. Default '5m'.
             from_timestamp (int|str, optional): Start as Unix seconds OR a date string
                 (auto-detected). Examples: 1704067200, '2024-01-01', '01-01-24', '01/01/2024',
@@ -196,8 +210,7 @@ def register(mcp: FastMCP):
         """
 
         # --- Validate required/typed params ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         if interval not in ALLOWED_INTERVALS:
             raise ToolError(f"Invalid 'interval'. Allowed: {sorted(ALLOWED_INTERVALS)}")
@@ -215,10 +228,7 @@ def register(mcp: FastMCP):
             span_seconds = to_ts - from_ts
             max_days = MAX_RANGE_DAYS[interval]
             if span_seconds > max_days * 86400:
-                raise ToolError(
-                    f"Requested range exceeds maximum for interval '{interval}'. "
-                    f"Max is {max_days} days."
-                )
+                raise ToolError(f"Requested range exceeds maximum for interval '{interval}'. Max is {max_days} days.")
 
         # --- Build URL ---
         # Base: /api/intraday/{ticker}?fmt=...&interval=...&from=...&to=...&split-dt=1
