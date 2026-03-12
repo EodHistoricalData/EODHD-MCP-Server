@@ -93,8 +93,8 @@ ignore = [
 max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "T20", "PLR2004", "ARG001"]
-"test/**/*.py" = ["S101", "T20", "PLR2004", "ARG001"]
+"tests/**/*.py" = ["S101", "T20", "PLR2004", "ARG001", "ARG005", "S104"]
+"test/**/*.py" = ["S101", "T20", "PLR2004", "ARG001", "ARG005", "S104"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -131,11 +131,11 @@ timeout = 30
 
 # --- Coverage ---
 [tool.coverage.run]
-source = ["app"]
+source = ["app", "server.py"]
 branch = true
 
 [tool.coverage.report]
-fail_under = 50
+fail_under = 60
 show_missing = true
 exclude_lines = [
     "pragma: no cover",

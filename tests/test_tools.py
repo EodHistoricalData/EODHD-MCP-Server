@@ -10,10 +10,9 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
+from app.tools import register_all
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-
-from app.tools import register_all
 
 # ---------------------------------------------------------------------------
 # Shared fixtures
@@ -54,8 +53,18 @@ URL_CASES = [
     # Core endpoints
     ("get_exchanges_list", {}, "get_exchanges_list", ["/exchanges-list/", "fmt=json"]),
     ("get_exchange_tickers", {"exchange_code": "US"}, "get_exchange_tickers", ["/exchange-symbol-list/US", "fmt=json"]),
-    ("get_historical_stock_prices", {"ticker": "AAPL.US"}, "get_historical_stock_prices", ["/eod/AAPL.US", "period=d", "fmt=json"]),
-    ("get_historical_stock_prices", {"ticker": "AAPL.US", "period": "m", "order": "d"}, "get_historical_stock_prices", ["/eod/AAPL.US", "period=m", "order=d"]),
+    (
+        "get_historical_stock_prices",
+        {"ticker": "AAPL.US"},
+        "get_historical_stock_prices",
+        ["/eod/AAPL.US", "period=d", "fmt=json"],
+    ),
+    (
+        "get_historical_stock_prices",
+        {"ticker": "AAPL.US", "period": "m", "order": "d"},
+        "get_historical_stock_prices",
+        ["/eod/AAPL.US", "period=m", "order=d"],
+    ),
     ("get_live_price_data", {"ticker": "AAPL.US"}, "get_live_price_data", ["/real-time/AAPL.US", "fmt=json"]),
     # get_fundamentals_data excluded: multi-request tool, tested separately below
     ("get_company_news", {"ticker": "AAPL.US"}, "get_company_news", ["/news", "s=AAPL.US"]),
@@ -78,10 +87,20 @@ URL_CASES = [
     # Exchange details
     ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details", ["/exchange-details/US"]),
     # Historical data
-    ("get_historical_market_cap", {"ticker": "AAPL.US"}, "get_historical_market_cap", ["/historical-market-cap/AAPL.US"]),
+    (
+        "get_historical_market_cap",
+        {"ticker": "AAPL.US"},
+        "get_historical_market_cap",
+        ["/historical-market-cap/AAPL.US"],
+    ),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", ["/insider-transactions"]),
     # Technical
-    ("get_technical_indicators", {"ticker": "AAPL.US", "function": "sma"}, "get_technical_indicators", ["/technical/AAPL.US", "function=sma"]),
+    (
+        "get_technical_indicators",
+        {"ticker": "AAPL.US", "function": "sma"},
+        "get_technical_indicators",
+        ["/technical/AAPL.US", "function=sma"],
+    ),
     # News
     ("get_news_word_weights", {"ticker": "AAPL.US"}, "get_news_word_weights", ["/news", "s=AAPL.US"]),
     # Logos
@@ -89,9 +108,19 @@ URL_CASES = [
     ("get_stock_market_logos_svg", {"symbol": "AAPL.US"}, "get_stock_market_logos_svg", ["/logo-svg/AAPL.US"]),
     # US market
     ("get_us_live_extended_quotes", {"symbols": "AAPL.US"}, "get_us_live_extended_quotes", ["/us-quote-delayed"]),
-    ("get_us_tick_data", {"ticker": "AAPL.US", "from_timestamp": 1694455200, "to_timestamp": 1694541600}, "get_us_tick_data", ["/ticks/", "s=AAPL.US"]),
+    (
+        "get_us_tick_data",
+        {"ticker": "AAPL.US", "from_timestamp": 1694455200, "to_timestamp": 1694541600},
+        "get_us_tick_data",
+        ["/ticks/", "s=AAPL.US"],
+    ),
     # CBOE
-    ("get_cboe_index_data", {"index_code": "BDE30P", "feed_type": "snapshot_official_closing", "date": "2017-02-01"}, "get_cboe_index_data", ["/cboe/index"]),
+    (
+        "get_cboe_index_data",
+        {"index_code": "BDE30P", "feed_type": "snapshot_official_closing", "date": "2017-02-01"},
+        "get_cboe_index_data",
+        ["/cboe/index"],
+    ),
     ("get_cboe_indices_list", {}, "get_cboe_indices_list", ["/cboe/"]),
     # Treasury
     ("get_ust_bill_rates", {}, "get_ust_bill_rates", ["/ust/bill-rates"]),
@@ -101,37 +130,157 @@ URL_CASES = [
     # Intraday
     ("get_intraday_historical_data", {"ticker": "AAPL.US"}, "get_intraday_historical_data", ["/intraday/AAPL.US"]),
     # Marketplace — illio (market insights use param "id", not "index")
-    ("get_mp_illio_market_insights_best_worst", {"id": "SnP500"}, "get_mp_illio_market_insights_best_worst", ["/mp/illio/chapters/best-and-worst/"]),
-    ("get_mp_illio_market_insights_performance", {"id": "SnP500"}, "get_mp_illio_market_insights_performance", ["/mp/illio/chapters/performance/"]),
-    ("get_mp_illio_market_insights_risk_return", {"id": "SnP500"}, "get_mp_illio_market_insights_risk_return", ["/mp/illio/chapters/risk/"]),
-    ("get_mp_illio_market_insights_volatility", {"id": "SnP500"}, "get_mp_illio_market_insights_volatility", ["/mp/illio/chapters/volatility/"]),
-    ("get_mp_illio_market_insights_beta_bands", {"id": "SnP500"}, "get_mp_illio_market_insights_beta_bands", ["/mp/illio/chapters/beta-bands/"]),
-    ("get_mp_illio_market_insights_largest_volatility", {"id": "SnP500"}, "get_mp_illio_market_insights_largest_volatility", ["/mp/illio/chapters/volume/"]),
-    ("mp_illio_performance_insights", {"id": "SnP500"}, "get_mp_illio_performance_insights", ["/mp/illio/categories/performance/"]),
+    (
+        "get_mp_illio_market_insights_best_worst",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_best_worst",
+        ["/mp/illio/chapters/best-and-worst/"],
+    ),
+    (
+        "get_mp_illio_market_insights_performance",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_performance",
+        ["/mp/illio/chapters/performance/"],
+    ),
+    (
+        "get_mp_illio_market_insights_risk_return",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_risk_return",
+        ["/mp/illio/chapters/risk/"],
+    ),
+    (
+        "get_mp_illio_market_insights_volatility",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_volatility",
+        ["/mp/illio/chapters/volatility/"],
+    ),
+    (
+        "get_mp_illio_market_insights_beta_bands",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_beta_bands",
+        ["/mp/illio/chapters/beta-bands/"],
+    ),
+    (
+        "get_mp_illio_market_insights_largest_volatility",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_largest_volatility",
+        ["/mp/illio/chapters/volume/"],
+    ),
+    (
+        "mp_illio_performance_insights",
+        {"id": "SnP500"},
+        "get_mp_illio_performance_insights",
+        ["/mp/illio/categories/performance/"],
+    ),
     ("mp_illio_risk_insights", {"id": "SnP500"}, "get_mp_illio_risk_insights", ["/mp/illio/categories/risk/"]),
     # Marketplace — indices
     ("mp_index_components", {"symbol": "GSPC.INDX"}, "get_mp_index_components", ["/mp/unicornbay/spglobal/comp/"]),
     ("mp_indices_list", {}, "get_mp_indices_list", ["/mp/unicornbay/spglobal/list"]),
     # Marketplace — ESG
-    ("get_mp_investverte_esg_list_companies", {}, "get_mp_investverte_esg_list_companies", ["/mp/investverte/companies"]),
-    ("get_mp_investverte_esg_list_countries", {}, "get_mp_investverte_esg_list_countries", ["/mp/investverte/countries"]),
+    (
+        "get_mp_investverte_esg_list_companies",
+        {},
+        "get_mp_investverte_esg_list_companies",
+        ["/mp/investverte/companies"],
+    ),
+    (
+        "get_mp_investverte_esg_list_countries",
+        {},
+        "get_mp_investverte_esg_list_countries",
+        ["/mp/investverte/countries"],
+    ),
     ("get_mp_investverte_esg_list_sectors", {}, "get_mp_investverte_esg_list_sectors", ["/mp/investverte/sectors"]),
-    ("get_mp_investverte_esg_view_company", {"symbol": "AAPL"}, "get_mp_investverte_esg_view_company", ["/mp/investverte/esg/AAPL"]),
-    ("get_mp_investverte_esg_view_country", {"symbol": "US"}, "get_mp_investverte_esg_view_country", ["/mp/investverte/country/US"]),
-    ("get_mp_investverte_esg_view_sector", {"symbol": "Airlines"}, "get_mp_investverte_esg_view_sector", ["/mp/investverte/sector/Airlines"]),
+    (
+        "get_mp_investverte_esg_view_company",
+        {"symbol": "AAPL"},
+        "get_mp_investverte_esg_view_company",
+        ["/mp/investverte/esg/AAPL"],
+    ),
+    (
+        "get_mp_investverte_esg_view_country",
+        {"symbol": "US"},
+        "get_mp_investverte_esg_view_country",
+        ["/mp/investverte/country/US"],
+    ),
+    (
+        "get_mp_investverte_esg_view_sector",
+        {"symbol": "Airlines"},
+        "get_mp_investverte_esg_view_sector",
+        ["/mp/investverte/sector/Airlines"],
+    ),
     # Marketplace — PRAAMS
-    ("get_mp_praams_bank_balance_sheet_by_isin", {"isin": "US0378331005"}, "get_mp_praams_bank_balance_sheet_by_isin", ["/mp/praams/bank/balance_sheet/isin/"]),
-    ("get_mp_praams_bank_balance_sheet_by_ticker", {"ticker": "AAPL.US"}, "get_mp_praams_bank_balance_sheet_by_ticker", ["/mp/praams/bank/balance_sheet/ticker/"]),
-    ("get_mp_praams_bank_income_statement_by_isin", {"isin": "US0378331005"}, "get_mp_praams_bank_income_statement_by_isin", ["/mp/praams/bank/income_statement/isin/"]),
-    ("get_mp_praams_bank_income_statement_by_ticker", {"ticker": "AAPL.US"}, "get_mp_praams_bank_income_statement_by_ticker", ["/mp/praams/bank/income_statement/ticker/"]),
-    ("get_mp_praams_bond_analyze_by_isin", {"isin": "US0378331005"}, "get_mp_praams_bond_analyze_by_isin", ["/mp/praams/analyse/bond/"]),
-    ("get_mp_praams_report_bond_by_isin", {"isin": "US0378331005", "email": "test@test.com"}, "get_mp_praams_report_bond_by_isin", ["/mp/praams/reports/bond/"]),
-    ("get_mp_praams_report_equity_by_isin", {"isin": "US0378331005", "email": "test@test.com"}, "get_mp_praams_report_equity_by_isin", ["/mp/praams/reports/equity/isin/"]),
-    ("get_mp_praams_report_equity_by_ticker", {"ticker": "AAPL.US", "email": "test@test.com"}, "get_mp_praams_report_equity_by_ticker", ["/mp/praams/reports/equity/ticker/"]),
-    ("get_mp_praams_risk_scoring_by_isin", {"isin": "US0378331005"}, "get_mp_praams_risk_scoring_by_isin", ["/mp/praams/analyse/equity/isin/"]),
-    ("get_mp_praams_risk_scoring_by_ticker", {"ticker": "AAPL.US"}, "get_mp_praams_risk_scoring_by_ticker", ["/mp/praams/analyse/equity/ticker/"]),
-    ("get_mp_praams_smart_screener_equity", {"countries": [1]}, "get_mp_praams_smart_investment_screener_equity", ["/mp/praams/explore/equity"]),
-    ("get_mp_praams_smart_screener_bond", {"countries": [1]}, "get_mp_praams_smart_investment_screener_bond", ["/mp/praams/explore/bond"]),
+    (
+        "get_mp_praams_bank_balance_sheet_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_bank_balance_sheet_by_isin",
+        ["/mp/praams/bank/balance_sheet/isin/"],
+    ),
+    (
+        "get_mp_praams_bank_balance_sheet_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_balance_sheet_by_ticker",
+        ["/mp/praams/bank/balance_sheet/ticker/"],
+    ),
+    (
+        "get_mp_praams_bank_income_statement_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_bank_income_statement_by_isin",
+        ["/mp/praams/bank/income_statement/isin/"],
+    ),
+    (
+        "get_mp_praams_bank_income_statement_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_income_statement_by_ticker",
+        ["/mp/praams/bank/income_statement/ticker/"],
+    ),
+    (
+        "get_mp_praams_bond_analyze_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_bond_analyze_by_isin",
+        ["/mp/praams/analyse/bond/"],
+    ),
+    (
+        "get_mp_praams_report_bond_by_isin",
+        {"isin": "US0378331005", "email": "test@test.com"},
+        "get_mp_praams_report_bond_by_isin",
+        ["/mp/praams/reports/bond/"],
+    ),
+    (
+        "get_mp_praams_report_equity_by_isin",
+        {"isin": "US0378331005", "email": "test@test.com"},
+        "get_mp_praams_report_equity_by_isin",
+        ["/mp/praams/reports/equity/isin/"],
+    ),
+    (
+        "get_mp_praams_report_equity_by_ticker",
+        {"ticker": "AAPL.US", "email": "test@test.com"},
+        "get_mp_praams_report_equity_by_ticker",
+        ["/mp/praams/reports/equity/ticker/"],
+    ),
+    (
+        "get_mp_praams_risk_scoring_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_risk_scoring_by_isin",
+        ["/mp/praams/analyse/equity/isin/"],
+    ),
+    (
+        "get_mp_praams_risk_scoring_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_risk_scoring_by_ticker",
+        ["/mp/praams/analyse/equity/ticker/"],
+    ),
+    (
+        "get_mp_praams_smart_screener_equity",
+        {"countries": [1]},
+        "get_mp_praams_smart_investment_screener_equity",
+        ["/mp/praams/explore/equity"],
+    ),
+    (
+        "get_mp_praams_smart_screener_bond",
+        {"countries": [1]},
+        "get_mp_praams_smart_investment_screener_bond",
+        ["/mp/praams/explore/bond"],
+    ),
     # Marketplace — tick data & options
     ("get_mp_tick_data", {"ticker": "AAPL.US"}, "get_mp_tick_data", ["/mp/unicornbay/tickdata/ticks", "s=AAPL.US"]),
     ("get_us_options_contracts", {}, "get_mp_us_options_contracts", ["/mp/unicornbay/options/contracts"]),
@@ -139,9 +288,24 @@ URL_CASES = [
     ("get_us_options_underlyings", {}, "get_mp_us_options_underlyings", ["/mp/unicornbay/options/underlying-symbols"]),
     # Marketplace — trading hours
     ("get_mp_tradinghours_list_markets", {}, "get_mp_tradinghours_list_markets", ["/mp/tradinghours/markets"]),
-    ("get_mp_tradinghours_lookup_markets", {"q": "NYSE"}, "get_mp_tradinghours_lookup_markets", ["/mp/tradinghours/markets/lookup"]),
-    ("get_mp_tradinghours_market_details", {"fin_id": "us.nyse"}, "get_mp_tradinghours_market_details", ["/mp/tradinghours/markets/details"]),
-    ("get_mp_tradinghours_market_status", {"fin_id": "us.nyse"}, "get_mp_tradinghours_market_status", ["/mp/tradinghours/markets/status"]),
+    (
+        "get_mp_tradinghours_lookup_markets",
+        {"q": "NYSE"},
+        "get_mp_tradinghours_lookup_markets",
+        ["/mp/tradinghours/markets/lookup"],
+    ),
+    (
+        "get_mp_tradinghours_market_details",
+        {"fin_id": "us.nyse"},
+        "get_mp_tradinghours_market_details",
+        ["/mp/tradinghours/markets/details"],
+    ),
+    (
+        "get_mp_tradinghours_market_status",
+        {"fin_id": "us.nyse"},
+        "get_mp_tradinghours_market_status",
+        ["/mp/tradinghours/markets/status"],
+    ),
 ]
 
 
@@ -149,7 +313,7 @@ URL_CASES = [
 @pytest.mark.parametrize("tool_name,args,mock_module,url_fragments", URL_CASES, ids=[c[0] for c in URL_CASES])
 async def test_url_construction(mcp, tool_name, args, mock_module, url_fragments):
     """Tool builds correct URL with expected path and query params."""
-    text, mock = await _call(mcp, tool_name, args, mock_module)
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
     assert mock.call_count >= 1
     url = str(mock.call_args_list[0].args[0])
     for frag in url_fragments:
@@ -173,40 +337,48 @@ VALIDATION_CASES = [
     ("get_bulk_fundamentals", {"exchange": ""}, "required"),
     # Format validation
     ("get_exchanges_list", {"fmt": "xml"}, "json"),
-    ("get_historical_stock_prices", {"ticker": "AAPL.US", "fmt": "xml"}, None),
+    ("get_historical_stock_prices", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)format|json|csv"),
     # Period/order validation
-    ("get_historical_stock_prices", {"ticker": "AAPL.US", "period": "x"}, None),
-    ("get_historical_stock_prices", {"ticker": "AAPL.US", "order": "x"}, None),
+    ("get_historical_stock_prices", {"ticker": "AAPL.US", "period": "x"}, "(?i)period|must be"),
+    ("get_historical_stock_prices", {"ticker": "AAPL.US", "order": "x"}, "(?i)order|must be"),
     # Technical indicators — function required
-    ("get_technical_indicators", {"ticker": "AAPL.US", "function": "invalid_fn"}, None),
+    ("get_technical_indicators", {"ticker": "AAPL.US", "function": "invalid_fn"}, "(?i)function|supported|invalid"),
     # Macro — country required
-    ("get_macro_indicator", {"country": ""}, None),
+    ("get_macro_indicator", {"country": ""}, "(?i)country|required|empty"),
     # Sentiment — symbols required
     ("get_sentiment_data", {"symbols": ""}, "required"),
     # Company news — needs ticker or tag
-    ("get_company_news", {}, None),
+    ("get_company_news", {}, "(?i)ticker|tag|required|at least"),
     # Resolve ticker — query required
-    ("resolve_ticker", {"query": ""}, None),
+    ("resolve_ticker", {"query": ""}, "(?i)query|required|empty"),
     # Bulk fundamentals — limit range
-    ("get_bulk_fundamentals", {"exchange": "US", "limit": 0}, None),
-    ("get_bulk_fundamentals", {"exchange": "US", "limit": 501}, None),
+    ("get_bulk_fundamentals", {"exchange": "US", "limit": 0}, "(?i)limit|range|between|must be"),
+    ("get_bulk_fundamentals", {"exchange": "US", "limit": 501}, "(?i)limit|range|between|must be"),
     # Intraday — interval validation
-    ("get_intraday_historical_data", {"ticker": "AAPL.US", "interval": "2m"}, None),
+    ("get_intraday_historical_data", {"ticker": "AAPL.US", "interval": "2m"}, "(?i)interval|must be|supported"),
     # Tick data — ticker required
     ("get_mp_tick_data", {"ticker": ""}, "required"),
     # Economic events — comparison validation
-    ("get_economic_events", {"comparison": "invalid"}, None),
+    ("get_economic_events", {"comparison": "invalid"}, "(?i)comparison|must be|invalid"),
     # Options — type validation
-    ("get_us_options_contracts", {"type": "invalid"}, None),
+    ("get_us_options_contracts", {"type": "invalid"}, "(?i)type|must be|invalid"),
     # Live price — additional_symbols too many (>20)
-    ("get_live_price_data", {"ticker": "AAPL.US", "additional_symbols": [f"T{i}.US" for i in range(21)]}, None),
+    (
+        "get_live_price_data",
+        {"ticker": "AAPL.US", "additional_symbols": [f"T{i}.US" for i in range(21)]},
+        "(?i)additional|symbols|maximum|20|too many",
+    ),
     # WebSocket — invalid feed
-    ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, None),
+    ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, "(?i)feed|must be|invalid|supported"),
     # Stock screener — limit range
-    ("stock_screener", {"limit": 0}, None),
-    ("stock_screener", {"limit": 101}, None),
+    ("stock_screener", {"limit": 0}, "(?i)limit|range|between|must be"),
+    ("stock_screener", {"limit": 101}, "(?i)limit|range|between|must be"),
     # CBOE — all 3 params required
-    ("get_cboe_index_data", {"index_code": "", "feed_type": "x", "date": "2017-01-01"}, None),
+    (
+        "get_cboe_index_data",
+        {"index_code": "", "feed_type": "x", "date": "2017-01-01"},
+        "(?i)index_code|required|empty",
+    ),
 ]
 
 
@@ -237,6 +409,74 @@ ERROR_RESPONSE_TOOLS = [
     ("stock_screener", {}, "get_stock_screener_data"),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator"),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data"),
+    # Expanded coverage for error-path tests (TST-10)
+    ("get_exchange_tickers", {"exchange_code": "US"}, "get_exchange_tickers"),
+    ("get_stocks_from_search", {"query": "apple"}, "get_stocks_from_search"),
+    ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends"),
+    ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details"),
+    ("get_historical_market_cap", {"ticker": "AAPL.US"}, "get_historical_market_cap"),
+    ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions"),
+    ("get_technical_indicators", {"ticker": "AAPL.US", "function": "sma"}, "get_technical_indicators"),
+    ("get_news_word_weights", {"ticker": "AAPL.US"}, "get_news_word_weights"),
+    ("get_stock_market_logos", {"symbol": "AAPL.US"}, "get_stock_market_logos"),
+    ("get_us_live_extended_quotes", {"symbols": "AAPL.US"}, "get_us_live_extended_quotes"),
+    ("get_symbol_change_history", {}, "get_symbol_change_history"),
+    ("get_earnings_trends", {"symbols": "AAPL.US"}, "get_earnings_trends"),
+    ("get_economic_events", {}, "get_economic_events"),
+    ("resolve_ticker", {"query": "apple"}, "resolve_ticker"),
+    ("get_cboe_indices_list", {}, "get_cboe_indices_list"),
+    ("mp_indices_list", {}, "get_mp_indices_list"),
+    ("get_mp_investverte_esg_list_companies", {}, "get_mp_investverte_esg_list_companies"),
+    ("get_mp_investverte_esg_view_company", {"symbol": "AAPL"}, "get_mp_investverte_esg_view_company"),
+    # More tools for broader error-path coverage
+    ("get_mp_investverte_esg_view_country", {"symbol": "US"}, "get_mp_investverte_esg_view_country"),
+    ("get_mp_investverte_esg_view_sector", {"symbol": "Airlines"}, "get_mp_investverte_esg_view_sector"),
+    ("get_mp_investverte_esg_list_countries", {}, "get_mp_investverte_esg_list_countries"),
+    ("get_mp_investverte_esg_list_sectors", {}, "get_mp_investverte_esg_list_sectors"),
+    ("get_stock_market_logos_svg", {"symbol": "AAPL.US"}, "get_stock_market_logos_svg"),
+    ("get_mp_tradinghours_list_markets", {}, "get_mp_tradinghours_list_markets"),
+    ("get_mp_tradinghours_market_details", {"fin_id": "us.nyse"}, "get_mp_tradinghours_market_details"),
+    ("get_mp_tradinghours_market_status", {"fin_id": "us.nyse"}, "get_mp_tradinghours_market_status"),
+    ("get_mp_tradinghours_lookup_markets", {"q": "NYSE"}, "get_mp_tradinghours_lookup_markets"),
+    ("get_us_options_underlyings", {}, "get_mp_us_options_underlyings"),
+    ("get_upcoming_splits", {}, "get_upcoming_splits"),
+    ("get_mp_praams_risk_scoring_by_ticker", {"ticker": "AAPL.US"}, "get_mp_praams_risk_scoring_by_ticker"),
+    ("get_mp_praams_risk_scoring_by_isin", {"isin": "US0378331005"}, "get_mp_praams_risk_scoring_by_isin"),
+    ("get_mp_praams_bank_balance_sheet_by_ticker", {"ticker": "AAPL.US"}, "get_mp_praams_bank_balance_sheet_by_ticker"),
+    (
+        "get_mp_praams_bank_income_statement_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_income_statement_by_ticker",
+    ),
+    (
+        "get_mp_praams_bond_analyze_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_bond_analyze_by_isin",
+    ),
+    ("mp_index_components", {"symbol": "GSPC.INDX"}, "get_mp_index_components"),
+    # Note: options tools (get_mp_us_options_*) don't check for error dicts — excluded
+    (
+        "get_mp_illio_market_insights_best_worst",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_best_worst",
+    ),
+    (
+        "get_mp_illio_market_insights_performance",
+        {"id": "SnP500"},
+        "get_mp_illio_market_insights_performance",
+    ),
+    ("mp_illio_performance_insights", {"id": "SnP500"}, "get_mp_illio_performance_insights"),
+    ("mp_illio_risk_insights", {"id": "SnP500"}, "get_mp_illio_risk_insights"),
+    (
+        "get_mp_praams_bank_balance_sheet_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_bank_balance_sheet_by_isin",
+    ),
+    (
+        "get_mp_praams_bank_income_statement_by_isin",
+        {"isin": "US0378331005"},
+        "get_mp_praams_bank_income_statement_by_isin",
+    ),
 ]
 
 
@@ -282,6 +522,14 @@ SUCCESS_TOOLS = [
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator", [{"value": 1.5}]),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data", {"AAPL.US": []}),
     ("stock_screener", {}, "get_stock_screener_data", [{"ticker": "AAPL"}]),
+    # Expanded success-path coverage
+    ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details", {"Name": "US"}),
+    ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends", [{"symbol": "AAPL"}]),
+    ("get_upcoming_splits", {}, "get_upcoming_splits", [{"code": "AAPL"}]),
+    ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", [{"shares": 1000}]),
+    ("get_symbol_change_history", {}, "get_symbol_change_history", [{"old_code": "FB"}]),
+    ("get_cboe_indices_list", {}, "get_cboe_indices_list", [{"code": "BDE30P"}]),
+    ("mp_indices_list", {}, "get_mp_indices_list", [{"symbol": "GSPC"}]),
 ]
 
 
