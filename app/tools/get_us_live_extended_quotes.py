@@ -1,10 +1,10 @@
 # get_us_live_extended_quotes.py
 
-import json
 from collections.abc import Iterable, Sequence
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -52,7 +52,7 @@ def register(mcp: FastMCP):
         page_limit: int | None = None,  # page[limit] (max 100)
         page_offset: int | None = None,  # page[offset] (>= 0)
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         Get extended delayed quotes for US stocks with rich detail beyond basic live prices.
@@ -139,9 +139,9 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             # If make_request() was adapted to return raw text for CSV:
             if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
+                return format_json_response({"csv": data})
             raise ToolError("Unexpected response format from API.")

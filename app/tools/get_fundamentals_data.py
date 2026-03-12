@@ -1,12 +1,12 @@
 # get_fundamentals_data.py
 
 import datetime as dt
-import json
 from typing import Any
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.formatter import sanitize_ticker
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -299,7 +299,7 @@ def register(mcp: FastMCP):
         include_financials: bool = True,
         # Keep parity with your other tools
         fmt: str = "json",
-    ) -> str:
+    ) -> list:
         """
 
         Retrieve fundamental data for a single stock, ETF, mutual fund, index, or crypto.
@@ -425,6 +425,6 @@ def register(mcp: FastMCP):
 
         # --- 6) Return full JSON (do not reduce)
         try:
-            return json.dumps(assembled, indent=2)
+            return format_json_response(assembled)
         except Exception:
             raise ToolError("Unexpected response format from API.")

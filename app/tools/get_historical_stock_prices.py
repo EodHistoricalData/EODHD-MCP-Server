@@ -1,11 +1,11 @@
 # get_historical_stock_prices.py
 
-import json
 from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.formatter import sanitize_ticker
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -26,7 +26,7 @@ def register(mcp: FastMCP):
         fmt: str = "json",
         filter: str | None = None,  # e.g., "last_close", "last_volume"
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         Get historical daily, weekly, or monthly OHLCV price data for any stock, ETF, index, or crypto.
@@ -108,10 +108,10 @@ def register(mcp: FastMCP):
         # If you need raw CSV support, consider updating make_request to return text for fmt=csv.
         # Until then, we keep fmt=json by default. However, if the API returned a list (json), just dump it.
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             # If fmt=csv and make_request was adapted to return text, 'data' may already be a str.
             if isinstance(data, str):
                 # Wrap CSV text into a JSON string for consistent MCP return type (string)
-                return json.dumps({"csv": data}, indent=2)
+                return format_json_response({"csv": data})
             raise ToolError("Unexpected response format from API.")

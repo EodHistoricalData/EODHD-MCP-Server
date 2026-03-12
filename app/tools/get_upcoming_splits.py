@@ -1,10 +1,10 @@
 # get_upcoming_splits.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -23,7 +23,7 @@ def register(mcp: FastMCP):
         to_date: str | None = None,  # YYYY-MM-DD → maps to 'to'
         fmt: str = "json",  # 'json' or 'csv' (API default is csv)
         api_token: str | None = None,  # per-call override; else env EODHD_API_KEY
-    ) -> str:
+    ) -> list:
         """
 
         Get upcoming and recent stock split events.
@@ -74,11 +74,11 @@ def register(mcp: FastMCP):
         # Format handling
         if fmt == "csv":
             if isinstance(data, str):
-                return json.dumps({"fmt": "csv", "data": data}, indent=2)
+                return format_json_response({"fmt": "csv", "data": data})
             raise ToolError("Unexpected CSV response format from API.")
 
         # fmt == json
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected JSON response format from API.")

@@ -1,9 +1,9 @@
 # get_exchange_tickers.py
 
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -19,7 +19,7 @@ def register(mcp: FastMCP):
         type: str | None = None,  # one of ALLOWED_TYPES
         fmt: str = "json",  # API supports csv; we default to json
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         List all tickers (symbols) available on a given exchange. Use when the user needs to
@@ -76,6 +76,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")
