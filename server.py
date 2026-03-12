@@ -108,6 +108,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     logger = logging.getLogger("eodhd-mcp")
 
+    if not os.environ.get("EODHD_API_KEY", "").strip():
+        logger.warning(
+            "EODHD_API_KEY is not set. All API calls will fail. "
+            "Set it via env var, .env file, or --apikey flag."
+        )
+
     if unknown:
         logger.warning("Ignoring extra args from client: %d item(s)", len(unknown))
 
