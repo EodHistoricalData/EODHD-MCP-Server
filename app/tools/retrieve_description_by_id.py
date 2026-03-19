@@ -1,8 +1,8 @@
-import json
 import re
 from pathlib import Path
 from typing import Any
 
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -338,7 +338,7 @@ _PAGE_REGISTRY: dict[int, dict[int, tuple[str, str]]] = {
 }
 
 
-def _serve_global_readme(fallback: bool = False) -> str:
+def _serve_global_readme(fallback: bool = False) -> list:
     """Return the global README, optionally flagged as a fallback."""
     file_path = _RESOURCES_DIR / "README.md"
     if not file_path.is_file():
@@ -354,7 +354,7 @@ def _serve_global_readme(fallback: bool = False) -> str:
     result = {"type": 0, "id": 0, "title": "Global Readme", "content": structured, "raw": content}
     if fallback:
         result["fallback"] = True
-    return json.dumps(result, indent=2)
+    return format_json_response(result)
 
 
 def register(mcp: FastMCP):
@@ -363,7 +363,7 @@ def register(mcp: FastMCP):
         type: int | str | None = 0,
         id: int | str | None = None,
         api_token: str | None = None,  # noqa: ARG001 — kept for MCP tool interface parity
-    ) -> str:
+    ) -> list:
         """
 
         Retrieve built-in EODHD API documentation by numeric type and id. Use when
@@ -487,7 +487,6 @@ def register(mcp: FastMCP):
         except Exception as e:
             structured = {"parsing_error": str(e)}
 
-        return json.dumps(
-            {"type": page_type, "id": page_id, "title": title, "content": structured, "raw": content},
-            indent=2,
+        return format_json_response(
+            {"type": page_type, "id": page_id, "title": title, "content": structured, "raw": content}
         )

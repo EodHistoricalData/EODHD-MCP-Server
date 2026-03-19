@@ -1,10 +1,10 @@
 # app/tools/resolve_ticker.py
 
-import json
 from urllib.parse import quote
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -17,7 +17,7 @@ def register(mcp: FastMCP):
         preferred_exchange: str | None = None,
         asset_type: str | None = None,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         """
         Resolve a company name, partial ticker, or ISIN to SYMBOL.EXCHANGE format (and ISIN).
 
@@ -72,7 +72,7 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
         if not isinstance(data, list) or len(data) == 0:
-            return json.dumps({"resolved": None, "message": f"No results found for '{query}'."})
+            return format_json_response({"resolved": None, "message": f"No results found for '{query}'."})
 
         best = data[0]
         resolved = f"{best.get('Code', '')}.{best.get('Exchange', '')}"
@@ -106,4 +106,4 @@ def register(mcp: FastMCP):
         if alternatives:
             result["alternatives"] = alternatives[:10]
 
-        return json.dumps(result, indent=2)
+        return format_json_response(result)

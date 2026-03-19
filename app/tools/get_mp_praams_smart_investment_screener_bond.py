@@ -1,10 +1,10 @@
 # get_mp_praams_smart_investment_screener_bond.py
 
-import json
 from typing import Any
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -326,7 +326,7 @@ async def _run_explore_bond(
     take: int | None,
     body: dict[str, Any],
     api_token: str | None,
-) -> str:
+) -> list:
     url = f"{EODHD_API_BASE}/mp/praams/explore/bond?1=1"
     if skip is not None:
         url += f"&skip={int(skip)}"
@@ -348,7 +348,7 @@ async def _run_explore_bond(
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected JSON response format from API.")
 
@@ -410,7 +410,7 @@ def register(mcp: FastMCP):
         orderBy: str | None = None,
         # auth
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         """
 
         [PRAAMS] Screen and filter bonds using multi-factor risk-return criteria.
@@ -526,7 +526,7 @@ def register(mcp: FastMCP):
         excludeSubordinated: bool | None = None,
         excludePerpetuals: bool | None = None,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         """
         [PRAAMS] Convenience alias for bond screening with common filters.
         Screen bonds by region, sector, currency, yield, duration, and growth/market-view scores.

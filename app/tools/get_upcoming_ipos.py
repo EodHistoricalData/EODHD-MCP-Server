@@ -1,10 +1,10 @@
 # get_upcoming_ipos.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -23,7 +23,7 @@ def register(mcp: FastMCP):
         to_date: str | None = None,  # format YYYY-MM-DD (mapped to 'to')
         fmt: str = "json",  # 'json' or 'csv' (default per API is csv; we default to json for dev-friendliness)
         api_token: str | None = None,  # per-call override; otherwise env EODHD_API_KEY is used
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Get upcoming and recent IPO (Initial Public Offering) listings.
@@ -72,23 +72,15 @@ def register(mcp: FastMCP):
             url += _q("api_token", api_token)  # otherwise appended by make_request via env
 
         # Call
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # Handle response
         if data is None:
             raise ToolError("No response from API.")
 
-        # If fmt=csv, many clients of make_request return raw text (str)
         if fmt == "csv":
-            if isinstance(data, str):
-                # Wrap CSV in a small envelope for consistency
-                return json.dumps({"fmt": "csv", "data": data}, indent=2)
-            # Unexpected structure
-            raise ToolError("Unexpected CSV response format from API.")
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="calendar/ipos.csv")
 
-        # fmt == json
-        try:
-            # data should be a dict/list already; ensure string output
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        return format_json_response(data)

@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 import time
+from typing import Any, Literal
 
 import httpx
 from fastmcp.server.dependencies import get_http_request
@@ -109,7 +110,8 @@ async def make_request(
     headers: dict | None = None,
     timeout: float = 30.0,
     retry_enabled: bool | None = None,
-) -> dict | None:
+    response_mode: Literal["json", "text", "bytes"] = "json",
+) -> Any:
     """
     Generic HTTP request helper for EODHD APIs.
 
@@ -120,7 +122,10 @@ async def make_request(
         * setting the env var EODHD_RETRY_ENABLED=true
     - When enabled, retries transient failures (timeouts, 5xx) up to
       MAX_RETRIES times with exponential backoff; HTTP 429 uses Retry-After.
-    - Returns parsed JSON dict on success, or {"error": "..."} on failure.
+    - ``response_mode="json"`` returns parsed JSON on success.
+    - ``response_mode="text"`` returns ``response.text`` on success.
+    - ``response_mode="bytes"`` returns raw ``response.content`` on success.
+    - Returns {"error": "..."} on failure.
     """
     url = _ensure_api_token(url)
     m = (method or "GET").upper()
@@ -169,10 +174,15 @@ async def make_request(
 
             response.raise_for_status()
 
+            if response_mode == "bytes":
+                return response.content
+
+            if response_mode == "text":
+                return response.text
+
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
-                result: dict = response.json()
-                return result
+                return response.json()
             except ValueError:
                 ct = response.headers.get("content-type", "")
                 text = response.text

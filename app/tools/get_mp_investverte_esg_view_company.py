@@ -1,9 +1,9 @@
 # get_mp_investverte_esg_view_company.py
 
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -19,7 +19,7 @@ def register(mcp: FastMCP):
         frequency: str | None = None,  # one of ALLOWED_FREQUENCIES
         fmt: str | None = "json",
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         [InvestVerte] Get detailed ESG scores (E, S, G, and composite) for a specific company by symbol.
@@ -91,6 +91,6 @@ def register(mcp: FastMCP):
 
         try:
             # Expected: list of ESG entries for the company
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")

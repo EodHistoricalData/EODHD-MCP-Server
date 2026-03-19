@@ -1,10 +1,10 @@
 # get_mp_praams_risk_scoring_by_ticker.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -38,7 +38,7 @@ def _canon_ticker(v: str) -> str | None:
     return s or None
 
 
-async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> str:
+async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> list:
     """
     Core runner for Praams Equity Risk & Return Scoring by ticker.
 
@@ -70,7 +70,7 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> st
     # The Praams API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected JSON response format from API.")
 
@@ -80,7 +80,7 @@ def register(mcp: FastMCP):
     async def get_mp_praams_risk_scoring_by_ticker(
         ticker: str,  # e.g. 'AAPL' (demo supports AAPL, TSLA, AMZN)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> str:
+    ) -> list:
         """
 
         [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ticker symbol.
@@ -125,5 +125,5 @@ def register(mcp: FastMCP):
     async def mp_praams_risk_scoring_by_ticker(
         ticker: str,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         return await _run_praams_equity_by_ticker(ticker=ticker, api_token=api_token)

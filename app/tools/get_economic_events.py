@@ -1,10 +1,10 @@
 # get_economic_events.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -30,7 +30,7 @@ def register(mcp: FastMCP):
         limit: int = 50,  # 0..1000 (default 50)
         fmt: str | None = "json",  # json (default) | csv (if supported)
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Fetch macroeconomic calendar events such as GDP, CPI, employment, and interest rate releases.
@@ -85,7 +85,8 @@ def register(mcp: FastMCP):
             url += _q("api_token", api_token)  # otherwise appended by make_request
 
         # --- request ---
-        data = await make_request(url)
+        output_fmt = (fmt or "json").lower()
+        data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
 
         # --- return/normalize ---
         if data is None:
@@ -93,10 +94,9 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            # If CSV or unexpected text returned, wrap it
-            if isinstance(data, str):
-                return json.dumps({"raw": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        if output_fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="economic-events/events.csv")
+
+        return format_json_response(data)

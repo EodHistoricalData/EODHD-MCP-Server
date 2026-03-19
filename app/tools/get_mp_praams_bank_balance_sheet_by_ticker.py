@@ -1,10 +1,10 @@
 # get_mp_praams_bank_balance_sheet_by_ticker.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -41,7 +41,7 @@ def _canon_ticker(v: str) -> str | None:
 async def _run_praams_balance_sheet_by_ticker(
     ticker: str,
     api_token: str | None,
-) -> str:
+) -> list:
     """
     Core runner for Praams Bank Balance Sheet by ticker.
 
@@ -75,7 +75,7 @@ async def _run_praams_balance_sheet_by_ticker(
     #   {"success": ..., "items": [...], "message": "...", "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected JSON response format from API.")
 
@@ -85,7 +85,7 @@ def register(mcp: FastMCP):
     async def get_mp_praams_bank_balance_sheet_by_ticker(
         ticker: str,  # e.g. 'JPM', 'BAC', 'WFC'
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> str:
+    ) -> list:
         """
 
         [PRAAMS] Retrieve bank-specific balance sheet time series by ticker symbol.
@@ -134,7 +134,7 @@ def register(mcp: FastMCP):
     async def mp_praams_bank_balance_sheet_by_ticker(
         ticker: str,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         return await _run_praams_balance_sheet_by_ticker(
             ticker=ticker,
             api_token=api_token,

@@ -1,9 +1,9 @@
 # get_exchanges_list.py
 
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -14,7 +14,7 @@ def register(mcp: FastMCP):
     async def get_exchanges_list(
         fmt: str = "json",  # API supports csv too; tool defaults to json
         api_token: str | None = None,  # per-call override (env token otherwise)
-    ) -> str:
+    ) -> list:
         """
 
         List all available stock exchanges worldwide. Use when the user asks which exchanges
@@ -58,6 +58,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")

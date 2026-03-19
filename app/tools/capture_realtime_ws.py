@@ -2,8 +2,11 @@
 
 import asyncio
 import json
+import socket
 import time
+from urllib.parse import urlparse
 
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -30,6 +33,27 @@ def _symbols_to_str(symbols: str | list[str]) -> str:
     return ",".join(s.strip() for s in symbols if s and str(s).strip())
 
 
+def _format_connection_error(exc: Exception, uri: str, timeout_seconds: float) -> str:
+    host = urlparse(uri).hostname or "unknown host"
+
+    if isinstance(exc, asyncio.TimeoutError):
+        return f"Timed out while establishing WebSocket connection to {host} after {timeout_seconds} seconds."
+
+    if isinstance(exc, socket.gaierror):
+        reason = exc.strerror or str(exc) or "address resolution failed"
+        return f"Failed to resolve WebSocket host '{host}': {reason}."
+
+    if isinstance(exc, ConnectionRefusedError):
+        return f"WebSocket connection to {host} was refused."
+
+    if isinstance(exc, OSError):
+        reason = exc.strerror or str(exc) or exc.__class__.__name__
+        return f"WebSocket network error while connecting to {host}: {reason}."
+
+    reason = str(exc).strip() or exc.__class__.__name__
+    return f"Failed to connect to WebSocket endpoint {host}: {reason}."
+
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def capture_realtime_ws(
@@ -41,7 +65,7 @@ def register(mcp: FastMCP):
         ping_interval: float = 20.0,
         ping_timeout: float = 20.0,
         connect_timeout: float = 15.0,
-    ) -> str:
+    ) -> list:
         """
 
         Capture real-time streaming market data via WebSocket for a fixed time window. Use when
@@ -131,20 +155,18 @@ def register(mcp: FastMCP):
                     messages.append({"raw": msg})
 
         try:
-            # Establish connection with overall timeout
-            conn_task = websockets.connect(
+            ws = await websockets.connect(
                 uri,
+                open_timeout=connect_timeout,
                 ping_interval=ping_interval,
                 ping_timeout=ping_timeout,
                 close_timeout=5,
                 max_queue=None,  # do not artificially limit
             )
-            try:
-                ws = await asyncio.wait_for(conn_task, timeout=connect_timeout)
-            except TimeoutError:
-                raise ToolError("Timed out while establishing WebSocket connection.")
+        except asyncio.CancelledError:
+            raise
         except Exception as e:
-            raise ToolError(f"Failed to connect to WebSocket endpoint: {e!s}")
+            raise ToolError(_format_connection_error(e, uri, connect_timeout)) from e
 
         try:
             stop_time = time.time() + duration_seconds
@@ -167,4 +189,4 @@ def register(mcp: FastMCP):
             "message_count": len(messages),
             "messages": messages,
         }
-        return json.dumps(result, indent=2)
+        return format_json_response(result)

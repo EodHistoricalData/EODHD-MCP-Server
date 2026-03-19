@@ -6,6 +6,7 @@ from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -61,7 +62,7 @@ def register(mcp: FastMCP):
         offset: int = 0,  # 0..999
         fmt: str | None = None,  # NEW: accept fmt to avoid validation errors
         api_token: str | None = None,  # per-call override (else env)
-    ) -> str:
+    ) -> list:
         """
 
         Screen and filter stocks by fundamental and technical criteria.
@@ -144,6 +145,6 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected JSON response format from API.")
