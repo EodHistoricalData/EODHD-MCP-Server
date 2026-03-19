@@ -6,6 +6,7 @@ from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.formatter import sanitize_ticker
 from app.response import ResourceResponse, format_json_response, format_text_response
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -26,7 +27,7 @@ def register(mcp: FastMCP):
         fmt: str = "json",
         filter: str | None = None,  # e.g., "last_close", "last_volume"
         api_token: str | None = None,  # per-call override
-    ) -> ResourceResponse:
+    ) -> list:
         """
 
         Get historical daily, weekly, or monthly OHLCV price data for any stock, ETF, index, or crypto.

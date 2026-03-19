@@ -5,6 +5,7 @@ from urllib.parse import quote_plus
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.response import ResourceResponse, format_json_response, format_text_response
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -27,6 +28,7 @@ def register(mcp: FastMCP):
         fmt: str = "json",  # 'json' (default) or 'csv'
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:
+    ) -> list:
         """
 
         Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
@@ -129,3 +131,9 @@ def register(mcp: FastMCP):
             return format_text_response(data, "text/csv", resource_path=f"bulk-fundamentals/{quote_plus(exchange)}.csv")
 
         return format_json_response(data)
+        try:
+            return format_json_response(data)
+        except Exception:
+            if isinstance(data, str):
+                return format_json_response({"csv": data})
+            raise ToolError("Unexpected response format from API.")

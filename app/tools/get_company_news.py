@@ -6,6 +6,7 @@ from datetime import datetime
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.response import ResourceResponse, format_json_response, format_text_response
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -57,6 +58,7 @@ def register(mcp: FastMCP):
         fmt: str = "json",  # 'json' or 'xml' (API default json)
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:
+    ) -> list:
         """
 
         Fetch financial news articles for a stock ticker or topic tag within a date range.
@@ -145,3 +147,11 @@ def register(mcp: FastMCP):
             data = _sanitize_articles(data)
 
         return format_json_response(data)
+        # Typical 'json' path: API returns a list of articles (or an object).
+        try:
+            return format_json_response(data)
+        except Exception:
+            # If you adapt make_request to return raw text for 'xml', we wrap it.
+            if isinstance(data, str):
+                return format_json_response({"xml": data})
+            raise ToolError("Unexpected response format from API.")

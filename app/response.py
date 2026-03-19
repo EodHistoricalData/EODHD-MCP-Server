@@ -6,6 +6,11 @@ model text. This also reduces prompt-injection risk from upstream API data.
 """
 
 import base64
+Returns API data as EmbeddedResource with mimeType="application/json"
+to signal that content is structured data, not LLM instructions.
+Mitigates prompt injection via API responses (R5-HI-11).
+"""
+
 import json
 import re
 from typing import Any
@@ -15,6 +20,10 @@ from pydantic import AnyUrl
 
 ResourceResponse = list[EmbeddedResource]
 JsonResponse = ResourceResponse
+from mcp.types import EmbeddedResource, TextResourceContents
+from pydantic import AnyUrl
+
+JsonResponse = list[EmbeddedResource]
 
 # Zero-width spaces, RTL/LTR overrides, word joiners, BOM, and other invisible chars
 _INVISIBLE_RE = re.compile("[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]")
@@ -69,6 +78,7 @@ def format_binary_response(data: bytes, mime_type: str, *, resource_path: str = 
 
 
 def format_json_response(data: Any, *, resource_path: str = "response") -> JsonResponse:
+def format_json_response(data: Any) -> JsonResponse:
     """Return API data as JSON with application/json MIME type.
 
     Wraps the data in an MCP EmbeddedResource so that LLM clients
@@ -82,6 +92,7 @@ def format_json_response(data: Any, *, resource_path: str = "response") -> JsonR
             type="resource",
             resource=TextResourceContents(
                 uri=_resource_uri(resource_path),
+                uri=AnyUrl("eodhd://api/response"),
                 mimeType="application/json",
                 text=json.dumps(data, indent=2),
             ),
