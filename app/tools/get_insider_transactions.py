@@ -1,11 +1,11 @@
 # get_insider_transactions.py
 
-import json
 import re
 from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -34,7 +34,7 @@ def register(mcp: FastMCP):
         symbol: str | None = None,  # maps to 'code' (e.g., 'AAPL' or 'AAPL.US')
         fmt: str = "json",  # API returns json; we gate to json
         api_token: str | None = None,  # per-call token override
-    ) -> str:
+    ) -> list:
         """
 
         Fetch SEC Form 4 insider trading transactions -- purchases and sales by company officers, directors, and major shareholders.
@@ -110,6 +110,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")

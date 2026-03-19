@@ -1,10 +1,10 @@
 # get_mp_praams_report_equity_by_isin.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -26,7 +26,7 @@ def _canon_isin(v: str) -> str | None:
     return s.upper()
 
 
-async def _run_praams_report_equity_by_isin(isin: str, email: str, is_full: bool | None, api_token: str | None) -> str:
+async def _run_praams_report_equity_by_isin(isin: str, email: str, is_full: bool | None, api_token: str | None) -> list:
     ci = _canon_isin(isin)
     if ci is None:
         raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g. 'US0378331005').")
@@ -49,7 +49,7 @@ async def _run_praams_report_equity_by_isin(isin: str, email: str, is_full: bool
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected response format from API.")
 
@@ -61,7 +61,7 @@ def register(mcp: FastMCP):
         email: str,  # email for notifications
         is_full: bool | None = None,  # full or partial report
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ISIN code.
@@ -113,5 +113,5 @@ def register(mcp: FastMCP):
         email: str,
         is_full: bool | None = None,
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         return await _run_praams_report_equity_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)

@@ -1,11 +1,11 @@
 # get_historical_market_cap.py
 
-import json
 import re
 from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -34,7 +34,7 @@ def register(mcp: FastMCP):
         end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
         fmt: str = "json",  # 'json' or 'csv' (API shows json; csv optional)
         api_token: str | None = None,  # per-call override; env token otherwise
-    ) -> str:
+    ) -> list:
         """
 
         Get historical market capitalization data for a US stock over time.
@@ -91,9 +91,9 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             # If you adapt make_request to return text for fmt='csv', we wrap it here.
             if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
+                return format_json_response({"csv": data})
             raise ToolError("Unexpected response format from API.")

@@ -1,10 +1,10 @@
 # get_mp_illio_market_insights_largest_volatility.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -46,7 +46,7 @@ def _canon_id(v: str) -> str | None:
     return _CANONICAL_MAP.get(k)
 
 
-async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> str:
+async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> list:
     """
     Internal runner for Largest Volatility Change chapter.
 
@@ -88,7 +88,7 @@ async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> s
         raise ToolError(str(data["error"]))
     # Normalize and return
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected JSON response format from API.")
 
@@ -99,7 +99,7 @@ def register(mcp: FastMCP):
         id: str,  # one of {'SnP500','DJI','NDX'} (common aliases accepted)
         fmt: str = "json",  # JSON only (Marketplace returns JSON)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> str:
+    ) -> list:
         """
 
         [Illio] Identify constituents with the largest year-over-year volatility changes.
@@ -134,7 +134,7 @@ def register(mcp: FastMCP):
         id: str,
         fmt: str = "json",
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         """
         [Illio] Alias for get_mp_illio_market_insights_largest_volatility.
         Identify constituents with the largest year-over-year volatility changes in a major US index.

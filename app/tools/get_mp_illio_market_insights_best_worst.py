@@ -1,10 +1,10 @@
 # get_mp_illio_market_insights_best_worst.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -46,7 +46,7 @@ def _canon_id(v: str) -> str | None:
     return _CANONICAL_MAP.get(k)
 
 
-async def _run_best_worst(id: str, fmt: str, api_token: str | None) -> str:
+async def _run_best_worst(id: str, fmt: str, api_token: str | None) -> list:
     # Validate fmt
     fmt = (fmt or "json").lower()
     if fmt != "json":
@@ -75,7 +75,7 @@ async def _run_best_worst(id: str, fmt: str, api_token: str | None) -> str:
         raise ToolError(str(data["error"]))
     # Normalize and return
     try:
-        return json.dumps(data, indent=2)
+        return format_json_response(data)
     except Exception:
         raise ToolError("Unexpected JSON response format from API.")
 
@@ -86,7 +86,7 @@ def register(mcp: FastMCP):
         id: str,  # one of {'SnP500','DJI','NDX'} (common aliases accepted)
         fmt: str = "json",  # JSON only (Marketplace returns JSON)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> str:
+    ) -> list:
         """
 
         [Illio] Get the largest single-day gains and losses for index constituents.
@@ -126,5 +126,5 @@ def register(mcp: FastMCP):
         id: str,
         fmt: str = "json",
         api_token: str | None = None,
-    ) -> str:
+    ) -> list:
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)

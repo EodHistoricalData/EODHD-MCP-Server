@@ -1,8 +1,8 @@
 # get_us_tick_data.py
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -29,7 +29,7 @@ def register(mcp: FastMCP):
         limit: int = 1000,  # max number of ticks returned
         fmt: str = "json",  # 'json' | 'csv'
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         Fetch historical tick-level trade data for US equities. Use when the user needs
@@ -108,8 +108,8 @@ def register(mcp: FastMCP):
 
         # For CSV, make_request may return text; wrap if needed. JSON is passed through.
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
+                return format_json_response({"csv": data})
             raise ToolError("Unexpected response format from API.")

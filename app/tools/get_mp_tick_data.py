@@ -1,9 +1,9 @@
 # get_mp_tick_data.py
 
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -27,7 +27,7 @@ def register(mcp: FastMCP):
         to_timestamp: int | str | None = None,  # UNIX seconds (UTC)
         limit: int | str | None = None,  # 1-10000
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> list:
         """
 
         [Marketplace] Fetch individual trade ticks (tick-by-tick data) for US stocks. Use when
@@ -114,6 +114,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             raise ToolError("Unexpected response format from API.")

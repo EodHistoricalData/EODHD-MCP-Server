@@ -4,6 +4,7 @@ import asyncio
 import json
 import time
 
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -41,7 +42,7 @@ def register(mcp: FastMCP):
         ping_interval: float = 20.0,
         ping_timeout: float = 20.0,
         connect_timeout: float = 15.0,
-    ) -> str:
+    ) -> list:
         """
 
         Capture real-time streaming market data via WebSocket for a fixed time window. Use when
@@ -167,4 +168,4 @@ def register(mcp: FastMCP):
             "message_count": len(messages),
             "messages": messages,
         }
-        return json.dumps(result, indent=2)
+        return format_json_response(result)

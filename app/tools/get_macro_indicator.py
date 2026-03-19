@@ -1,10 +1,10 @@
 # get_macro_indicator.py
 
-import json
 import re
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -63,7 +63,7 @@ def register(mcp: FastMCP):
         indicator: str | None = None,  # default: gdp_current_usd
         fmt: str = "json",  # 'json' or 'csv' (API default json here)
         api_token: str | None = None,  # per-call override; env otherwise
-    ) -> str:
+    ) -> list:
         """
 
         Fetch macroeconomic indicators for a country over time. Use when the user asks about
@@ -131,8 +131,8 @@ def register(mcp: FastMCP):
         # If fmt=json, API returns JSON -> dump.
         # If you adapt make_request to return text for fmt='csv', we'll wrap it.
         try:
-            return json.dumps(data, indent=2)
+            return format_json_response(data)
         except Exception:
             if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
+                return format_json_response({"csv": data})
             raise ToolError("Unexpected response format from API.")
