@@ -6,8 +6,10 @@ Covers:
   3. Error responses — None / {error: ...} from API handled correctly
 """
 
+import asyncio
 import json
-from unittest.mock import AsyncMock, patch
+import socket
+from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
 from app.tools import register_all
@@ -394,6 +396,79 @@ async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_matc
     """Tool raises ToolError on invalid input."""
     with pytest.raises(ToolError, match=error_match):
         await mcp.call_tool(tool_name, bad_args)
+
+
+@pytest.mark.asyncio
+async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
+    mock_ws = AsyncMock()
+    connect_mock = AsyncMock(return_value=mock_ws)
+
+    with patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock):
+        result = await mcp.call_tool(
+            "capture_realtime_ws",
+            {
+                "feed": "crypto",
+                "symbols": "BTC-USD",
+                "duration_seconds": 1,
+                "connect_timeout": 7.5,
+            },
+        )
+
+    connect_mock.assert_awaited_once_with(
+        "wss://ws.eodhistoricaldata.com/ws/crypto?api_token=demo",
+        open_timeout=7.5,
+        ping_interval=ANY,
+        ping_timeout=ANY,
+        close_timeout=5,
+        max_queue=None,
+    )
+    mock_ws.send.assert_awaited()
+    mock_ws.close.assert_awaited_once()
+    content = result.content[0]
+    text = content.resource.text if hasattr(content, "resource") else content.text
+    parsed = json.loads(text)
+    assert parsed["feed"] == "crypto"
+
+
+@pytest.mark.asyncio
+async def test_capture_realtime_ws_timeout_has_specific_message(mcp):
+    connect_mock = AsyncMock(side_effect=asyncio.TimeoutError())
+
+    with (
+        patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock),
+        pytest.raises(
+            ToolError,
+            match=r"Timed out while establishing WebSocket connection to ws\.eodhistoricaldata\.com after 3\.0 seconds\.",
+        ),
+    ):
+        await mcp.call_tool(
+            "capture_realtime_ws",
+            {
+                "feed": "us_trades",
+                "symbols": "AAPL",
+                "connect_timeout": 3.0,
+            },
+        )
+
+
+@pytest.mark.asyncio
+async def test_capture_realtime_ws_dns_error_has_specific_message(mcp):
+    connect_mock = AsyncMock(side_effect=socket.gaierror(-2, "Name or service not known"))
+
+    with (
+        patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock),
+        pytest.raises(
+            ToolError,
+            match=r"Failed to resolve WebSocket host 'ws\.eodhistoricaldata\.com': Name or service not known\.",
+        ),
+    ):
+        await mcp.call_tool(
+            "capture_realtime_ws",
+            {
+                "feed": "forex",
+                "symbols": "EURUSD",
+            },
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -4,6 +4,7 @@ from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import ResourceResponse, format_json_response, format_text_response
 from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -26,6 +27,7 @@ def register(mcp: FastMCP):
         version: str | None = None,  # "1.2" for single-symbol-like output
         fmt: str = "json",  # 'json' (default) or 'csv'
         api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
     ) -> list:
         """
 
@@ -116,13 +118,19 @@ def register(mcp: FastMCP):
         if api_token:
             url += f"&api_token={api_token}"
 
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         if data is None:
             raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"bulk-fundamentals/{quote_plus(exchange)}.csv")
+
+        return format_json_response(data)
         try:
             return format_json_response(data)
         except Exception:

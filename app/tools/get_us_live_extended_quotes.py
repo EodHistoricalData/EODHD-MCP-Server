@@ -4,7 +4,7 @@ from collections.abc import Iterable, Sequence
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response import format_json_response
+from app.response import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -52,7 +52,7 @@ def register(mcp: FastMCP):
         page_limit: int | None = None,  # page[limit] (max 100)
         page_offset: int | None = None,  # page[offset] (>= 0)
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Get extended delayed quotes for US stocks with rich detail beyond basic live prices.
@@ -130,7 +130,7 @@ def register(mcp: FastMCP):
         url = f"{base}{query}"
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
         if data is None:
@@ -138,10 +138,9 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        try:
-            return format_json_response(data)
-        except Exception:
-            # If make_request() was adapted to return raw text for CSV:
-            if isinstance(data, str):
-                return format_json_response({"csv": data})
-            raise ToolError("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="us-quote-delayed/quotes.csv")
+
+        return format_json_response(data)

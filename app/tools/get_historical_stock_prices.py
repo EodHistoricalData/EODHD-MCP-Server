@@ -5,6 +5,7 @@ from datetime import datetime
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.formatter import sanitize_ticker
+from app.response import ResourceResponse, format_json_response, format_text_response
 from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -95,7 +96,7 @@ def register(mcp: FastMCP):
             url += f"&api_token={api_token}"
 
         # --- Execute request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Transport/API errors ---
         if data is None:
@@ -104,14 +105,9 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        # For CSV, make_request() will attempt .json() and fail; but our make_request currently returns response.json().
-        # If you need raw CSV support, consider updating make_request to return text for fmt=csv.
-        # Until then, we keep fmt=json by default. However, if the API returned a list (json), just dump it.
-        try:
-            return format_json_response(data)
-        except Exception:
-            # If fmt=csv and make_request was adapted to return text, 'data' may already be a str.
-            if isinstance(data, str):
-                # Wrap CSV text into a JSON string for consistent MCP return type (string)
-                return format_json_response({"csv": data})
-            raise ToolError("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"eod/{ticker}.csv")
+
+        return format_json_response(data)

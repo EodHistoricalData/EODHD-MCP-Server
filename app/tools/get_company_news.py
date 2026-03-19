@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import ResourceResponse, format_json_response, format_text_response
 from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -56,6 +57,7 @@ def register(mcp: FastMCP):
         offset: int = 0,  # default 0
         fmt: str = "json",  # 'json' or 'xml' (API default json)
         api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
     ) -> list:
         """
 
@@ -126,7 +128,7 @@ def register(mcp: FastMCP):
             url += f"&api_token={api_token}"  # otherwise make_request will append env token
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "xml" else "json")
 
         # --- Normalize / return ---
         if data is None:
@@ -135,10 +137,16 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
+        if fmt == "xml":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected XML response format from API.")
+            return format_text_response(data, "application/xml", resource_path="news/feed.xml")
+
         # Sanitize article text fields before returning
         if isinstance(data, list):
             data = _sanitize_articles(data)
 
+        return format_json_response(data)
         # Typical 'json' path: API returns a list of articles (or an object).
         try:
             return format_json_response(data)

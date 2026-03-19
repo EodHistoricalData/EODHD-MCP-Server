@@ -5,6 +5,7 @@ from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response import ResourceResponse, format_json_response, format_text_response
 from app.response import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -34,6 +35,7 @@ def register(mcp: FastMCP):
         end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
         fmt: str = "json",  # 'json' or 'csv' (API shows json; csv optional)
         api_token: str | None = None,  # per-call override; env token otherwise
+    ) -> ResourceResponse:
     ) -> list:
         """
 
@@ -82,7 +84,7 @@ def register(mcp: FastMCP):
             url += f"&api_token={api_token}"  # otherwise make_request appends env token
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
         if data is None:
@@ -90,6 +92,12 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"historical-market-cap/{ticker}.csv")
+
+        return format_json_response(data)
         try:
             return format_json_response(data)
         except Exception:
