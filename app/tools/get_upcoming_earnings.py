@@ -83,8 +83,6 @@ def register(mcp: FastMCP):
         data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
 
         # Normalize output
-        if data is None:
-            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 

@@ -52,8 +52,6 @@ async def _run_praams_equity_by_isin(isin: str, api_token: str | None) -> list:
 
     # Call upstream
     data = await make_request(url)
-    if data is None:
-        raise ToolError("No response from API.")
 
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))

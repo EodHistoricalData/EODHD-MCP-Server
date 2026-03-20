@@ -68,8 +68,6 @@ def register(mcp: FastMCP):
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # Handle response
-        if data is None:
-            raise ToolError("No response from API.")
 
         if fmt == "csv":
             if not isinstance(data, str):

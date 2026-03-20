@@ -40,8 +40,6 @@ async def _run_praams_report_equity_by_isin(
         url += build_query_param("api_token", api_token)
 
     data = await make_request(url, response_mode="bytes")
-    if data is None:
-        raise ToolError("No response from API.")
 
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
