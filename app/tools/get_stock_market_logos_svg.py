@@ -4,7 +4,7 @@ from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response import ResourceResponse, format_text_response
+from app.response_formatter import ResourceResponse, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
