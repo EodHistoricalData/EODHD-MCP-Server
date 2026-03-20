@@ -50,7 +50,7 @@ def _build_params(test: Test) -> Dict[str, Any]:
 # ---------- Where to load tests from (single registration point) ----------
 TEST_MODULES = [
     "all_tests_beta",
-    #"all_tests",# add more like "eod", "intraday", etc.
+    "all_tests",# add more like "eod", "intraday", etc.
 ]
 
 def _load_test_modules() -> None:

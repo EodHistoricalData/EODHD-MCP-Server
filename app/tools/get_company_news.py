@@ -5,30 +5,12 @@ from datetime import datetime
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response import ResourceResponse, format_json_response, format_text_response
-from app.response import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
-_NEWS_CONTENT_MAX_LEN = 5000
-
-
-def _sanitize_articles(data: list) -> list:
-    """Strip HTML tags from title/content and truncate content to reduce injection surface."""
-    for article in data:
-        if not isinstance(article, dict):
-            continue
-        for field in ("title", "content"):
-            val = article.get(field)
-            if isinstance(val, str):
-                val = _HTML_TAG_RE.sub("", val)
-                if field == "content" and len(val) > _NEWS_CONTENT_MAX_LEN:
-                    val = val[:_NEWS_CONTENT_MAX_LEN]
-                article[field] = val
-    return data
 
 
 ALLOWED_FMT = {"json", "xml"}
@@ -58,7 +40,6 @@ def register(mcp: FastMCP):
         fmt: str = "json",  # 'json' or 'xml' (API default json)
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:
-    ) -> list:
         """
 
         Fetch financial news articles for a stock ticker or topic tag within a date range.
@@ -142,16 +123,4 @@ def register(mcp: FastMCP):
                 raise ToolError("Unexpected XML response format from API.")
             return format_text_response(data, "application/xml", resource_path="news/feed.xml")
 
-        # Sanitize article text fields before returning
-        if isinstance(data, list):
-            data = _sanitize_articles(data)
-
         return format_json_response(data)
-        # Typical 'json' path: API returns a list of articles (or an object).
-        try:
-            return format_json_response(data)
-        except Exception:
-            # If you adapt make_request to return raw text for 'xml', we wrap it.
-            if isinstance(data, str):
-                return format_json_response({"xml": data})
-            raise ToolError("Unexpected response format from API.")

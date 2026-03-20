@@ -1,4 +1,4 @@
-"""Tests for app.formatter — sanitize_ticker, sanitize_exchange, date functions.
+"""Tests for app.input_formatter — sanitize_ticker, sanitize_exchange, date functions.
 
 Covers:
   - Security: injection, path traversal, whitespace bypass (BUG-1)
@@ -7,7 +7,7 @@ Covers:
 """
 
 import pytest
-from app.formatter import (
+from app.input_formatter import (
     _parse_to_datetime,
     _to_unix_seconds,
     format_date,

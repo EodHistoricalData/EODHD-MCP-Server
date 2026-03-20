@@ -6,7 +6,7 @@ import socket
 import time
 from urllib.parse import urlparse
 
-from app.response import format_json_response
+from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
