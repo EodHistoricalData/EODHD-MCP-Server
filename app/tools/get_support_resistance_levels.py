@@ -1,7 +1,7 @@
 # get_support_resistance_levels.py
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
@@ -94,12 +94,11 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
     }
 
 
-CALC_MAP = {
+CALC_MAP: dict[str, ThreePointCalc] = {
     "classic": _calc_classic,
     "fibonacci": _calc_fibonacci,
     "woodie": _calc_woodie,
     "camarilla": _calc_camarilla,
-    "demark": _calc_demark,
 }
 
 
@@ -198,11 +197,11 @@ def register(mcp: FastMCP):
             if method == "demark":
                 if o is None:
                     continue
-                calc_fn: DemarkCalc = _calc_demark
-                levels = calc_fn(h, low, c, o)
+                demark_calc: DemarkCalc = _calc_demark
+                levels = demark_calc(h, low, c, o)
             else:
-                calc_fn: ThreePointCalc = CALC_MAP[method]
-                levels = calc_fn(h, low, c)
+                pivot_calc: ThreePointCalc = CALC_MAP[method]
+                levels = pivot_calc(h, low, c)
 
             results.append(
                 {
