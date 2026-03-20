@@ -198,11 +198,11 @@ def register(mcp: FastMCP):
             if method == "demark":
                 if o is None:
                     continue
-                calc_fn: DemarkCalc = _calc_demark
-                levels = calc_fn(h, low, c, o)
+                demark_calc: DemarkCalc = _calc_demark
+                levels = demark_calc(h, low, c, o)
             else:
-                calc_fn: ThreePointCalc = CALC_MAP[method]
-                levels = calc_fn(h, low, c)
+                pivot_calc: ThreePointCalc = CALC_MAP[method]
+                levels = pivot_calc(h, low, c)
 
             results.append(
                 {
