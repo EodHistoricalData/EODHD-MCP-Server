@@ -94,12 +94,11 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
     }
 
 
-CALC_MAP = {
+CALC_MAP: dict[str, ThreePointCalc] = {
     "classic": _calc_classic,
     "fibonacci": _calc_fibonacci,
     "woodie": _calc_woodie,
     "camarilla": _calc_camarilla,
-    "demark": _calc_demark,
 }
 
 
