@@ -1,23 +1,12 @@
 # get_mp_praams_bank_balance_sheet_by_isin.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    """
-    Helper to build query parameters safely.
-    Skips None/empty, URL-encodes values.
-    """
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def _canon_isin(v: str) -> str | None:
@@ -63,7 +52,7 @@ async def _run_praams_balance_sheet_by_isin(
     #   /api/mp/praams/bank/balance_sheet/isin/US46625H1005?api_token=...  (JSON only)
     url = f"{EODHD_API_BASE}/mp/praams/bank/balance_sheet/isin/{ci}?1=1"
     if api_token:
-        url += _q("api_token", api_token)  # otherwise appended by make_request via env
+        url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
 
     # Call upstream
     data = await make_request(url)

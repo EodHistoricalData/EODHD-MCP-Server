@@ -1,21 +1,14 @@
 # get_mp_tradinghours_lookup_markets.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -75,11 +68,11 @@ def register(mcp: FastMCP):
 
         url = f"{EODHD_API_BASE}/mp/tradinghours/markets/lookup?1=1"
         if q:
-            url += _q("q", q.strip())
+            url += build_query_param("q", q.strip())
         if group:
-            url += _q("group", group)
+            url += build_query_param("group", group)
         if api_token:
-            url += _q("api_token", api_token)
+            url += build_query_param("api_token", api_token)
 
         data = await make_request(url)
 

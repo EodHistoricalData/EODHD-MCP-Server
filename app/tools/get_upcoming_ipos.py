@@ -1,19 +1,12 @@
 # get_upcoming_ipos.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -63,13 +56,13 @@ def register(mcp: FastMCP):
         # Build URL
         url = f"{EODHD_API_BASE}/calendar/ipos?1=1"
         if from_date:
-            url += _q("from", from_date)
+            url += build_query_param("from", from_date)
         if to_date:
-            url += _q("to", to_date)
-        url += _q("fmt", fmt)
+            url += build_query_param("to", to_date)
+        url += build_query_param("fmt", fmt)
 
         if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request via env
+            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
 
         # Call
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")

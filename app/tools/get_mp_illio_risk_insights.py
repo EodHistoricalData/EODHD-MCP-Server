@@ -1,20 +1,12 @@
 # get_mp_illio_risk_insights.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
-
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -96,10 +88,10 @@ def register(mcp: FastMCP):
         # Build URL
         # Example: /api/mp/illio/categories/risk/SnP500?api_token=...&fmt=json
         url = f"{EODHD_API_BASE}/mp/illio/categories/risk/{cid}?1=1"
-        url += _q("fmt", "json")  # explicit for symmetry with other tools
+        url += build_query_param("fmt", "json")  # explicit for symmetry with other tools
 
         if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request via env
+            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
 
         # Call upstream
         data = await make_request(url)

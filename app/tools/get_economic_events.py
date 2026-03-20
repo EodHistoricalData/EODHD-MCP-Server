@@ -1,21 +1,14 @@
 # get_economic_events.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 ALLOWED_COMPARISON = {None, "mom", "qoq", "yoy"}
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -73,16 +66,16 @@ def register(mcp: FastMCP):
         # Example:
         # /economic-events?api_token=XXX&fmt=json&from=2025-01-05&to=2025-01-06&country=US&limit=1000
         url = f"{EODHD_API_BASE}/economic-events?1=1"
-        url += _q("from", start_date)
-        url += _q("to", end_date)
-        url += _q("country", country.upper() if country else None)
-        url += _q("comparison", comparison)
-        url += _q("type", type)
-        url += _q("offset", offset)
-        url += _q("limit", limit)
-        url += _q("fmt", fmt or "json")
+        url += build_query_param("from", start_date)
+        url += build_query_param("to", end_date)
+        url += build_query_param("country", country.upper() if country else None)
+        url += build_query_param("comparison", comparison)
+        url += build_query_param("type", type)
+        url += build_query_param("offset", offset)
+        url += build_query_param("limit", limit)
+        url += build_query_param("fmt", fmt or "json")
         if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request
+            url += build_query_param("api_token", api_token)  # otherwise appended by make_request
 
         # --- request ---
         output_fmt = (fmt or "json").lower()

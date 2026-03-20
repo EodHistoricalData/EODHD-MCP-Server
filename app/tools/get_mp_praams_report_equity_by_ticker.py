@@ -4,16 +4,11 @@ from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_binary_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 async def _run_praams_report_equity_by_ticker(
@@ -28,11 +23,11 @@ async def _run_praams_report_equity_by_ticker(
     email = email.strip()
 
     url = f"{EODHD_API_BASE}/mp/praams/reports/equity/ticker/{quote_plus(ticker)}?1=1"
-    url += _q("email", email)
+    url += build_query_param("email", email)
     if is_full is not None:
-        url += _q("isFull", str(is_full).lower())
+        url += build_query_param("isFull", str(is_full).lower())
     if api_token:
-        url += _q("api_token", api_token)
+        url += build_query_param("api_token", api_token)
 
     data = await make_request(url, response_mode="bytes")
     if data is None:

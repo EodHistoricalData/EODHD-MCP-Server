@@ -1,19 +1,12 @@
 # get_mp_tradinghours_market_status.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -64,9 +57,9 @@ def register(mcp: FastMCP):
             raise ToolError("Parameter 'fin_id' is required (e.g. 'us.nyse').")
 
         url = f"{EODHD_API_BASE}/mp/tradinghours/markets/status?1=1"
-        url += _q("fin_id", fin_id.strip())
+        url += build_query_param("fin_id", fin_id.strip())
         if api_token:
-            url += _q("api_token", api_token)
+            url += build_query_param("api_token", api_token)
 
         data = await make_request(url)
 
