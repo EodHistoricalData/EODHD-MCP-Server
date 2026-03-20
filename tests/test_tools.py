@@ -44,6 +44,18 @@ def mcp():
     return server
 
 
+async def _invoke_tool(mcp, tool_name: str, args: dict):
+    """Call a FastMCP tool across public/private API variants."""
+    if hasattr(mcp, "_call_tool"):
+        result = await mcp._call_tool(tool_name, args)
+    else:
+        result = await mcp.call_tool(tool_name, args)
+
+    if hasattr(result, "content"):
+        return result.content
+    return result
+
+
 def _mock_path(module_name: str) -> str:
     """Return the mock target for make_request in a tool module."""
     return f"app.tools.{module_name}.make_request"
@@ -61,7 +73,7 @@ async def _call(mcp, tool_name, args, mock_module, mock_return=None):
             mock_return = API_SUCCESS
     mock = AsyncMock(return_value=mock_return)
     with patch(target, mock):
-        result = await mcp._call_tool(tool_name, args)
+        result = await _invoke_tool(mcp, tool_name, args)
     content = result[0]
     # Tools return EmbeddedResource (application/json) for prompt-injection defense
     if hasattr(content, "resource"):
@@ -421,7 +433,7 @@ VALIDATION_CASES = [
 async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_match):
     """Tool raises ToolError on invalid input."""
     with pytest.raises(ToolError, match=error_match):
-        await mcp._call_tool(tool_name, bad_args)
+        await _invoke_tool(mcp, tool_name, bad_args)
 
 
 @pytest.mark.asyncio
@@ -434,7 +446,8 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     connect_mock = AsyncMock(return_value=mock_ws)
 
     with patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock):
-        result = await mcp._call_tool(
+        result = await _invoke_tool(
+            mcp,
             "capture_realtime_ws",
             {
                 "feed": "crypto",
@@ -471,7 +484,8 @@ async def test_capture_realtime_ws_timeout_has_specific_message(mcp):
             match=r"Timed out while establishing WebSocket connection to ws\.eodhistoricaldata\.com after 3\.0 seconds\.",
         ),
     ):
-        await mcp._call_tool(
+        await _invoke_tool(
+            mcp,
             "capture_realtime_ws",
             {
                 "feed": "us_trades",
@@ -492,7 +506,8 @@ async def test_capture_realtime_ws_dns_error_has_specific_message(mcp):
             match=r"Failed to resolve WebSocket host 'ws\.eodhistoricaldata\.com': Name or service not known\.",
         ),
     ):
-        await mcp._call_tool(
+        await _invoke_tool(
+            mcp,
             "capture_realtime_ws",
             {
                 "feed": "forex",
@@ -598,7 +613,7 @@ async def test_null_response_raises(mcp, tool_name, args, mock_module):
     with pytest.raises(ToolError):
         target = _mock_path(mock_module)
         with patch(target, new_callable=AsyncMock, return_value=None):
-            await mcp._call_tool(tool_name, args)
+            await _invoke_tool(mcp, tool_name, args)
 
 
 @pytest.mark.asyncio
@@ -612,7 +627,7 @@ async def test_error_response_raises(mcp, tool_name, args, mock_module):
     with pytest.raises(ToolError):
         target = _mock_path(mock_module)
         with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            await mcp._call_tool(tool_name, args)
+            await _invoke_tool(mcp, tool_name, args)
 
 
 # ---------------------------------------------------------------------------
@@ -677,7 +692,7 @@ async def test_fundamentals_url_and_general_call(mcp):
 
     target = _mock_path("get_fundamentals_data")
     with patch(target, side_effect=_side_effect):
-        result = await mcp._call_tool("get_fundamentals_data", {"ticker": "AAPL.US"})
+        result = await _invoke_tool(mcp, "get_fundamentals_data", {"ticker": "AAPL.US"})
     content = result[0]
     text = content.resource.text if hasattr(content, "resource") else content.text
     parsed = json.loads(text)

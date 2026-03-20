@@ -1,5 +1,6 @@
 # get_company_news.py
 
+import re
 from datetime import datetime
 
 from app.api_client import make_request
@@ -8,8 +9,6 @@ from app.response_formatter import ResourceResponse, format_json_response, forma
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-import re
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
