@@ -1,10 +1,10 @@
 # get_upcoming_splits.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -23,7 +23,7 @@ def register(mcp: FastMCP):
         to_date: str | None = None,  # YYYY-MM-DD → maps to 'to'
         fmt: str = "json",  # 'json' or 'csv' (API default is csv)
         api_token: str | None = None,  # per-call override; else env EODHD_API_KEY
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Get upcoming and recent stock split events.
@@ -65,20 +65,15 @@ def register(mcp: FastMCP):
             url += _q("api_token", api_token)  # otherwise appended by make_request via env
 
         # Call upstream
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
         if data is None:
             raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
-        # Format handling
         if fmt == "csv":
-            if isinstance(data, str):
-                return json.dumps({"fmt": "csv", "data": data}, indent=2)
-            raise ToolError("Unexpected CSV response format from API.")
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="calendar/splits.csv")
 
-        # fmt == json
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        return format_json_response(data)

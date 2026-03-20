@@ -1,8 +1,8 @@
 # get_us_tick_data.py
-import json
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -29,7 +29,7 @@ def register(mcp: FastMCP):
         limit: int = 1000,  # max number of ticks returned
         fmt: str = "json",  # 'json' | 'csv'
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Fetch historical tick-level trade data for US equities. Use when the user needs
@@ -98,7 +98,7 @@ def register(mcp: FastMCP):
             url += f"&api_token={api_token}"  # otherwise make_request appends env token
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
         if data is None:
@@ -106,10 +106,9 @@ def register(mcp: FastMCP):
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        # For CSV, make_request may return text; wrap if needed. JSON is passed through.
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"ticks/{ticker}.csv")
+
+        return format_json_response(data)

@@ -1,10 +1,10 @@
 # get_bulk_fundamentals.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -26,7 +26,7 @@ def register(mcp: FastMCP):
         version: str | None = None,  # "1.2" for single-symbol-like output
         fmt: str = "json",  # 'json' (default) or 'csv'
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
@@ -116,16 +116,16 @@ def register(mcp: FastMCP):
         if api_token:
             url += f"&api_token={api_token}"
 
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         if data is None:
             raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"bulk-fundamentals/{quote_plus(exchange)}.csv")
+
+        return format_json_response(data)

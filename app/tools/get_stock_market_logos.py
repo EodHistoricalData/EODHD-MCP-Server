@@ -1,10 +1,10 @@
 # get_stock_market_logos.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_binary_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -15,7 +15,7 @@ def register(mcp: FastMCP):
     async def get_stock_market_logos(
         symbol: str,  # e.g. "AAPL.US", "BMW.XETRA"
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Get a company logo in PNG format (200x200 with transparency). Use when the user needs
@@ -61,14 +61,14 @@ def register(mcp: FastMCP):
         if api_token:
             url += f"&api_token={api_token}"
 
-        data = await make_request(url)
+        data = await make_request(url, response_mode="bytes")
 
         if data is None:
             raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
+        if not isinstance(data, bytes) or not data:
             raise ToolError("Unexpected response format from API.")
+
+        return format_binary_response(data, "image/png", resource_path=f"logos/{quote_plus(symbol)}.png")

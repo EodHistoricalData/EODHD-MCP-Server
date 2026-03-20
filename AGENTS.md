@@ -18,7 +18,7 @@ python server.py --stdio                                 # run (stdio)
 - `server.py` — entry point, transport selection
 - `app/config.py` — env vars, API base URL
 - `app/api_client.py` — shared async httpx client with retry, rate-limit, auth injection
-- `app/formatter.py` — input sanitisation (ticker, exchange) and date coercion
+- `app/input_formatter.py` — input sanitisation (ticker, exchange) and date coercion
 - `app/tools/` — 74 tool modules, each exports `register(mcp: FastMCP)`
 - `app/tools/__init__.py` — `ALL_TOOLS` list, `register_all(mcp)`, safe dynamic import
 - `app/prompts/` — example workflows
@@ -26,7 +26,7 @@ python server.py --stdio                                 # run (stdio)
 ## Key Rules
 - Every tool file must export `register(mcp)` — called by `register_all()`
 - All tools are read-only (`readOnlyHint=True`)
-- Sanitise inputs via `sanitize_ticker()`, `sanitize_exchange()` from `app/formatter.py` (only reject URL-breaking chars; let API validate)
+- Sanitise inputs via `sanitize_ticker()`, `sanitize_exchange()` from `app/input_formatter.py` (only reject URL-breaking chars; let API validate)
 - Raise `ToolError` for user-facing errors
 - Return `json.dumps(data, indent=2)` from tools
 - All HTTP calls go through `make_request()` in `api_client.py` — never call httpx directly

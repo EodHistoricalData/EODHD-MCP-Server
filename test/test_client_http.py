@@ -8,7 +8,7 @@ from fastmcp import Client
 
 # ---------- Common defaults (can be overridden per test) ----------
 COMMON: Dict[str, Any] = {
-    #"api_token": "PLACE_YOUR_API_KEY_HERE",
+    # "api_token": "PLACE_YOUR_API_TOKEN_HERE",
     "api_token": os.getenv("EODHD_API_KEY", "demo"),
     "fmt": "json",
     "ticker": "AAPL.US",
@@ -50,7 +50,7 @@ def _build_params(test: Test) -> Dict[str, Any]:
 # ---------- Where to load tests from (single registration point) ----------
 TEST_MODULES = [
     "all_tests_beta",
-    #"all_tests",# add more like "eod", "intraday", etc.
+    "all_tests",# add more like "eod", "intraday", etc.
 ]
 
 def _load_test_modules() -> None:

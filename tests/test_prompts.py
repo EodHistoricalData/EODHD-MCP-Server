@@ -3,15 +3,13 @@
 import logging
 import types
 
-import pytest
-from fastmcp import FastMCP
-
 from app.prompts import PROMPTS, _dedupe, _safe_register, register_all
-
+from fastmcp import FastMCP
 
 # ---------------------------------------------------------------------------
 # _dedupe
 # ---------------------------------------------------------------------------
+
 
 class TestDedupe:
     def test_removes_duplicates(self):
@@ -27,6 +25,7 @@ class TestDedupe:
 # ---------------------------------------------------------------------------
 # _safe_register — error handling
 # ---------------------------------------------------------------------------
+
 
 class TestSafeRegister:
     def test_missing_module_logs_warning(self, caplog):
@@ -70,6 +69,7 @@ class TestSafeRegister:
 # register_all
 # ---------------------------------------------------------------------------
 
+
 class TestRegisterAll:
     def test_registers_without_errors(self):
         mcp = FastMCP("test")
@@ -82,6 +82,7 @@ class TestRegisterAll:
 # ---------------------------------------------------------------------------
 # Prompt templates — content
 # ---------------------------------------------------------------------------
+
 
 def _render_text(mcp: FastMCP, name: str, arguments: dict | None = None) -> str:
     """Render a prompt and return the first message text."""

@@ -1,10 +1,10 @@
 # get_stock_market_logos_svg.py
 
-import json
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -15,7 +15,7 @@ def register(mcp: FastMCP):
     async def get_stock_market_logos_svg(
         symbol: str,  # e.g. "AAPL.US", "RY.TO"
         api_token: str | None = None,  # per-call override
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Get a company logo in SVG vector format. Use when the user needs a scalable vector logo
@@ -54,14 +54,14 @@ def register(mcp: FastMCP):
         if api_token:
             url += f"&api_token={api_token}"
 
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text")
 
         if data is None:
             raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
+        if not isinstance(data, str) or not data:
             raise ToolError("Unexpected response format from API.")
+
+        return format_text_response(data, "image/svg+xml", resource_path=f"logos/{quote_plus(symbol)}.svg")
