@@ -123,7 +123,9 @@ def register(mcp: FastMCP):
         sym_list = [s for s in sym_str.split(",") if s]
 
         # Build WS URL with token
-        token = api_token or "demo"
+        from app.config import get_api_key
+
+        token = api_token or get_api_key()
         uri = f"{WS_BASE}/{endpoint}?api_token={token}"
 
         started_at = int(time.time() * 1000)
