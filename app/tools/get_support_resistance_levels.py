@@ -1,6 +1,7 @@
 # get_support_resistance_levels.py
 
 from datetime import datetime
+from typing import Callable
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
@@ -11,6 +12,8 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 ALLOWED_METHODS = {"classic", "fibonacci", "woodie", "camarilla", "demark"}
+ThreePointCalc = Callable[[float, float, float], dict]
+DemarkCalc = Callable[[float, float, float, float], dict]
 
 
 def _calc_classic(high: float, low: float, close: float) -> dict:
@@ -183,7 +186,6 @@ def register(mcp: FastMCP):
             raise ToolError("No price data available for the given ticker and date range.")
 
         # --- Calculate support/resistance for each bar ---
-        calc_fn = CALC_MAP[method]
         results = []
         for bar in data:
             h = bar.get("high")
@@ -196,8 +198,10 @@ def register(mcp: FastMCP):
             if method == "demark":
                 if o is None:
                     continue
+                calc_fn: DemarkCalc = _calc_demark
                 levels = calc_fn(h, low, c, o)
             else:
+                calc_fn: ThreePointCalc = CALC_MAP[method]
                 levels = calc_fn(h, low, c)
 
             results.append(
