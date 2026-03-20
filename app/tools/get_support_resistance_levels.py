@@ -1,7 +1,7 @@
 # get_support_resistance_levels.py
 
+from collections.abc import Callable
 from datetime import datetime
-from typing import Callable
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
