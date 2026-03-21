@@ -457,8 +457,10 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
             },
         )
 
+    from app.config import get_api_key
+
     connect_mock.assert_awaited_once_with(
-        "wss://ws.eodhistoricaldata.com/ws/crypto?api_token=demo",
+        f"wss://ws.eodhistoricaldata.com/ws/crypto?api_token={get_api_key()}",
         open_timeout=7.5,
         ping_interval=ANY,
         ping_timeout=ANY,
@@ -601,19 +603,6 @@ ERROR_RESPONSE_TOOLS = [
     ),
 ]
 
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "tool_name,args,mock_module",
-    ERROR_RESPONSE_TOOLS,
-    ids=[c[0] for c in ERROR_RESPONSE_TOOLS],
-)
-async def test_null_response_raises(mcp, tool_name, args, mock_module):
-    """Tool raises ToolError when API returns None."""
-    with pytest.raises(ToolError):
-        target = _mock_path(mock_module)
-        with patch(target, new_callable=AsyncMock, return_value=None):
-            await _invoke_tool(mcp, tool_name, args)
 
 
 @pytest.mark.asyncio

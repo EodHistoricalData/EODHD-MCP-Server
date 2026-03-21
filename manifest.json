@@ -30,7 +30,7 @@
       "title": "EODHD API Key",
       "description": "EODHD API key",
       "required": true,
-      "sensitive": false
+      "sensitive": true
     }
   },
   "license": "MIT"

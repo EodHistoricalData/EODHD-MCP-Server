@@ -1,19 +1,12 @@
 # get_upcoming_earnings.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(val)}"
 
 
 def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
@@ -74,24 +67,22 @@ def register(mcp: FastMCP):
 
         # Add parameters:
         if sym_param:
-            url += _q("symbols", sym_param)
+            url += build_query_param("symbols", sym_param)
             # Per spec: when symbols provided, 'from'/'to' are ignored — so we do NOT append them.
         else:
-            url += _q("from", start_date)
-            url += _q("to", end_date)
+            url += build_query_param("from", start_date)
+            url += build_query_param("to", end_date)
 
-        url += _q("fmt", (fmt or "json").lower())
+        url += build_query_param("fmt", (fmt or "json").lower())
 
         if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request via env
+            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
 
         # Hit API
         output_fmt = (fmt or "json").lower()
         data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
 
         # Normalize output
-        if data is None:
-            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
