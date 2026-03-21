@@ -96,26 +96,17 @@ MCP_PORT=8000
 
 ### 2) Run as a local HTTP server
 
-**Option A (root entrypoint):**
-
 ```bash
 python server.py
 # → http://127.0.0.1:8000/mcp (defaults; override with MCP_HOST/MCP_PORT)
 ```
 
-**Option B (module entrypoint):**
-
-```bash
-python -m entrypoints.server_http
-# uses .env for key/host/port
-```
-
 ---
 
-### 3) Run as an MCP sse server
+### 3) Run as an MCP SSE server
 
 ```bash
-python -m entrypoints.server_sse
+python server.py --sse
 ```
 
 ---
@@ -126,7 +117,7 @@ For clients that launch the server via stdio:
 
 ```bash
 # Pass API key from CLI, useful for dev or when no .env
-python -m entrypoints.server_stdio --apikey YOUR_EODHD_API_KEY
+python server.py --stdio --apikey YOUR_EODHD_API_KEY
 ```
 
 (If `--apikey` is set, it overrides `EODHD_API_KEY` from the environment.)
@@ -212,49 +203,6 @@ Your MCP client will translate these into calls like:
 - get_mp_us_options_eod, etc.
 
 ---
-
-### Running the built-in test clients
-
-The test/ directory contains MCP clients that exercise the server end-to-end using the
-test catalog in test/all_tests.py.
-
-***HTTP test***
-
-# Terminal 1: start HTTP MCP server
-
-```bash
-python -m entrypoints.server_http
-# uses http://127.0.0.1:8000/mcp by default
-```
-
-# Terminal 2: run HTTP client tests
-
-```bash
-python test/test_client_http.py
-# uses http://127.0.0.1:8000/mcp by default
-```
-
-***SSE test***
-
-# Terminal 1: start SSE MCP server
-
-```bash
-python -m entrypoints.server_sse
-```
-
-# Terminal 2: run SSE client tests
-
-```bash
-python test/test_client_sse.py
-```
-
-***STDIO test***
-
-```bash
-python test/test_client_stdio.py   --cmd "python3 -m entrypoints.server_stdio --apikey YOUR_EODHD_API_KEY"
-```
-
-These clients load test/all_tests.py (plus all_tests_beta.py if you choose) which registers a comprehensive set of working calls against all the tools.
 
 ---
 
@@ -516,16 +464,6 @@ EODHD-MCP-Server/
 ├── assets/
 │   ├── icon.png
 │   └── icon.svg
-├── entrypoints/
-│   ├── server_http.py
-│   ├── server_sse.py
-│   └── server_stdio.py
-├── test/
-│   ├── all_tests.py
-│   ├── all_tests_beta.py
-│   ├── test_client_http.py
-│   ├── test_client_sse.py
-│   └── test_client_stdio.py
 ├── docker-compose.yml
 ├── LICENSE
 ├── manifest.json
@@ -534,12 +472,9 @@ EODHD-MCP-Server/
 
 ```
 
-**Entry points**
+**Entry point**
 
-* `server.py` – convenience HTTP server entrypoint (reads `.env`).
-* `entrypoints/server_http.py` – HTTP MCP server (module form).
-* `entrypoints/server_sse.py` – HTTP + SSE MCP server.
-* `entrypoints/server_stdio.py` – STDIO MCP server (supports `--apikey`).
+* `server.py` – unified entry point for all transports: `--http` (default), `--sse`, `--stdio`.
 
 ---
 
