@@ -2,20 +2,14 @@
 
 import json
 from typing import Any
-from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
@@ -125,22 +119,20 @@ def register(mcp: FastMCP):
         # Build URL
         url = f"{EODHD_API_BASE}/screener?1=1"
         if sort:
-            url += _q("sort", sort)
-        url += _q("limit", str(limit))
-        url += _q("offset", str(offset))
+            url += build_query_param("sort", sort)
+        url += build_query_param("limit", str(limit))
+        url += build_query_param("offset", str(offset))
         if filt_str:
-            url += _q("filters", filt_str)
+            url += build_query_param("filters", filt_str)
         if sig_str:
-            url += _q("signals", sig_str)
+            url += build_query_param("signals", sig_str)
 
         # (We deliberately do NOT append fmt, since the endpoint is JSON-only.)
 
         if api_token:
-            url += _q("api_token", api_token)
+            url += build_query_param("api_token", api_token)
 
         data = await make_request(url)
-        if data is None:
-            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))

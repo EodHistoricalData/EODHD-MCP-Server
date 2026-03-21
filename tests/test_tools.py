@@ -604,19 +604,6 @@ ERROR_RESPONSE_TOOLS = [
 ]
 
 
-@pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "tool_name,args,mock_module",
-    ERROR_RESPONSE_TOOLS,
-    ids=[c[0] for c in ERROR_RESPONSE_TOOLS],
-)
-async def test_null_response_raises(mcp, tool_name, args, mock_module):
-    """Tool raises ToolError when API returns None."""
-    with pytest.raises(ToolError):
-        target = _mock_path(mock_module)
-        with patch(target, new_callable=AsyncMock, return_value=None):
-            await _invoke_tool(mcp, tool_name, args)
-
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(

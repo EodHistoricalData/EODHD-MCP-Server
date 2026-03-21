@@ -232,9 +232,6 @@ async def _run_explore_equity(
         headers={"Content-Type": "application/json"},
     )
 
-    if data is None:
-        raise ToolError("No response from API.")
-
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))
     try:

@@ -5,6 +5,7 @@ from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -13,18 +14,6 @@ from mcp.types import ToolAnnotations
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
 ALLOWED_FMT = {"json"}
-
-
-def _q(key: str, val: str | int | float | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
-
-
-def _q_bool(key: str, val: bool | None) -> str:
-    if val is None:
-        return ""
-    return f"&{key}={(1 if val else 0)}"
 
 
 def _q_fields_contracts(fields: str | Sequence[str] | None) -> str:
@@ -129,35 +118,32 @@ def register(mcp: FastMCP):
 
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/contracts?1=1"
         # filters
-        base += _q("filter[contract]", contract)
-        base += _q("filter[underlying_symbol]", underlying_symbol)
-        base += _q("filter[exp_date_eq]", exp_date_eq)
-        base += _q("filter[exp_date_from]", exp_date_from)
-        base += _q("filter[exp_date_to]", exp_date_to)
-        base += _q("filter[tradetime_eq]", tradetime_eq)
-        base += _q("filter[tradetime_from]", tradetime_from)
-        base += _q("filter[tradetime_to]", tradetime_to)
-        base += _q("filter[type]", type)
-        base += _q("filter[strike_eq]", strike_eq)
-        base += _q("filter[strike_from]", strike_from)
-        base += _q("filter[strike_to]", strike_to)
+        base += build_query_param("filter[contract]", contract)
+        base += build_query_param("filter[underlying_symbol]", underlying_symbol)
+        base += build_query_param("filter[exp_date_eq]", exp_date_eq)
+        base += build_query_param("filter[exp_date_from]", exp_date_from)
+        base += build_query_param("filter[exp_date_to]", exp_date_to)
+        base += build_query_param("filter[tradetime_eq]", tradetime_eq)
+        base += build_query_param("filter[tradetime_from]", tradetime_from)
+        base += build_query_param("filter[tradetime_to]", tradetime_to)
+        base += build_query_param("filter[type]", type)
+        base += build_query_param("filter[strike_eq]", strike_eq)
+        base += build_query_param("filter[strike_from]", strike_from)
+        base += build_query_param("filter[strike_to]", strike_to)
         # sort & pagination
-        base += _q("sort", sort)
-        base += _q("page[offset]", page_offset)
-        base += _q("page[limit]", page_limit)
+        base += build_query_param("sort", sort)
+        base += build_query_param("page[offset]", page_offset)
+        base += build_query_param("page[limit]", page_limit)
         # fields
         base += _q_fields_contracts(fields)
         # token
         if api_token:
-            base += _q("api_token", api_token)
+            base += build_query_param("api_token", api_token)
         # format
         if fmt:
-            base += _q("fmt", fmt)
+            base += build_query_param("fmt", fmt)
 
         data = await make_request(base)
-
-        if data is None:
-            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
