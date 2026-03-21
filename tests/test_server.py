@@ -138,7 +138,10 @@ class TestMain:
         assert result == 0
         import os
 
+        from app.config import get_api_key
+
         assert os.environ.get("EODHD_API_KEY") == "injected_key"
+        assert get_api_key() == "injected_key"
         # restore
         monkeypatch.setenv("EODHD_API_KEY", "test_key_for_ci")
 
