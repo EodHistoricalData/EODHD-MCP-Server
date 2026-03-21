@@ -3,7 +3,7 @@
 from typing import Any
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -327,13 +327,14 @@ async def _run_explore_bond(
     body: dict[str, Any],
     api_token: str | None,
 ) -> list:
-    url = f"{EODHD_API_BASE}/mp/praams/explore/bond?1=1"
-    if skip is not None:
-        url += f"&skip={int(skip)}"
-    if take is not None:
-        url += f"&take={int(take)}"
-    if api_token:
-        url += f"&api_token={api_token}"
+    url = build_url(
+        "mp/praams/explore/bond",
+        {
+            "skip": int(skip) if skip is not None else None,
+            "take": int(take) if take is not None else None,
+            "api_token": api_token,
+        },
+    )
 
     data = await make_request(
         url,
@@ -342,8 +343,6 @@ async def _run_explore_bond(
         headers={"Content-Type": "application/json"},
     )
 
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     try:
         return format_json_response(data)
     except Exception:
@@ -498,55 +497,6 @@ def register(mcp: FastMCP):
             exclude_subordinated=excludeSubordinated,
             exclude_perpetuals=excludePerpetuals,
             order_by=orderBy,
-        )
-        if b_err:
-            raise ToolError(b_err)
-        assert body is not None
-
-        return await _run_explore_bond(skip=skip, take=take, body=body, api_token=api_token)
-
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_smart_screener_bond(
-        skip: int | None = 0,
-        take: int | None = 50,
-        regions: list[int] | None = None,
-        sectors: list[int] | None = None,
-        currency: list[str] | None = None,
-        marketViewMin: int | None = None,
-        marketViewMax: int | None = None,
-        growthMomMin: int | None = None,
-        growthMomMax: int | None = None,
-        yieldMin: int | None = None,
-        yieldMax: int | None = None,
-        durationMin: int | None = None,
-        durationMax: int | None = None,
-        excludeSubordinated: bool | None = None,
-        excludePerpetuals: bool | None = None,
-        api_token: str | None = None,
-    ) -> list:
-        """
-        [PRAAMS] Convenience alias for bond screening with common filters.
-        Screen bonds by region, sector, currency, yield, duration, and growth/market-view scores.
-        For full filter set, use get_mp_praams_smart_screener_bond.
-        """
-        st_err = _validate_skip_take(skip, take)
-        if st_err:
-            raise ToolError(st_err)
-
-        body, b_err = _build_body(
-            regions=regions,
-            sectors=sectors,
-            currency=currency,
-            market_view_min=marketViewMin,
-            market_view_max=marketViewMax,
-            growth_mom_min=growthMomMin,
-            growth_mom_max=growthMomMax,
-            yield_min=yieldMin,
-            yield_max=yieldMax,
-            duration_min=durationMin,
-            duration_max=durationMax,
-            exclude_subordinated=excludeSubordinated,
-            exclude_perpetuals=excludePerpetuals,
         )
         if b_err:
             raise ToolError(b_err)

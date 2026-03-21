@@ -2,7 +2,7 @@
 
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -60,18 +60,17 @@ def register(mcp: FastMCP):
         if type is not None and type not in ALLOWED_TYPES:
             raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
 
-        url = f"{EODHD_API_BASE}/exchange-symbol-list/{exchange_code}?fmt={fmt}"
-        if delisted:
-            url += "&delisted=1"
-        if type:
-            url += f"&type={type}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"exchange-symbol-list/{exchange_code}",
+            {
+                "fmt": fmt,
+                "delisted": 1 if delisted else None,
+                "type": type,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

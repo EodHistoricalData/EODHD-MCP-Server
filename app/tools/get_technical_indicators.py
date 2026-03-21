@@ -2,8 +2,7 @@
 from datetime import datetime
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -226,69 +225,42 @@ def register(mcp: FastMCP):
             # (Optional strictness) warn if function not in supported set — we'll just allow pass-through.
 
         # --- Build URL ---
-        # Base: /api/technical/{ticker}
-        url = f"{EODHD_API_BASE}/technical/{ticker}?function={fn}&order={order}&fmt={fmt}"
-
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if filter:
-            url += f"&filter={filter}"
-        if period is not None:
-            url += f"&period={int(period)}"
-
+        params: dict = {
+            "function": fn,
+            "order": order,
+            "fmt": fmt,
+            "from": start_date,
+            "to": end_date,
+            "filter": filter,
+            "period": int(period) if period is not None else None,
+            "splitadjusted_only": splitadjusted_only,
+            "api_token": api_token,
+        }
         # function-specific extras
         if fn == "splitadjusted":
-            if agg_period:
-                url += f"&agg_period={agg_period}"
-
+            params["agg_period"] = agg_period
+        if fn in {"stochastic", "stochrsi"}:
+            params["fast_kperiod"] = int(fast_kperiod) if fast_kperiod is not None else None
         if fn == "stochastic":
-            if fast_kperiod is not None:
-                url += f"&fast_kperiod={int(fast_kperiod)}"
-            if slow_kperiod is not None:
-                url += f"&slow_kperiod={int(slow_kperiod)}"
-            if slow_dperiod is not None:
-                url += f"&slow_dperiod={int(slow_dperiod)}"
-
+            params["slow_kperiod"] = int(slow_kperiod) if slow_kperiod is not None else None
+            params["slow_dperiod"] = int(slow_dperiod) if slow_dperiod is not None else None
         if fn == "stochrsi":
-            if fast_kperiod is not None:
-                url += f"&fast_kperiod={int(fast_kperiod)}"
-            if fast_dperiod is not None:
-                url += f"&fast_dperiod={int(fast_dperiod)}"
-
+            params["fast_dperiod"] = int(fast_dperiod) if fast_dperiod is not None else None
         if fn == "macd":
-            if fast_period is not None:
-                url += f"&fast_period={int(fast_period)}"
-            if slow_period is not None:
-                url += f"&slow_period={int(slow_period)}"
-            if signal_period is not None:
-                url += f"&signal_period={int(signal_period)}"
-
+            params["fast_period"] = int(fast_period) if fast_period is not None else None
+            params["slow_period"] = int(slow_period) if slow_period is not None else None
+            params["signal_period"] = int(signal_period) if signal_period is not None else None
         if fn == "sar":
-            if acceleration is not None:
-                url += f"&acceleration={float(acceleration)}"
-            if maximum is not None:
-                url += f"&maximum={float(maximum)}"
-
+            params["acceleration"] = float(acceleration) if acceleration is not None else None
+            params["maximum"] = float(maximum) if maximum is not None else None
         if fn == "beta":
-            if code2:
-                url += f"&code2={code2}"
-
-        # splitadjusted_only (works with several functions)
-        if splitadjusted_only is not None:
-            url += f"&splitadjusted_only={splitadjusted_only}"
-
-        if api_token:
-            url += f"&api_token={api_token}"
+            params["code2"] = code2
+        url = build_url(f"technical/{ticker}", params)
 
         # --- Execute request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize/return ---
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

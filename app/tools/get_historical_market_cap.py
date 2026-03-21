@@ -4,7 +4,7 @@ import re
 from datetime import datetime
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -73,20 +73,20 @@ def register(mcp: FastMCP):
 
         # --- Build URL ---
         # Example: /api/historical-market-cap/AAPL.US?fmt=json&from=2025-03-01&to=2025-04-01
-        url = f"{EODHD_API_BASE}/historical-market-cap/{ticker}?fmt={fmt}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
+        url = build_url(
+            f"historical-market-cap/{ticker}",
+            {
+                "fmt": fmt,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

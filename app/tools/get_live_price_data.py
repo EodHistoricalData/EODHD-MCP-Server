@@ -3,8 +3,7 @@
 from collections.abc import Iterable, Sequence
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -88,21 +87,19 @@ def register(mcp: FastMCP):
 
         # --- Build URL per docs ---
         # Example: /api/real-time/AAPL.US?fmt=json&s=VTI,EUR.FOREX
-        url = f"{EODHD_API_BASE}/real-time/{ticker}?fmt={fmt}"
-        if extras:
-            url += f"&s={','.join(extras)}"
-
-        # Per-call token override. If omitted, make_request will append env token.
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"real-time/{ticker}",
+            {
+                "fmt": fmt,
+                "s": ",".join(extras) if extras else None,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize errors / outputs ---
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

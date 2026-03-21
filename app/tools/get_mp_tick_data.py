@@ -2,7 +2,7 @@
 
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -74,8 +74,7 @@ def register(mcp: FastMCP):
         if len(ticker) > 30:
             raise ToolError("Parameter 'ticker' must be at most 30 characters.")
 
-        url = f"{EODHD_API_BASE}/mp/unicornbay/tickdata/ticks?s={ticker}"
-
+        f_ts: int | None = None
         if from_timestamp is not None:
             try:
                 f_ts = _to_int("from_timestamp", from_timestamp)
@@ -83,8 +82,8 @@ def register(mcp: FastMCP):
                 raise ToolError(str(ve))
             if f_ts is not None and f_ts < 0:
                 raise ToolError("'from_timestamp' must be a non-negative UNIX timestamp.")
-            url += f"&from={f_ts}"
 
+        t_ts: int | None = None
         if to_timestamp is not None:
             try:
                 t_ts = _to_int("to_timestamp", to_timestamp)
@@ -92,8 +91,8 @@ def register(mcp: FastMCP):
                 raise ToolError(str(ve))
             if t_ts is not None and t_ts < 0:
                 raise ToolError("'to_timestamp' must be a non-negative UNIX timestamp.")
-            url += f"&to={t_ts}"
 
+        lim: int | None = None
         if limit is not None:
             try:
                 lim = int(limit)
@@ -101,15 +100,19 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'limit' must be an integer (1-10000).")
             if lim < 1 or lim > 10000:
                 raise ToolError("Parameter 'limit' must be between 1 and 10000.")
-            url += f"&limit={lim}"
 
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "mp/unicornbay/tickdata/ticks",
+            {
+                "s": ticker,
+                "from": f_ts,
+                "to": t_ts,
+                "limit": lim,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

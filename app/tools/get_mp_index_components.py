@@ -3,8 +3,7 @@
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -60,15 +59,10 @@ def register(mcp: FastMCP):
 
         # Build URL - symbol is in the path
         path_symbol = quote_plus(symbol.strip())
-        url = f"{EODHD_API_BASE}/mp/unicornbay/spglobal/comp/{path_symbol}?1=1"
-        url += build_query_param("fmt", "json")
-        if api_token:
-            url += build_query_param("api_token", api_token)
+        url = build_url(f"mp/unicornbay/spglobal/comp/{path_symbol}", {"fmt": "json", "api_token": api_token})
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         try:
             return format_json_response(data)
         except Exception:

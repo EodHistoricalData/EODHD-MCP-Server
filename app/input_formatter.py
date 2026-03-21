@@ -9,7 +9,7 @@ reject requests when formats don't match exactly.
 import logging
 import re
 from datetime import datetime, timezone
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from fastmcp.exceptions import ToolError
 
@@ -34,6 +34,30 @@ def build_query_bool(key: str, val: bool | None) -> str:
     if val is None:
         return ""
     return f"&{key}={(1 if val else 0)}"
+
+
+def build_url(path: str, params: dict[str, str | int | float | bool | None] | None = None) -> str:
+    """Build a full EODHD API URL with properly encoded query string.
+    *path* is relative to ``EODHD_API_BASE`` (leading ``/`` is stripped).
+    *params* values that are ``None`` or ``""`` are silently dropped so callers
+    can pass every optional parameter without ``if`` guards.
+    """
+    from app.config import EODHD_API_BASE  # late import avoids circular deps
+
+    base = f"{EODHD_API_BASE}/{path.lstrip('/')}"
+    if not params:
+        return base
+    clean: dict[str, str | int | float] = {}
+    for k, v in params.items():
+        if v is None or v == "":
+            continue
+        if isinstance(v, bool):
+            clean[k] = 1 if v else 0
+        else:
+            clean[k] = v
+    if not clean:
+        return base
+    return f"{base}?{urlencode(clean)}"
 
 
 # ── Ticker / exchange sanitisers ─────────────────────────────────────────

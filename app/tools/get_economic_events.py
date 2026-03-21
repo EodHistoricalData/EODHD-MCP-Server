@@ -1,8 +1,7 @@
 # get_economic_events.py
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -65,25 +64,26 @@ def register(mcp: FastMCP):
         # --- build URL ---
         # Example:
         # /economic-events?api_token=XXX&fmt=json&from=2025-01-05&to=2025-01-06&country=US&limit=1000
-        url = f"{EODHD_API_BASE}/economic-events?1=1"
-        url += build_query_param("from", start_date)
-        url += build_query_param("to", end_date)
-        url += build_query_param("country", country.upper() if country else None)
-        url += build_query_param("comparison", comparison)
-        url += build_query_param("type", type)
-        url += build_query_param("offset", offset)
-        url += build_query_param("limit", limit)
-        url += build_query_param("fmt", fmt or "json")
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request
+        url = build_url(
+            "economic-events",
+            {
+                "from": start_date,
+                "to": end_date,
+                "country": country.upper() if country else None,
+                "comparison": comparison,
+                "type": type,
+                "offset": offset,
+                "limit": limit,
+                "fmt": fmt or "json",
+                "api_token": api_token,
+            },
+        )
 
         # --- request ---
         output_fmt = (fmt or "json").lower()
         data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
 
         # --- return/normalize ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if output_fmt == "csv":
             if not isinstance(data, str):

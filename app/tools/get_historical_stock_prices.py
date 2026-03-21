@@ -3,8 +3,7 @@
 from datetime import datetime
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -78,29 +77,23 @@ def register(mcp: FastMCP):
             if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
                 raise ToolError("'start_date' cannot be after 'end_date'.")
 
-        # --- Build URL per docs ---
-        # Base: /api/eod/{ticker}
-        # Params: period, order, from, to, fmt, (optional) filter, api_token
-        url = f"{EODHD_API_BASE}/eod/{ticker}?period={period}&order={order}&fmt={fmt}"
-
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if filter:
-            url += f"&filter={filter}"
-
-        # Per-call token override; make_request() appends env token if none present.
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"eod/{ticker}",
+            {
+                "period": period,
+                "order": order,
+                "fmt": fmt,
+                "from": start_date,
+                "to": end_date,
+                "filter": filter,
+                "api_token": api_token,
+            },
+        )
 
         # --- Execute request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Transport/API errors ---
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

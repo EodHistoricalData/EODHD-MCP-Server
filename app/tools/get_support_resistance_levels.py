@@ -4,8 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -167,18 +166,20 @@ def register(mcp: FastMCP):
                 raise ToolError("'start_date' cannot be after 'end_date'.")
 
         # --- Fetch OHLCV data ---
-        url = f"{EODHD_API_BASE}/eod/{ticker}?period={period}&order=a&fmt=json"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"eod/{ticker}",
+            {
+                "period": period,
+                "order": "a",
+                "fmt": "json",
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         if not isinstance(data, list) or len(data) == 0:
             raise ToolError("No price data available for the given ticker and date range.")
 

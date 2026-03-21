@@ -1,8 +1,7 @@
 # get_mp_tradinghours_lookup_markets.py
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -66,18 +65,16 @@ def register(mcp: FastMCP):
             if group not in ALLOWED_GROUPS:
                 raise ToolError(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
 
-        url = f"{EODHD_API_BASE}/mp/tradinghours/markets/lookup?1=1"
-        if q:
-            url += build_query_param("q", q.strip())
-        if group:
-            url += build_query_param("group", group)
-        if api_token:
-            url += build_query_param("api_token", api_token)
+        url = build_url(
+            "mp/tradinghours/markets/lookup",
+            {
+                "q": q.strip() if q else None,
+                "group": group,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

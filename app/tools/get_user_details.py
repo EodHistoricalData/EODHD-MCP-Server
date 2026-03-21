@@ -57,9 +57,6 @@ def register(mcp: FastMCP):
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
         except Exception:

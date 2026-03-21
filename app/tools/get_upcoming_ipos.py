@@ -1,8 +1,7 @@
 # get_upcoming_ipos.py
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -54,15 +53,15 @@ def register(mcp: FastMCP):
             raise ToolError("Invalid 'fmt'. Allowed values: 'json', 'csv'.")
 
         # Build URL
-        url = f"{EODHD_API_BASE}/calendar/ipos?1=1"
-        if from_date:
-            url += build_query_param("from", from_date)
-        if to_date:
-            url += build_query_param("to", to_date)
-        url += build_query_param("fmt", fmt)
-
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+        url = build_url(
+            "calendar/ipos",
+            {
+                "from": from_date,
+                "to": to_date,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
+        )
 
         # Call
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")

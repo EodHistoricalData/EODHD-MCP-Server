@@ -1,8 +1,7 @@
 # get_upcoming_dividends.py
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -69,28 +68,22 @@ def register(mcp: FastMCP):
 
         # --- Build URL ---
         # Base: /api/calendar/dividends?filter[symbol]=...&filter[date_from]=...&page[limit]=...&page[offset]=...&fmt=json
-        url = f"{EODHD_API_BASE}/calendar/dividends?1=1"
-        url += build_query_param("fmt", fmt)
-
-        # Filters
-        url += build_query_param("filter[symbol]", symbol)
-        url += build_query_param("filter[date_eq]", date_eq)
-        url += build_query_param("filter[date_from]", date_from)
-        url += build_query_param("filter[date_to]", date_to)
-
-        # Pagination
-        url += build_query_param("page[limit]", page_limit)
-        url += build_query_param("page[offset]", page_offset)
-
-        # Token (make_request will add env token if omitted)
-        if api_token:
-            url += build_query_param("api_token", api_token)
+        url = build_url(
+            "calendar/dividends",
+            {
+                "fmt": fmt,
+                "filter[symbol]": symbol,
+                "filter[date_eq]": date_eq,
+                "filter[date_from]": date_from,
+                "filter[date_to]": date_to,
+                "page[limit]": page_limit,
+                "page[offset]": page_offset,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request upstream ---
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         # --- Return normalized JSON string ---
         try:

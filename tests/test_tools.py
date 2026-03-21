@@ -12,6 +12,7 @@ import socket
 from unittest.mock import ANY, AsyncMock, patch
 
 import pytest
+from app.api_client import ApiRequestError
 from app.tools import register_all
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -604,7 +605,6 @@ ERROR_RESPONSE_TOOLS = [
 ]
 
 
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "tool_name,args,mock_module",
@@ -612,10 +612,10 @@ ERROR_RESPONSE_TOOLS = [
     ids=[c[0] for c in ERROR_RESPONSE_TOOLS],
 )
 async def test_error_response_raises(mcp, tool_name, args, mock_module):
-    """Tool raises ToolError when API returns error dict."""
+    """Tool raises ToolError when make_request raises ApiRequestError."""
     with pytest.raises(ToolError):
         target = _mock_path(mock_module)
-        with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
+        with patch(target, new_callable=AsyncMock, side_effect=ApiRequestError("Forbidden")):
             await _invoke_tool(mcp, tool_name, args)
 
 
@@ -749,8 +749,11 @@ class TestNewsArticleFormatting:
             }
         ]
         text, _ = await _call(
-            mcp, "get_company_news", {"ticker": "AAPL.US"},
-            "get_company_news", mock_return=articles,
+            mcp,
+            "get_company_news",
+            {"ticker": "AAPL.US"},
+            "get_company_news",
+            mock_return=articles,
         )
         parsed = json.loads(text)
         article = parsed[0]

@@ -2,7 +2,7 @@
 
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -99,21 +99,18 @@ def register(mcp: FastMCP):
             raise ToolError("Only 'json' is supported by this tool.")
 
         # Build URL with deep-object-style filter params
-        url = (
-            f"{EODHD_API_BASE}/cboe/index"
-            f"?filter[index_code]={index_code}"
-            f"&filter[feed_type]={feed_type}"
-            f"&filter[date]={date}"
-            f"&fmt={fmt}"
+        url = build_url(
+            "cboe/index",
+            {
+                "filter[index_code]": index_code,
+                "filter[feed_type]": feed_type,
+                "filter[date]": date,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
         )
-        if api_token:
-            url += f"&api_token={api_token}"
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            # Classic EODHD error envelope
-            raise ToolError(str(data["error"]))
 
         try:
             # For both success and {"errors": {...}} cases, return pretty JSON

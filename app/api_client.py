@@ -5,11 +5,17 @@ import time
 from typing import Any, Literal
 
 import httpx
+from fastmcp.exceptions import ToolError
 from fastmcp.server.dependencies import get_http_request
 
 from .config import EODHD_RETRY_ENABLED, get_api_key
 
 logger = logging.getLogger("eodhd-mcp.api_client")
+
+
+class ApiRequestError(ToolError):
+    """Raised by make_request on HTTP/network failures."""
+
 
 # Shared HTTP client — reuses TCP+TLS connections across tool calls
 _http_client: httpx.AsyncClient = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
@@ -28,6 +34,7 @@ _rate_limit_delay: float = 0.1  # 100 ms between requests
 MAX_RETRIES = 3
 RETRY_DELAY_BASE = 1.0  # seconds
 RETRY_DELAY_MAX = 10.0  # seconds cap
+MAX_429_RETRIES = 5  # hard cap on rate-limit retries (separate from MAX_RETRIES)
 
 # Pattern to redact api_token from URLs before logging
 _TOKEN_RE = re.compile(r"api_token=[^&]+")
@@ -121,17 +128,18 @@ async def make_request(
         * passing retry_enabled=True to this call, OR
         * setting the env var EODHD_RETRY_ENABLED=true
     - When enabled, retries transient failures (timeouts, 5xx) up to
-      MAX_RETRIES times with exponential backoff; HTTP 429 uses Retry-After.
+      MAX_RETRIES times with exponential backoff; HTTP 429 uses Retry-After
+      and is capped separately at MAX_429_RETRIES regardless of retry_enabled.
     - ``response_mode="json"`` returns parsed JSON on success.
     - ``response_mode="text"`` returns ``response.text`` on success.
     - ``response_mode="bytes"`` returns raw ``response.content`` on success.
-    - Returns {"error": "..."} on failure.
+    - Raises ApiRequestError on failure.
     """
     url = _ensure_api_token(url)
     m = (method or "GET").upper()
 
     if m not in ("GET", "POST", "PUT", "DELETE"):
-        return {"error": f"Unsupported HTTP method: {m}"}
+        raise ApiRequestError(f"Unsupported HTTP method: {m}")
 
     req_headers: dict = {}
     if headers:
@@ -147,6 +155,7 @@ async def make_request(
     retries = MAX_RETRIES if _retry_on else 0
 
     last_error: Exception | None = None
+    rate_limit_retries = 0
 
     for attempt in range(retries + 1):
         try:
@@ -165,12 +174,19 @@ async def make_request(
 
             # Handle rate limiting from the API
             if response.status_code == 429:
+                rate_limit_retries += 1
+                if rate_limit_retries > MAX_429_RETRIES:
+                    logger.error("Rate limit budget exhausted after %d retries", MAX_429_RETRIES)
+                    raise ApiRequestError(f"Rate limited after {MAX_429_RETRIES} retries")
                 retry_after = int(response.headers.get("Retry-After", 60))
                 logger.warning(
-                    "Rate limited by API; waiting %ds (attempt %d/%d)", retry_after, attempt + 1, retries + 1
+                    "Rate limited by API; waiting %ds (429 retry %d/%d)",
+                    retry_after,
+                    rate_limit_retries,
+                    MAX_429_RETRIES,
                 )
                 await asyncio.sleep(retry_after)
-                continue  # doesn't count as a failed attempt
+                continue  # separate budget; for-loop also advances attempt
 
             response.raise_for_status()
 
@@ -180,20 +196,12 @@ async def make_request(
             if response_mode == "text":
                 return response.text
 
-            # Prefer JSON; if server returns non-JSON return a helpful error object
+            # Prefer JSON; if server returns non-JSON raise ApiRequestError
             try:
                 return response.json()
             except ValueError:
                 ct = response.headers.get("content-type", "")
-                text = response.text
-                if text and len(text) > 2000:
-                    text = text[:2000] + "…"
-                return {
-                    "error": "Response is not valid JSON.",
-                    "status_code": response.status_code,
-                    "content_type": ct,
-                    "text": text,
-                }
+                raise ApiRequestError(f"Response is not valid JSON (status {response.status_code}, content-type: {ct})")
 
         except httpx.TimeoutException as e:
             last_error = e
@@ -207,9 +215,9 @@ async def make_request(
             if 400 <= status < 500:
                 logger.error("Client error %d: %s", status, e)
                 text = e.response.text
-                if text and len(text) > 2000:
-                    text = text[:2000] + "…"
-                return {"error": str(e), "status_code": status, "text": text}
+                if text and len(text) > 500:
+                    text = text[:500]
+                raise ApiRequestError(f"HTTP {status}: {e}" + (f"\n{text}" if text else ""))
 
             logger.warning("Server error %d (attempt %d/%d)", status, attempt + 1, retries + 1)
 
@@ -217,9 +225,11 @@ async def make_request(
             last_error = e
             logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, e)
 
+        except ApiRequestError:
+            raise
         except Exception as e:
             logger.error("Unexpected error: %s", e)
-            return {"error": str(e)}
+            raise ApiRequestError(str(e))
 
         # Wait before next attempt
         if attempt < retries:
@@ -229,4 +239,4 @@ async def make_request(
 
     error_msg = str(last_error) if last_error else "Unknown error after retries"
     logger.error("All %d retries exhausted: %s", retries, error_msg)
-    return {"error": error_msg}
+    raise ApiRequestError(error_msg)

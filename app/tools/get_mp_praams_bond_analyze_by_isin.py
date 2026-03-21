@@ -1,8 +1,7 @@
 # get_mp_praams_bond_analyze_by_isin.py
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -46,15 +45,11 @@ async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> list:
 
     # Build URL
     # Example: /api/mp/praams/analyse/bond/US7593518852?api_token=...  (JSON only)
-    url = f"{EODHD_API_BASE}/mp/praams/analyse/bond/{ci}?1=1"
-    if api_token:
-        url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+    url = build_url(f"mp/praams/analyse/bond/{ci}", {"api_token": api_token})
 
     # Call upstream
     data = await make_request(url)
 
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     # Normalize and return
     # The Praams bond API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
@@ -107,12 +102,4 @@ def register(mcp: FastMCP):
           - Output is JSON only
 
         """
-        return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)
-
-    # Optional alias for convenience/back-compat (shorter name)
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_bond_analyze_by_isin(
-        isin: str,
-        api_token: str | None = None,
-    ) -> list:
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)

@@ -3,7 +3,7 @@
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -50,14 +50,9 @@ def register(mcp: FastMCP):
 
         symbol = symbol.strip().upper()
 
-        url = f"{EODHD_API_BASE}/logo-svg/{quote_plus(symbol)}?1=1"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(f"logo-svg/{quote_plus(symbol)}", {"api_token": api_token})
 
         data = await make_request(url, response_mode="text")
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if not isinstance(data, str) or not data:
             raise ToolError("Unexpected response format from API.")

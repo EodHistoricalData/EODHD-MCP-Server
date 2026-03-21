@@ -1,8 +1,7 @@
 # get_earnings_trends.py
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -58,18 +57,16 @@ def register(mcp: FastMCP):
         if not sym_param:
             raise ToolError("Parameter 'symbols' is required (e.g., 'AAPL.US' or ['AAPL.US','MSFT.US']).")
 
-        url = f"{EODHD_API_BASE}/calendar/trends?1=1"
-        url += build_query_param("symbols", sym_param)
-        # JSON-only; still pass fmt for parity with other tools (server ignores non-JSON anyway)
-        url += build_query_param("fmt", (fmt or "json").lower())
-
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+        url = build_url(
+            "calendar/trends",
+            {
+                "symbols": sym_param,
+                "fmt": (fmt or "json").lower(),
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

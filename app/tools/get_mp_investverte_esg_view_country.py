@@ -2,7 +2,7 @@
 
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -72,20 +72,17 @@ def register(mcp: FastMCP):
             raise ToolError("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
 
         # Base URL for Investverte view-country endpoint
-        url = f"{EODHD_API_BASE}/mp/investverte/country/{symbol}?fmt={fmt}"
-
-        if year is not None:
-            url += f"&year={year}"
-        if frequency:
-            url += f"&frequency={frequency}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"mp/investverte/country/{symbol}",
+            {
+                "fmt": fmt,
+                "year": year,
+                "frequency": frequency,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            raise ToolError(str(data["error"]))
 
         try:
             # Expected: list of country ESG entries

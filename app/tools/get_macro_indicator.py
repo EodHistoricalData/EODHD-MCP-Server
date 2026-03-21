@@ -3,7 +3,7 @@
 import re
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -115,16 +115,19 @@ def register(mcp: FastMCP):
 
         # --- Build URL ---
         # Example: /api/macro-indicator/USA?indicator=inflation_consumer_prices_annual&fmt=json
-        url = f"{EODHD_API_BASE}/macro-indicator/{country.upper()}?indicator={use_indicator}&fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
+        url = build_url(
+            f"macro-indicator/{country.upper()}",
+            {
+                "indicator": use_indicator,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

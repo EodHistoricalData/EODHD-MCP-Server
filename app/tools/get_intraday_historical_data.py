@@ -3,8 +3,7 @@
 from datetime import datetime, timezone
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -232,26 +231,22 @@ def register(mcp: FastMCP):
 
         # --- Build URL ---
         # Base: /api/intraday/{ticker}?fmt=...&interval=...&from=...&to=...&split-dt=1
-        url = f"{EODHD_API_BASE}/intraday/{ticker}?fmt={fmt}&interval={interval}"
-
-        if from_ts is not None:
-            url += f"&from={from_ts}"
-        if to_ts is not None:
-            url += f"&to={to_ts}"
-        if split_dt:
-            url += "&split-dt=1"
-
-        # Per-call token override; make_request() will append env token if none present.
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"intraday/{ticker}",
+            {
+                "fmt": fmt,
+                "interval": interval,
+                "from": from_ts,
+                "to": to_ts,
+                "split-dt": 1 if split_dt else None,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize errors / outputs ---
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

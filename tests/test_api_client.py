@@ -8,6 +8,7 @@ import pytest
 import respx
 from app.api_client import (
     RETRY_DELAY_MAX,
+    ApiRequestError,
     _backoff,
     _ensure_api_token,
     _redact_url,
@@ -215,12 +216,11 @@ class TestMakeRequest:
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_4xx_returns_error(self):
+    async def test_4xx_raises(self):
         respx.get(url__startswith="https://eodhd.com/api/eod/BAD").mock(return_value=Response(403, text="Forbidden"))
-        result = await make_request("https://eodhd.com/api/eod/BAD")
-        assert result is not None
-        assert "error" in result
-        assert result["status_code"] == 403
+        with pytest.raises(ApiRequestError) as exc_info:
+            await make_request("https://eodhd.com/api/eod/BAD")
+        assert "403" in str(exc_info.value)
 
     @pytest.mark.asyncio
     @respx.mock
@@ -229,17 +229,15 @@ class TestMakeRequest:
         route = respx.get(url__startswith="https://eodhd.com/api/fail").mock(
             return_value=Response(502, text="Bad Gateway")
         )
-        result = await make_request("https://eodhd.com/api/fail", retry_enabled=False)
-        assert result is not None
-        assert "error" in result
+        with pytest.raises(ApiRequestError):
+            await make_request("https://eodhd.com/api/fail", retry_enabled=False)
         assert route.call_count == 1
 
     @pytest.mark.asyncio
     async def test_unsupported_method(self):
-        result = await make_request("https://eodhd.com/api/eod/AAPL.US", method="PATCH")
-        assert result is not None
-        assert "error" in result
-        assert "Unsupported HTTP method" in result["error"]
+        with pytest.raises(ApiRequestError) as exc_info:
+            await make_request("https://eodhd.com/api/eod/AAPL.US", method="PATCH")
+        assert "Unsupported HTTP method" in str(exc_info.value)
 
 
 # ---------------------------------------------------------------------------
@@ -294,26 +292,24 @@ class TestMakeRequestMethods:
 class TestMakeRequestNonJson:
     @pytest.mark.asyncio
     @respx.mock
-    async def test_non_json_200(self):
+    async def test_non_json_200_raises(self):
         respx.get(url__startswith="https://eodhd.com/api/csv").mock(
             return_value=Response(200, text="col1,col2\n1,2", headers={"content-type": "text/csv"})
         )
-        result = await make_request("https://eodhd.com/api/csv")
-        assert result is not None
-        assert "error" in result
-        assert result["error"] == "Response is not valid JSON."
-        assert result["content_type"] == "text/csv"
+        with pytest.raises(ApiRequestError) as exc_info:
+            await make_request("https://eodhd.com/api/csv")
+        assert "not valid JSON" in str(exc_info.value)
+        assert "text/csv" in str(exc_info.value)
 
     @pytest.mark.asyncio
     @respx.mock
-    async def test_long_non_json_truncated(self):
+    async def test_long_non_json_raises(self):
         long_text = "x" * 3000
         respx.get(url__startswith="https://eodhd.com/api/big").mock(
             return_value=Response(200, text=long_text, headers={"content-type": "text/html"})
         )
-        result = await make_request("https://eodhd.com/api/big")
-        assert result is not None
-        assert len(result["text"]) <= 2001  # 2000 + "…"
+        with pytest.raises(ApiRequestError):
+            await make_request("https://eodhd.com/api/big")
 
 
 # ---------------------------------------------------------------------------
@@ -325,14 +321,13 @@ class TestMakeRequestRetry:
     @pytest.mark.asyncio
     @respx.mock
     async def test_5xx_retry_exhausted(self):
-        """All retries fail with 502 → error returned, 4 attempts total."""
+        """All retries fail with 502 → ApiRequestError raised, 4 attempts total."""
         route = respx.get(url__startswith="https://eodhd.com/api/fail").mock(
             return_value=Response(502, text="Bad Gateway")
         )
         with patch("app.api_client.asyncio.sleep", new_callable=AsyncMock):
-            result = await make_request("https://eodhd.com/api/fail", retry_enabled=True)
-        assert result is not None
-        assert "error" in result
+            with pytest.raises(ApiRequestError):
+                await make_request("https://eodhd.com/api/fail", retry_enabled=True)
         assert route.call_count == 4  # 1 + 3 retries
 
     @pytest.mark.asyncio
@@ -383,11 +378,10 @@ class TestMakeRequestRetry:
         assert route.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_network_error_returns_error(self):
-        """ConnectError → error dict."""
+    async def test_network_error_raises(self):
+        """ConnectError → ApiRequestError raised."""
         with respx.mock:
             respx.get(url__startswith="https://eodhd.com/api/down").mock(side_effect=httpx.ConnectError("refused"))
             with patch("app.api_client.asyncio.sleep", new_callable=AsyncMock):
-                result = await make_request("https://eodhd.com/api/down", retry_enabled=False)
-        assert result is not None
-        assert "error" in result
+                with pytest.raises(ApiRequestError):
+                    await make_request("https://eodhd.com/api/down", retry_enabled=False)
