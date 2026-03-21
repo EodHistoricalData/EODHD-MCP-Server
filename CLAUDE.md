@@ -43,7 +43,7 @@ server.py             — entry point, transport selection, argparse
 - All tools are read-only (`readOnlyHint=True`)
 - Input sanitisation: call `sanitize_ticker()`, `sanitize_exchange()` from `app/input_formatter.py` (only reject URL-breaking chars; let API validate)
 - Errors: raise `ToolError` for user-facing errors (MCP-native)
-- API responses: return `json.dumps(data, indent=2)`
+- API responses: return via `response_formatter` (`format_json_response`, `format_text_response`, `format_binary_response`) — typed MCP `EmbeddedResource` with invisible-char sanitization
 - Docstrings: every tool function has detailed docstring with Args, Returns, Examples
 - Ruff ignores are documented with rationale in `pyproject.toml`
 - `X | None` over `Optional[X]`
