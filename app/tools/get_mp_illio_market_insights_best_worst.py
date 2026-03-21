@@ -1,11 +1,15 @@
 # get_mp_illio_market_insights_best_worst.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -66,8 +70,9 @@ async def _run_best_worst(id: str, fmt: str, api_token: str | None) -> list:
     # Normalize and return
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -84,7 +89,6 @@ def register(mcp: FastMCP):
         with dates, magnitudes, and affected instruments. Consumes 10 API calls per request.
         For overall constituent performance, use get_mp_illio_market_insights_performance.
         For volatility trends, use get_mp_illio_market_insights_volatility.
-
 
         Returns:
           JSON object with largest single-day moves chapter data:
@@ -105,7 +109,6 @@ def register(mcp: FastMCP):
         Examples:
             "S&P 500 best and worst days" → id="SnP500"
             "Nasdaq-100 largest single-day moves" → id="NDX"
-
 
         """
         return await _run_best_worst(id=id, fmt=fmt, api_token=api_token)

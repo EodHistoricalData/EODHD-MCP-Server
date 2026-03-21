@@ -1,11 +1,15 @@
 # get_mp_indices_list.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -27,7 +31,6 @@ def register(mcp: FastMCP):
           - fmt: 'json' (default). (CSV is not documented; keep JSON only.)
           - api_token: optional override API token
 
-
         Returns:
             JSON array of objects, each with:
             - code (str): Index ticker code (e.g. 'GSPC.INDX').
@@ -38,7 +41,6 @@ def register(mcp: FastMCP):
         Examples:
             "show all S&P and Dow Jones indices" → (no params)
             "list available market indices with details" → (no params)
-
 
         """
         fmt = (fmt or "json").lower()
@@ -51,5 +53,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

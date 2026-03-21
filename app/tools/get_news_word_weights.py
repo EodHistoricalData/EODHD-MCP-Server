@@ -1,5 +1,6 @@
 # get_news_word_weights.py
 
+import logging
 import re
 from datetime import datetime
 
@@ -9,6 +10,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -62,7 +65,6 @@ def register(mcp: FastMCP):
             "Nvidia word weights, top 20" → ticker="NVDA.US", limit=20
             "Amazon news themes in Q1 2026" → ticker="AMZN.US", start_date="2026-01-01", end_date="2026-03-06"
 
-
         """
         if not ticker or not isinstance(ticker, str):
             raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
@@ -98,5 +100,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

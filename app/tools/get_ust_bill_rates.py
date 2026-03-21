@@ -1,5 +1,6 @@
 # get_ust_bill_rates.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -35,7 +38,6 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override.
 
-
         Returns:
             Array of daily bill rate objects, each with:
             - date (str): observation date (YYYY-MM-DD)
@@ -60,7 +62,6 @@ def register(mcp: FastMCP):
             "Treasury bill rates for 2026" → get_ust_bill_rates(year=2026)
             "Latest T-bill rates" → get_ust_bill_rates()
             "T-bill rates for 2025, first 50 records" → get_ust_bill_rates(year=2025, limit=50)
-
 
         """
         y: int | None = None
@@ -104,5 +105,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

@@ -1,5 +1,6 @@
 # get_insider_transactions.py
 
+import logging
 import re
 from datetime import datetime
 
@@ -9,6 +10,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -70,7 +73,6 @@ def register(mcp: FastMCP):
             "Recent insider transactions, top 50" → limit=50
             "Tesla insider buys and sells in Feb 2026" → symbol="TSLA.US", start_date="2026-02-01", end_date="2026-02-28"
 
-
         """
         # --- Validate inputs ---
         if fmt != "json":
@@ -109,5 +111,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

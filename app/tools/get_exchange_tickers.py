@@ -1,5 +1,6 @@
 # get_exchange_tickers.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"common_stock", "preferred_stock", "stock", "etf", "fund"}
 
@@ -33,7 +36,6 @@ def register(mcp: FastMCP):
         For the list of all exchanges, use get_exchanges_list.
         For exchange metadata and trading hours, use get_exchange_details.
 
-
         Returns:
             Array of ticker objects, each with:
             - Code (str): ticker symbol
@@ -48,7 +50,6 @@ def register(mcp: FastMCP):
             "All tickers on London Stock Exchange" → get_exchange_tickers(exchange_code="LSE")
             "Show me delisted US stocks" → get_exchange_tickers(exchange_code="US", delisted=True)
             "ETFs trading on XETRA" → get_exchange_tickers(exchange_code="XETRA", type="etf")
-
 
         """
         if not exchange_code or not isinstance(exchange_code, str):
@@ -74,5 +75,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

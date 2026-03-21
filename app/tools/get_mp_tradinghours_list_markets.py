@@ -1,11 +1,15 @@
 # get_mp_tradinghours_list_markets.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
@@ -31,7 +35,6 @@ def register(mcp: FastMCP):
                 'all' (equities + derivatives), 'allowed' (your tier). Default: 'all'.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
-
         Returns:
             JSON array of market objects, each with:
             - fin_id (str): Unique market identifier (e.g. 'us.nyse').
@@ -55,7 +58,6 @@ def register(mcp: FastMCP):
             "show only G20 core markets" → group="core"
             "all equity and derivative markets" → group="all"
 
-
         """
         if group is not None:
             group = group.strip().lower()
@@ -74,5 +76,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

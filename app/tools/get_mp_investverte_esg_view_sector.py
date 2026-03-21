@@ -1,5 +1,6 @@
 # get_mp_investverte_esg_view_sector.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -24,7 +27,6 @@ def register(mcp: FastMCP):
         Use get_mp_investverte_esg_list_sectors first to discover available sector names.
         For company-level ESG, use get_mp_investverte_esg_view_company.
         For country-level ESG, use get_mp_investverte_esg_view_country.
-
 
         Returns:
             A JSON-formatted string with a sector ESG object:
@@ -54,7 +56,6 @@ def register(mcp: FastMCP):
             "Airlines sector ESG data" → symbol="Airlines"
             "Aerospace & Defense ESG ratings" → symbol="Aerospace & Defense"
 
-
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")
@@ -70,5 +71,6 @@ def register(mcp: FastMCP):
         try:
             # Expected: dict with keys like "find", "industry", "years"
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

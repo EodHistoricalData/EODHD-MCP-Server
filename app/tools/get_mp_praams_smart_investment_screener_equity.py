@@ -1,5 +1,6 @@
 # get_mp_praams_smart_investment_screener_equity.py
 
+import logging
 from typing import Any
 
 from app.api_client import make_request
@@ -8,6 +9,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _is_int(v: Any) -> bool:
@@ -60,6 +63,7 @@ def _canon_range_1_7(_name: str, v: Any) -> int | None:
     try:
         iv = int(v)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
     if 1 <= iv <= 7:
         return iv
@@ -235,8 +239,9 @@ async def _run_explore_equity(
 
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -294,7 +299,6 @@ def register(mcp: FastMCP):
         For bond screening, use get_mp_praams_smart_screener_bond.
         For deep analysis of a single equity, use get_mp_praams_risk_scoring_by_ticker.
 
-
         Returns:
           JSON object with Praams envelope:
             - item (object):
@@ -325,7 +329,6 @@ def register(mcp: FastMCP):
         Examples:
             "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
             "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
-
 
         """
         st_err = _validate_skip_take(skip, take)

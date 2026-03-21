@@ -1,5 +1,6 @@
 # get_mp_praams_smart_investment_screener_bond.py
 
+import logging
 from typing import Any
 
 from app.api_client import make_request
@@ -8,6 +9,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _is_int(v: Any) -> bool:
@@ -60,6 +63,7 @@ def _canon_range_1_7(_name: str, v: Any) -> int | None:
     try:
         iv = int(v)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
     if 1 <= iv <= 7:
         return iv
@@ -94,11 +98,13 @@ def _canon_int32(v: Any) -> int | None:
             try:
                 return int(s)
             except Exception:
+                logger.debug("Suppressed exception", exc_info=True)
                 return None
         return None
     try:
         return int(v)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
 
@@ -345,8 +351,9 @@ async def _run_explore_bond(
 
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -416,7 +423,6 @@ def register(mcp: FastMCP):
         For equity screening, use get_mp_praams_smart_screener_equity.
         For deep analysis of a single bond, use get_mp_praams_bond_analyze_by_isin.
 
-
         Returns:
           JSON object with Praams envelope:
             - item (object):
@@ -446,7 +452,6 @@ def register(mcp: FastMCP):
         Examples:
             "High-yield EUR bonds low risk" → currency=["EUR"], yieldMin=5, countryRiskMax=3
             "US investment-grade bonds short duration" → regions=[1], durationMax=3, solvencyMin=5
-
 
         """
         st_err = _validate_skip_take(skip, take)

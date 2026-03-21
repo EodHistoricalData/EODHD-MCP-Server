@@ -1,5 +1,6 @@
 # get_mp_us_options_eod.py
 
+import logging
 from collections.abc import Sequence
 from urllib.parse import quote_plus
 
@@ -9,6 +10,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
@@ -58,7 +61,6 @@ def register(mcp: FastMCP):
         For the list of optionable tickers, use get_us_options_underlyings.
         Consumes 10 API calls per request.
 
-
         Returns:
             JSON object with:
             - meta: Pagination metadata.
@@ -82,7 +84,6 @@ def register(mcp: FastMCP):
             "AAPL end-of-day options for March 2026" → underlying_symbol="AAPL", tradetime_from="2026-03-01", tradetime_to="2026-03-31"
             "MSFT puts EOD data, strike 300-400" → underlying_symbol="MSFT", type="put", strike_from=300, strike_to=400
             "NVDA calls expiring 2026-06-20, compact" → underlying_symbol="NVDA", type="call", exp_date_eq="2026-06-20", compact=True
-
 
         """
         # --- validate ---
@@ -126,5 +127,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

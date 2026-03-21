@@ -1,11 +1,15 @@
 # get_mp_us_options_underlyings.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -25,7 +29,6 @@ def register(mcp: FastMCP):
         For options pricing data, use get_us_options_eod.
         Consumes 10 API calls per request.
 
-
         Returns:
             JSON object with:
             - meta (object): Contains total count, fields list, compact flag.
@@ -35,7 +38,6 @@ def register(mcp: FastMCP):
         Examples:
             "list all tickers that have options" → (no params)
             "which stocks have options available" → (no params)
-
 
         """
         url = build_url(
@@ -52,5 +54,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

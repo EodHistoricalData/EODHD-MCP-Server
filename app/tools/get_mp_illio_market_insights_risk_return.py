@@ -1,11 +1,15 @@
 # get_mp_illio_market_insights_risk_return.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -60,8 +64,9 @@ async def _run_risk_return(id: str, fmt: str, api_token: str | None) -> list:
     # Normalize and return
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -78,7 +83,6 @@ def register(mcp: FastMCP):
         Sharpe-style analysis, and constituent risk-return scatter data. Consumes 10 API calls per request.
         For portfolio-level risk attributes, use mp_illio_risk_insights.
         For beta sensitivity analysis, use get_mp_illio_market_insights_beta_bands.
-
 
         Returns:
           JSON object with risk-return insight chapter data:
@@ -98,7 +102,6 @@ def register(mcp: FastMCP):
         Examples:
             "S&P 500 risk-return insight" → id="SnP500"
             "Nasdaq-100 risk vs return" → id="NDX"
-
 
         """
         return await _run_risk_return(id=id, fmt=fmt, api_token=api_token)

@@ -1,5 +1,6 @@
 # get_sentiment_data.py
 
+import logging
 import re
 from collections.abc import Iterable
 from datetime import datetime
@@ -10,6 +11,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -68,7 +71,6 @@ def register(mcp: FastMCP):
             "Bitcoin and Ethereum sentiment" → symbols="BTC-USD.CC,ETH-USD.CC"
             "Microsoft sentiment in Q4 2025" → symbols="MSFT.US", start_date="2025-10-01", end_date="2025-12-31"
 
-
         """
         # Validate required
         if not symbols or not isinstance(symbols, str):
@@ -101,5 +103,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

@@ -1,5 +1,6 @@
 # get_mp_investverte_esg_view_company.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FREQUENCIES = {"FY", "Q1", "Q2", "Q3", "Q4"}
 
@@ -28,7 +31,6 @@ def register(mcp: FastMCP):
         Use get_mp_investverte_esg_list_companies first to discover available symbols.
         For country-level ESG, use get_mp_investverte_esg_view_country.
         For sector-level ESG, use get_mp_investverte_esg_view_sector.
-
 
         Returns:
             A JSON-formatted string with an array of objects, e.g.:
@@ -56,7 +58,6 @@ def register(mcp: FastMCP):
         Examples:
             - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
             - /api/mp/investverte/esg/000039.SZ
-
 
         """
         if not symbol or not isinstance(symbol, str):
@@ -87,5 +88,6 @@ def register(mcp: FastMCP):
         try:
             # Expected: list of ESG entries for the company
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

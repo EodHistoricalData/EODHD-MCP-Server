@@ -1,5 +1,6 @@
 # get_mp_investverte_esg_list_companies.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -22,7 +25,6 @@ def register(mcp: FastMCP):
         Use as a reference lookup before calling get_mp_investverte_esg_view_company for detailed ESG scores.
         Consumes 10 API calls per request.
         For country or sector reference lists, use get_mp_investverte_esg_list_countries or list_sectors.
-
 
         Returns:
             A JSON-formatted string containing an array of objects:
@@ -43,7 +45,6 @@ def register(mcp: FastMCP):
             "List all ESG companies" → (no params needed)
             "Which companies have ESG data?" → (no params needed)
 
-
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
@@ -56,5 +57,6 @@ def register(mcp: FastMCP):
         try:
             # Expected: list of {"symbol": ..., "name": ...}
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

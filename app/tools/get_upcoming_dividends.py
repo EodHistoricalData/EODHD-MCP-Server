@@ -1,11 +1,15 @@
 # get_upcoming_dividends.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -28,7 +32,6 @@ def register(mcp: FastMCP):
         Use when the user asks about dividend dates, payout history, yield data, or ex-dividend calendars.
         For IPO calendar, use get_upcoming_ipos. For stock splits calendar, use get_upcoming_splits.
 
-
         Returns:
             Array of dividend records, each with:
             - code (str): ticker symbol
@@ -46,7 +49,6 @@ def register(mcp: FastMCP):
             "Apple dividends in 2025" → symbol="AAPL.US", date_from="2025-01-01", date_to="2025-12-31"
             "All dividends on March 15" → date_eq="2026-03-15"
             "Microsoft dividends this quarter" → symbol="MSFT.US", date_from="2026-01-01", date_to="2026-03-31"
-
 
         """
 
@@ -88,5 +90,6 @@ def register(mcp: FastMCP):
         # --- Return normalized JSON string ---
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

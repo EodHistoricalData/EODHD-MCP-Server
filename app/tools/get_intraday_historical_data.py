@@ -1,5 +1,6 @@
 # get_intraday_historical_data.py
 
+import logging
 from datetime import datetime, timezone
 
 from app.api_client import make_request
@@ -8,6 +9,8 @@ from app.response_formatter import ResourceResponse, format_json_response, forma
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_INTERVALS = {"1m", "5m", "1h"}  # per docs
 ALLOWED_FMT = {"json", "csv"}
@@ -65,7 +68,7 @@ def _parse_date_to_unix(value: int | float | str) -> int | None:
             dt_obj = datetime.fromisoformat(s.replace("Z", "+00:00"))
             return _to_unix_seconds(dt_obj)
         except Exception:
-            pass
+            logger.debug("Suppressed exception", exc_info=True)
 
     # Try vanilla ISO-8601 first (without 'Z')
     try:
@@ -73,7 +76,7 @@ def _parse_date_to_unix(value: int | float | str) -> int | None:
         dt_obj = datetime.fromisoformat(s)
         return _to_unix_seconds(dt_obj)
     except Exception:
-        pass
+        logger.debug("Suppressed exception", exc_info=True)
 
     # If string looks like just a calendar date without time, we’ll try many formats
     # and assume 00:00:00 UTC.
@@ -123,6 +126,7 @@ def _parse_date_to_unix(value: int | float | str) -> int | None:
             # If parsed is a date-only pattern (most are), treat as midnight UTC
             return _to_unix_seconds(dt_obj)
         except Exception:
+            logger.debug("Suppressed exception in loop", exc_info=True)
             continue
 
     # Could not parse

@@ -1,11 +1,15 @@
 # get_mp_praams_risk_scoring_by_ticker.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _canon_ticker(v: str) -> str | None:
@@ -30,7 +34,6 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
     """
     Core runner for Praams Equity Risk & Return Scoring by ticker.
 
-
         Examples:
             "Apple risk score" → ticker="AAPL"
             "Tesla risk and return scoring" → ticker="TSLA"
@@ -53,8 +56,9 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
     # We just pretty-print whatever comes back.
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):

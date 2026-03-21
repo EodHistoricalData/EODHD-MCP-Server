@@ -1,6 +1,7 @@
 # get_fundamentals_data.py
 
 import datetime as dt
+import logging
 from typing import Any
 
 from app.api_client import make_request
@@ -10,6 +11,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # --------------------------------
 # Utilities & small helpers
@@ -22,6 +25,7 @@ def _to_date(s: str | None) -> dt.date | None:
     try:
         return dt.date.fromisoformat(s)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
 
@@ -34,6 +38,7 @@ def _in_range(date_str: str, start: dt.date | None, end: dt.date | None) -> bool
     try:
         d = dt.date.fromisoformat(date_str)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return False
     if start and d < start:
         return False
@@ -310,7 +315,6 @@ def register(mcp: FastMCP):
         For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
         For price data, use get_historical_stock_prices or get_live_price_data instead.
 
-
         Returns:
             Nested object; structure depends on asset Type:
 
@@ -343,7 +347,6 @@ def register(mcp: FastMCP):
             "Apple fundamentals" → ticker="AAPL.US"
             "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
             "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
-
 
         """
         # --- Validate basics
@@ -426,5 +429,6 @@ def register(mcp: FastMCP):
         # --- 6) Return full JSON (do not reduce)
         try:
             return format_json_response(assembled)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

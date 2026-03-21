@@ -1,4 +1,5 @@
 # get_technical_indicators.py
+import logging
 from datetime import datetime
 
 from app.api_client import make_request
@@ -7,6 +8,8 @@ from app.response_formatter import ResourceResponse, format_json_response, forma
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}
@@ -128,7 +131,6 @@ def register(mcp: FastMCP):
         For raw OHLCV price data, use get_historical_stock_prices instead.
         For fundamental analysis, use get_fundamentals_data instead.
 
-
         Returns:
             Array of objects, each with 'date' (str, YYYY-MM-DD) plus indicator-specific fields:
             - sma/ema/wma: {sma|ema|wma} (float)
@@ -156,7 +158,6 @@ def register(mcp: FastMCP):
             "50-day SMA for Apple in 2025" → ticker="AAPL.US", function="sma", period=50, start_date="2025-01-01", end_date="2025-12-31"
             "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
             "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
-
 
         """
         # --- Required/typed validation ---

@@ -1,5 +1,6 @@
 # get_mp_index_components.py
 
+import logging
 from urllib.parse import quote_plus
 
 from app.api_client import make_request
@@ -8,6 +9,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -31,7 +34,6 @@ def register(mcp: FastMCP):
           - fmt: 'json' (only)
           - api_token: optional override API token
 
-
         Returns:
             JSON object with:
             - Components (array): Current index constituents, each with:
@@ -47,7 +49,6 @@ def register(mcp: FastMCP):
             "what are the S&P 500 components" → symbol="GSPC.INDX"
             "Dow Jones Industrial Average constituents" → symbol="DJI.INDX"
             "S&P 400 MidCap index members" → symbol="SP400.INDX"
-
 
         """
         if not (symbol and symbol.strip()):
@@ -65,5 +66,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

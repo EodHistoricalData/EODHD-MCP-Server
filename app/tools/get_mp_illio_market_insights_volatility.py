@@ -1,11 +1,15 @@
 # get_mp_illio_market_insights_volatility.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -61,8 +65,9 @@ async def _run_volatility(id: str, fmt: str, api_token: str | None) -> list:
     # Normalize and return
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -79,7 +84,6 @@ def register(mcp: FastMCP):
         ranges, and constituent volatility distribution versus market. Consumes 10 API calls per request.
         For largest year-over-year volatility changes, use get_mp_illio_market_insights_largest_volatility.
         For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
-
 
         Returns:
           JSON object with volatility bands chapter data:
@@ -99,7 +103,6 @@ def register(mcp: FastMCP):
         Examples:
             "Dow Jones volatility bands" → id="DJI"
             "Nasdaq-100 volatility and day moves" → id="NDX"
-
 
         """
         return await _run_volatility(id=id, fmt=fmt, api_token=api_token)

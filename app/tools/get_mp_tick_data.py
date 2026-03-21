@@ -1,5 +1,6 @@
 # get_mp_tick_data.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _to_int(name: str, v: int | str | None) -> int | None:
@@ -44,7 +47,6 @@ def register(mcp: FastMCP):
             limit (int, optional): Max ticks to return (1-10000). Default: all in range.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
-
         Returns:
             JSON array of tick objects, each with:
             - timestamp (int): Trade timestamp in UNIX seconds.
@@ -64,7 +66,6 @@ def register(mcp: FastMCP):
             "AAPL tick data for yesterday" → ticker="AAPL"
             "first 500 TSLA ticks from March 3 2026" → ticker="TSLA", from_timestamp=1741003200, to_timestamp=1741089600, limit=500
             "MSFT trade ticks, max 1000" → ticker="MSFT", limit=1000
-
 
         """
         if not ticker or not isinstance(ticker, str):
@@ -116,5 +117,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

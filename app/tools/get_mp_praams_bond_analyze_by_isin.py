@@ -1,11 +1,15 @@
 # get_mp_praams_bond_analyze_by_isin.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _canon_isin(v: str) -> str | None:
@@ -32,7 +36,6 @@ async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> list:
     """
     Core runner for Praams Bond Risk & Return analysis by ISIN.
 
-
         Examples:
             "Analyze US Treasury bond" → isin="US912810TM53"
             "Realty Income bond risk analysis" → isin="US7593518852"
@@ -55,8 +58,9 @@ async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> list:
     # We just pretty-print whatever comes back.
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):

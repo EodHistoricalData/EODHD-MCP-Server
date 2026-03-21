@@ -1,11 +1,15 @@
 # get_mp_illio_market_insights_largest_volatility.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -40,7 +44,6 @@ def _canon_id(v: str) -> str | None:
 async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> list:
     """
     Internal runner for Largest Volatility Change chapter.
-
 
         Examples:
             "S&P 500 largest volatility changes" → id="SnP500"
@@ -78,8 +81,9 @@ async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> l
     # Normalize and return
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):

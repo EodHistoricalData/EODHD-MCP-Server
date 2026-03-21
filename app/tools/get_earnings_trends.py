@@ -1,11 +1,15 @@
 # get_earnings_trends.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
@@ -35,7 +39,6 @@ def register(mcp: FastMCP):
         Use when the user asks about earnings expectations, analyst estimate changes, or EPS growth trends.
         For earnings report dates and calendar, use get_upcoming_earnings instead.
 
-
         Returns:
             Array of trend records, each with:
             - code (str): ticker symbol
@@ -50,7 +53,6 @@ def register(mcp: FastMCP):
         Examples:
             "Apple earnings trend" → symbols="AAPL.US"
             "Compare Tesla and Nvidia earnings trends" → symbols="TSLA.US,NVDA.US"
-
 
         """
         sym_param = _normalize_symbols(symbols)
@@ -70,6 +72,7 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
             # Trends should always be JSON; fallback just in case
-            raise ToolError("Unexpected response format from API.")
+            raise ToolError("Unexpected response format from API.") from e

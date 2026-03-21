@@ -1,6 +1,7 @@
 # get_stock_screener_data.py
 
 import json
+import logging
 from typing import Any
 
 from app.api_client import make_request
@@ -9,6 +10,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
@@ -28,6 +31,7 @@ def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
     try:
         return json.dumps(filters, separators=(",", ":"))
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
 
@@ -75,7 +79,6 @@ def register(mcp: FastMCP):
           - fmt: optional; Screener is JSON-only. If provided, must be "json".
           - api_token: optional override
 
-
         Returns:
             Array of matching stocks, each with:
             - code (str): ticker symbol
@@ -93,7 +96,6 @@ def register(mcp: FastMCP):
             "Large-cap tech stocks" → filters=[["market_capitalization",">",10000000000],["sector","=","Technology"]], sort="market_capitalization.desc", limit=20
             "Stocks hitting new 52-week highs" → signals=["52weekhigh"], limit=50
             "Undervalued healthcare with high volume" → filters=[["sector","=","Healthcare"],["pe_ratio","<",15],["avgvol_200d",">",1000000]], sort="pe_ratio.asc"
-
 
         """
 
@@ -133,5 +135,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

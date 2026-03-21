@@ -1,11 +1,15 @@
 # get_mp_illio_market_insights_performance.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -66,8 +70,9 @@ async def _run_market_insights(id: str, fmt: str, api_token: str | None) -> list
     # Normalize and return
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -85,7 +90,6 @@ def register(mcp: FastMCP):
         For portfolio-level performance attributes, use mp_illio_performance_insights.
         For best/worst single-day moves, use get_mp_illio_market_insights_best_worst.
 
-
         Returns:
           JSON object with performance-vs-market chapter data:
             - chapter (str): chapter identifier, e.g. "performance"
@@ -102,7 +106,6 @@ def register(mcp: FastMCP):
         Examples:
             "S&P 500 performance vs market" → id="SnP500"
             "Nasdaq-100 market performance chapter" → id="NDX"
-
 
         """
         return await _run_market_insights(id=id, fmt=fmt, api_token=api_token)

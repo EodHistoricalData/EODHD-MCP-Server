@@ -1,5 +1,6 @@
 # get_ust_long_term_rates.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -33,7 +36,6 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
-
         Returns:
             JSON array of objects, each with:
             - date (str): Rate date, YYYY-MM-DD.
@@ -52,7 +54,6 @@ def register(mcp: FastMCP):
             "long-term treasury rates for 2024" → year=2024
             "20-year bond rates this year, first 20 records" → year=2026, limit=20
             "real long-term rate averages for 2022" → year=2022
-
 
         """
         y: int | None = None
@@ -96,5 +97,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

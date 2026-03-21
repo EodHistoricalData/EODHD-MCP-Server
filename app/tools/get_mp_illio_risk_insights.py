@@ -1,11 +1,15 @@
 # get_mp_illio_risk_insights.py
 
+import logging
+
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -70,7 +74,6 @@ def register(mcp: FastMCP):
             "Dow Jones risk insights" → id="DJI"
             "S&P 500 risk attributes" → id="SnP500"
 
-
         """
         # Validate fmt
         fmt = (fmt or "json").lower()
@@ -94,5 +97,6 @@ def register(mcp: FastMCP):
         # Normalize and return
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

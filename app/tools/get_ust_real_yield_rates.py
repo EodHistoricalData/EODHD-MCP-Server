@@ -1,5 +1,6 @@
 # get_ust_real_yield_rates.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -32,7 +35,6 @@ def register(mcp: FastMCP):
             offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
-
         Returns:
             JSON array of objects, each with:
             - date (str): Rate date, YYYY-MM-DD.
@@ -51,7 +53,6 @@ def register(mcp: FastMCP):
             "real yield rates for 2025" → year=2025
             "last 10 inflation-adjusted treasury yields" → limit=10
             "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
-
 
         """
         y: int | None = None
@@ -95,5 +96,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

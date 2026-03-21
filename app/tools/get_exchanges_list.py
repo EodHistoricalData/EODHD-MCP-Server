@@ -1,5 +1,6 @@
 # get_exchanges_list.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -26,7 +29,6 @@ def register(mcp: FastMCP):
         For tickers listed on a specific exchange, use get_exchange_tickers.
         For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
 
-
         Returns:
             Array of exchange objects, each with:
             - Name (str): exchange full name
@@ -41,7 +43,6 @@ def register(mcp: FastMCP):
             "List all available exchanges" → get_exchanges_list()
             "What stock exchanges does EODHD support?" → get_exchanges_list()
 
-
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
@@ -52,5 +53,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

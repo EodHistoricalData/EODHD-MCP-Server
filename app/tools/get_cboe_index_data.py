@@ -1,5 +1,6 @@
 # get_cboe_index_data.py
 
+import logging
 
 from app.api_client import make_request
 from app.input_formatter import build_url
@@ -7,6 +8,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -36,7 +39,6 @@ def register(mcp: FastMCP):
             date (str): Trading date in YYYY-MM-DD format.
             fmt (str): 'json' only (default).
             api_token (str, optional): Per-call token override.
-
 
         Returns:
             Object with:
@@ -78,7 +80,6 @@ def register(mcp: FastMCP):
               &filter[feed_type]=snapshot_official_closing
               &filter[date]=2017-02-01
 
-
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):
@@ -115,5 +116,6 @@ def register(mcp: FastMCP):
         try:
             # For both success and {"errors": {...}} cases, return pretty JSON
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

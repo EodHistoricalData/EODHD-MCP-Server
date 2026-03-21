@@ -1,5 +1,6 @@
 # get_stocks_from_search.py
 
+import logging
 from urllib.parse import quote
 
 from app.api_client import make_request
@@ -8,6 +9,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
 
@@ -45,7 +48,6 @@ def register(mcp: FastMCP):
             fmt (str): Must be 'json'.
             api_token (str, optional): Per-call API token override (demo token does NOT work for Search).
 
-
         Returns:
             Array of matching instruments, each with:
             - Code (str): ticker symbol
@@ -62,7 +64,6 @@ def register(mcp: FastMCP):
             "Find Apple stock" → get_stocks_from_search(query="Apple Inc", type="stock")
             "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
             "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
-
 
         """
         # --- Validate ---
@@ -97,5 +98,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

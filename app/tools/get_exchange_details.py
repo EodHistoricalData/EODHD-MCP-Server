@@ -1,5 +1,6 @@
 # get_exchange_details.py
 
+import logging
 import re
 from datetime import datetime
 
@@ -9,6 +10,8 @@ from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
@@ -54,7 +57,6 @@ def register(mcp: FastMCP):
             fmt (str): 'json' only (default).
             api_token (str, optional): Per-call token override (env token otherwise).
 
-
         Returns:
             Object with:
             - Name (str): exchange full name
@@ -76,7 +78,6 @@ def register(mcp: FastMCP):
             "Is the US market open right now?" → get_exchange_details(exchange_code="US")
             "LSE trading hours and timezone" → get_exchange_details(exchange_code="LSE")
             "XETRA holidays in Q1 2026" → get_exchange_details(exchange_code="XETRA", start_date="2026-01-01", end_date="2026-03-31")
-
 
         """
         # --- Validate inputs ---
@@ -112,5 +113,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

@@ -1,11 +1,15 @@
 # get_user_details.py
 
+import logging
+
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -26,7 +30,6 @@ def register(mcp: FastMCP):
             api_token (str, optional): Per-call token override. If omitted, the
                                        env var EODHD_API_KEY is used.
 
-
         Returns:
             Object with:
             - name (str): account holder name
@@ -45,7 +48,6 @@ def register(mcp: FastMCP):
             "What plan am I on?" → get_user_details()
             "How many API calls have I used today?" → get_user_details()
 
-
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.
@@ -59,5 +61,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

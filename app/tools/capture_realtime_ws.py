@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import logging
 import socket
 import time
 from urllib.parse import urlparse
@@ -16,6 +17,8 @@ try:
     import websockets
 except Exception:  # pragma: no cover
     websockets = None  # type: ignore[assignment]  # We'll error nicely at runtime if unavailable.
+
+logger = logging.getLogger(__name__)
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
 
@@ -150,10 +153,12 @@ def register(mcp: FastMCP):
                 except TimeoutError:
                     continue  # loop to check time again
                 except Exception:
+                    logger.debug("WebSocket recv error, stopping", exc_info=True)
                     break
                 try:
                     messages.append(json.loads(msg))
                 except Exception:
+                    logger.debug("JSON parse failed for WS message", exc_info=True)
                     messages.append({"raw": msg})
 
         try:
@@ -177,7 +182,7 @@ def register(mcp: FastMCP):
             try:
                 await ws.close()
             except Exception:
-                pass
+                logger.debug("WebSocket close error", exc_info=True)
 
         ended_at = int(time.time() * 1000)
 
