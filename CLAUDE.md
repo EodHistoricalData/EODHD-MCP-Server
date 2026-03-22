@@ -57,7 +57,7 @@ server.py             — entry point, transport selection, argparse
 - pytest with `asyncio_mode="auto"`
 - `respx` for HTTP mocking, `AsyncMock` for `make_request`
 - Parametrized tests for URL construction and error paths across all 74 tools
-- Coverage target: 50% (`fail_under` in pyproject.toml)
+- Coverage target: 60% (`fail_under` in pyproject.toml)
 - Markers: `@pytest.mark.slow`, `@pytest.mark.integration`
 - CI env: `EODHD_API_KEY=test_key_for_ci`
 ## CI Pipeline (GitHub Actions)

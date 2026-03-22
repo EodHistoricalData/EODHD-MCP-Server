@@ -36,5 +36,5 @@ python server.py --stdio                                 # run (stdio)
 ## Testing
 - pytest, asyncio_mode="auto", `respx` for HTTP mocking
 - Parametrized tests for URL construction and error paths
-- Coverage target: 50% (pyproject.toml `fail_under`)
+- Coverage target: 60% (pyproject.toml `fail_under`)
 - CI uses `EODHD_API_KEY=test_key_for_ci`
