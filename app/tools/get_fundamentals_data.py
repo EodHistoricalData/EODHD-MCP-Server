@@ -5,8 +5,7 @@ import logging
 from typing import Any
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -48,18 +47,9 @@ def _in_range(date_str: str, start: dt.date | None, end: dt.date | None) -> bool
 
 
 def _build_url(ticker: str, params: dict[str, Any]) -> str:
-    base = f"{EODHD_API_BASE}/fundamentals/{ticker}?fmt=json"
-    parts: list[str] = []
-    for k, v in params.items():
-        if v is None:
-            continue
-        if isinstance(v, bool):
-            parts.append(f"{k}={'1' if v else '0'}")
-        else:
-            parts.append(f"{k}={v}")
-    if parts:
-        return base + "&" + "&".join(parts)
-    return base
+    all_params: dict[str, Any] = {"fmt": "json"}
+    all_params.update(params)
+    return build_url(f"fundamentals/{ticker}", all_params)
 
 
 def _merge_tree(dest: dict[str, Any], src: dict[str, Any]) -> None:

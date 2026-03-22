@@ -3,7 +3,7 @@
 import logging
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -49,13 +49,7 @@ def register(mcp: FastMCP):
             "How many API calls have I used today?" → get_user_details()
 
         """
-        # Endpoint: /api/user
-        # The API returns JSON by default; no fmt parameter needed.
-        url = f"{EODHD_API_BASE}/user"
-
-        # If provided, include per-call token; otherwise make_request appends env token
-        if api_token:
-            url += f"?api_token={api_token}"
+        url = build_url("user", {"api_token": api_token})
 
         data = await make_request(url)
 
