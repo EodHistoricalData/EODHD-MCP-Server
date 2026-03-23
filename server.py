@@ -85,6 +85,11 @@ def main(argv: list[str] | None = None) -> int:
     if unknown:
         logger.warning("Ignoring extra args from client: %d item(s)", len(unknown))
 
+    if not os.environ.get("EODHD_API_KEY"):
+        logger.warning(
+            "No EODHD_API_KEY set. Set EODHD_API_KEY env var or pass --apikey to use your key.",
+        )
+
     mcp = FastMCP("eodhd-datasets")
     register_all_tools(mcp)
     register_all_resources(mcp)
