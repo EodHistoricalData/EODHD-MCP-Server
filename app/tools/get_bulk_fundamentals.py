@@ -12,12 +12,6 @@ from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response, format_text_response
 
 
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
-
-
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_bulk_fundamentals(
@@ -96,7 +90,7 @@ def register(mcp: FastMCP):
         url = f"{EODHD_API_BASE}/bulk-fundamentals/{quote_plus(exchange)}?fmt={fmt}"
 
         if symbols:
-            url += _q("symbols", symbols.strip())
+            url += build_query_param("symbols", symbols.strip())
 
         if offset is not None:
             try:
@@ -117,7 +111,7 @@ def register(mcp: FastMCP):
             url += f"&limit={lim}"
 
         if version:
-            url += _q("version", version.strip())
+            url += build_query_param("version", version.strip())
 
         if api_token:
             url += f"&api_token={api_token}"
