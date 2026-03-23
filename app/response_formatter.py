@@ -11,6 +11,7 @@ import json
 import re
 from typing import Any
 
+from fastmcp.exceptions import ToolError
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 from pydantic import AnyUrl
 
@@ -72,6 +73,8 @@ def format_binary_response(data: bytes, mime_type: str, *, resource_path: str = 
 
 def format_json_response(data: Any, *, resource_path: str = "response") -> JsonResponse:
     """Return JSON-like API data as application/json."""
+    if data is None:
+        raise ToolError("No response from API.")
     sanitized = _sanitize_data(data)
     return [
         EmbeddedResource(

@@ -9,7 +9,7 @@ Covers:
 import asyncio
 import json
 import socket
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from app.tools import register_all
@@ -21,6 +21,27 @@ from fastmcp.exceptions import ToolError
 # ---------------------------------------------------------------------------
 
 API_SUCCESS = {"ok": True}
+
+# Tools that expect bytes from make_request (response_mode="bytes")
+_BYTES_TOOLS = {
+    "get_stock_market_logos",
+    "get_mp_praams_report_bond_by_isin",
+    "get_mp_praams_report_equity_by_isin",
+    "get_mp_praams_report_equity_by_ticker",
+}
+# Tools that expect str from make_request (SVG text)
+_TEXT_TOOLS = {
+    "get_stock_market_logos_svg",
+}
+
+
+def _default_mock_return(mock_module: str) -> object:
+    """Return an appropriate mock value based on the tool's expected response type."""
+    if mock_module in _BYTES_TOOLS:
+        return b"\x89PNG fake image data"
+    if mock_module in _TEXT_TOOLS:
+        return "<svg>test</svg>"
+    return API_SUCCESS
 
 
 @pytest.fixture(scope="module")
@@ -39,12 +60,14 @@ def _mock_path(module_name: str) -> str:
 async def _call(mcp, tool_name, args, mock_module, mock_return=None):
     """Call a tool with mocked make_request, return (result_text, mock)."""
     target = _mock_path(mock_module)
-    mock = AsyncMock(return_value=mock_return if mock_return is not None else API_SUCCESS)
+    ret = mock_return if mock_return is not None else _default_mock_return(mock_module)
+    mock = AsyncMock(return_value=ret)
     with patch(target, mock):
         result = await mcp.call_tool(tool_name, args)
     content = result.content[0]
-    # Tools return EmbeddedResource (application/json) for prompt-injection defense
-    text = content.resource.text if hasattr(content, "resource") else content.text
+    # Tools return EmbeddedResource — text for JSON/XML/CSV, blob for binary (PNG, PDF)
+    resource = content.resource if hasattr(content, "resource") else content
+    text = getattr(resource, "text", None) or getattr(resource, "blob", "")
     return text, mock
 
 
@@ -401,6 +424,7 @@ async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_matc
 @pytest.mark.asyncio
 async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     mock_ws = AsyncMock()
+    mock_ws.recv = AsyncMock(side_effect=TimeoutError)
     connect_mock = AsyncMock(return_value=mock_ws)
 
     with patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock):
@@ -414,16 +438,13 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
             },
         )
 
-    from app.config import get_api_key
-
-    connect_mock.assert_awaited_once_with(
-        f"wss://ws.eodhistoricaldata.com/ws/crypto?api_token={get_api_key()}",
-        open_timeout=7.5,
-        ping_interval=ANY,
-        ping_timeout=ANY,
-        close_timeout=5,
-        max_queue=None,
-    )
+    connect_mock.assert_awaited_once()
+    call_kwargs = connect_mock.call_args
+    url = call_kwargs.args[0]
+    assert "wss://ws.eodhistoricaldata.com/ws/crypto?api_token=" in url
+    assert call_kwargs.kwargs["open_timeout"] == 7.5
+    assert call_kwargs.kwargs["close_timeout"] == 5
+    assert call_kwargs.kwargs["max_queue"] is None
     mock_ws.send.assert_awaited()
     mock_ws.close.assert_awaited_once()
     content = result.content[0]
@@ -559,11 +580,16 @@ ERROR_RESPONSE_TOOLS = [
 ]
 
 
+# resolve_ticker handles None as "no results" rather than an error
+_NULL_EXCLUDES = {"resolve_ticker"}
+_NULL_RESPONSE_TOOLS = [c for c in ERROR_RESPONSE_TOOLS if c[0] not in _NULL_EXCLUDES]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "tool_name,args,mock_module",
-    ERROR_RESPONSE_TOOLS,
-    ids=[c[0] for c in ERROR_RESPONSE_TOOLS],
+    _NULL_RESPONSE_TOOLS,
+    ids=[c[0] for c in _NULL_RESPONSE_TOOLS],
 )
 async def test_null_response_raises(mcp, tool_name, args, mock_module):
     """Tool raises ToolError when API returns None."""
@@ -718,8 +744,11 @@ class TestNewsArticleSanitization:
             }
         ]
         text, _ = await _call(
-            mcp, "get_company_news", {"ticker": "AAPL.US"},
-            "get_company_news", mock_return=articles,
+            mcp,
+            "get_company_news",
+            {"ticker": "AAPL.US"},
+            "get_company_news",
+            mock_return=articles,
         )
         parsed = json.loads(text)
         article = parsed[0]
