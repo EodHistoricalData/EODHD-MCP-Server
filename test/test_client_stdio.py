@@ -16,7 +16,7 @@ if str(ROOT) not in sys.path:
 # ---------- Common defaults ----------
 COMMON: Dict[str, Any] = {
     #"api_token": "PLACE_YOUR_API_TOKEN_HERE",
-    "api_token": os.getenv("EODHD_API_KEY", "demo"),
+    "api_token": os.getenv("EODHD_API_KEY"),
     "fmt": "json",
     "ticker": "AAPL.US",
     "start_date": "2023-01-01",
@@ -134,7 +134,16 @@ def main() -> None:
         help='Full command to launch the stdio server (single string). '
              'Example: "python -m entrypoints.server_stdio --apikey YOUR_KEY".',
     )
+    parser.add_argument(
+        "--apikey",
+        "--api-key",
+        dest="api_key",
+        default=None,
+        help="EODHD API key (overrides EODHD_API_KEY env var).",
+    )
     args = parser.parse_args()
+    if args.api_key:
+        COMMON["api_token"] = args.api_key
     asyncio.run(run_tests_stdio(args.stdio_cmd))
 
 if __name__ == "__main__":

@@ -52,9 +52,7 @@ async def _run_praams_report_equity_by_isin(
         raise ToolError(str(data["error"]))
     if not isinstance(data, bytes) or not data:
         raise ToolError("Unexpected response format from API.")
-    return format_binary_response(
-        data, "application/pdf", resource_path=f"reports/praams/equity/isin/{quote_plus(ci)}.pdf"
-    )
+    return format_binary_response(data, "application/pdf", resource_path=f"reports/praams/equity/isin/{quote_plus(ci)}.pdf")
 
 
 def register(mcp: FastMCP):

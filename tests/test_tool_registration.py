@@ -16,12 +16,8 @@ def test_no_duplicate_tools():
 @pytest.mark.asyncio
 async def test_register_all_tools_no_errors(mcp_with_tools):
     """All tool modules import and register without raising."""
-    if hasattr(mcp_with_tools, "get_tools"):
-        tools = await mcp_with_tools.get_tools()
-        registered_names = set(tools)
-    else:
-        tools = await mcp_with_tools.list_tools()
-        registered_names = {t.name for t in tools}
+    tools = await mcp_with_tools.list_tools()
+    registered_names = {t.name for t in tools}
     # Some tools may register aliases (e.g. praams), so >= is correct
     assert len(registered_names) >= len(ALL_TOOLS) - 1, (
         f"Expected >= {len(ALL_TOOLS) - 1} tools, got {len(registered_names)}. "

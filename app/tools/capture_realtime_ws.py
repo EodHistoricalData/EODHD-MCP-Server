@@ -105,6 +105,10 @@ def register(mcp: FastMCP):
             ping_timeout (float): WebSocket ping timeout in seconds.
             connect_timeout (float): Overall connection timeout in seconds.
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if websockets is None:
             raise ToolError("The 'websockets' package is required. Install with: pip install websockets")
@@ -123,7 +127,7 @@ def register(mcp: FastMCP):
         sym_list = [s for s in sym_str.split(",") if s]
 
         # Build WS URL with token
-        token = api_token or "demo"
+        token = api_token
         uri = f"{WS_BASE}/{endpoint}?api_token={token}"
 
         started_at = int(time.time() * 1000)

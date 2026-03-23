@@ -96,6 +96,10 @@ def register(mcp: FastMCP):
             "Tesla and Nvidia with pagination" → symbols=["TSLA.US", "NVDA.US"], page_limit=10, page_offset=0
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate inputs ---
         syms = _normalize_symbols(symbols)

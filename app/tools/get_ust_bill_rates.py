@@ -62,6 +62,10 @@ def register(mcp: FastMCP):
             "T-bill rates for 2025, first 50 records" → get_ust_bill_rates(year=2025, limit=50)
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         url = f"{EODHD_API_BASE}/ust/bill-rates?1=1"
 

@@ -99,6 +99,10 @@ def register(mcp: FastMCP):
             "France inflation (CPI)" → get_macro_indicator(country="FRA", indicator="inflation_consumer_prices_annual")
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):

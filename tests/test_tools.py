@@ -21,19 +21,6 @@ from fastmcp.exceptions import ToolError
 # ---------------------------------------------------------------------------
 
 API_SUCCESS = {"ok": True}
-DEFAULT_BINARY_RESPONSE = b"%PDF-1.7 test"
-DEFAULT_TEXT_RESPONSE = "<svg xmlns='http://www.w3.org/2000/svg'></svg>"
-
-BINARY_RESPONSE_MODULES = {
-    "get_stock_market_logos",
-    "get_mp_praams_report_bond_by_isin",
-    "get_mp_praams_report_equity_by_isin",
-    "get_mp_praams_report_equity_by_ticker",
-}
-
-TEXT_RESPONSE_MODULES = {
-    "get_stock_market_logos_svg",
-}
 
 
 @pytest.fixture(scope="module")
@@ -44,18 +31,6 @@ def mcp():
     return server
 
 
-async def _invoke_tool(mcp, tool_name: str, args: dict):
-    """Call a FastMCP tool across public/private API variants."""
-    if hasattr(mcp, "_call_tool"):
-        result = await mcp._call_tool(tool_name, args)
-    else:
-        result = await mcp.call_tool(tool_name, args)
-
-    if hasattr(result, "content"):
-        return result.content
-    return result
-
-
 def _mock_path(module_name: str) -> str:
     """Return the mock target for make_request in a tool module."""
     return f"app.tools.{module_name}.make_request"
@@ -64,25 +39,12 @@ def _mock_path(module_name: str) -> str:
 async def _call(mcp, tool_name, args, mock_module, mock_return=None):
     """Call a tool with mocked make_request, return (result_text, mock)."""
     target = _mock_path(mock_module)
-    if mock_return is None:
-        if mock_module in BINARY_RESPONSE_MODULES:
-            mock_return = DEFAULT_BINARY_RESPONSE
-        elif mock_module in TEXT_RESPONSE_MODULES:
-            mock_return = DEFAULT_TEXT_RESPONSE
-        else:
-            mock_return = API_SUCCESS
-    mock = AsyncMock(return_value=mock_return)
+    mock = AsyncMock(return_value=mock_return if mock_return is not None else API_SUCCESS)
     with patch(target, mock):
-        result = await _invoke_tool(mcp, tool_name, args)
-    content = result[0]
+        result = await mcp.call_tool(tool_name, args)
+    content = result.content[0]
     # Tools return EmbeddedResource (application/json) for prompt-injection defense
-    if hasattr(content, "resource"):
-        if hasattr(content.resource, "text"):
-            text = content.resource.text
-        else:
-            text = content.resource.blob
-    else:
-        text = content.text
+    text = content.resource.text if hasattr(content, "resource") else content.text
     return text, mock
 
 
@@ -433,21 +395,16 @@ VALIDATION_CASES = [
 async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_match):
     """Tool raises ToolError on invalid input."""
     with pytest.raises(ToolError, match=error_match):
-        await _invoke_tool(mcp, tool_name, bad_args)
+        await mcp.call_tool(tool_name, bad_args)
 
 
 @pytest.mark.asyncio
 async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     mock_ws = AsyncMock()
-    mock_ws.recv.side_effect = [
-        json.dumps({"s": "BTC-USD", "p": 60000}),
-        asyncio.TimeoutError(),
-    ]
     connect_mock = AsyncMock(return_value=mock_ws)
 
     with patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock):
-        result = await _invoke_tool(
-            mcp,
+        result = await mcp.call_tool(
             "capture_realtime_ws",
             {
                 "feed": "crypto",
@@ -467,7 +424,7 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     )
     mock_ws.send.assert_awaited()
     mock_ws.close.assert_awaited_once()
-    content = result[0]
+    content = result.content[0]
     text = content.resource.text if hasattr(content, "resource") else content.text
     parsed = json.loads(text)
     assert parsed["feed"] == "crypto"
@@ -484,8 +441,7 @@ async def test_capture_realtime_ws_timeout_has_specific_message(mcp):
             match=r"Timed out while establishing WebSocket connection to ws\.eodhistoricaldata\.com after 3\.0 seconds\.",
         ),
     ):
-        await _invoke_tool(
-            mcp,
+        await mcp.call_tool(
             "capture_realtime_ws",
             {
                 "feed": "us_trades",
@@ -506,8 +462,7 @@ async def test_capture_realtime_ws_dns_error_has_specific_message(mcp):
             match=r"Failed to resolve WebSocket host 'ws\.eodhistoricaldata\.com': Name or service not known\.",
         ),
     ):
-        await _invoke_tool(
-            mcp,
+        await mcp.call_tool(
             "capture_realtime_ws",
             {
                 "feed": "forex",
@@ -613,7 +568,7 @@ async def test_null_response_raises(mcp, tool_name, args, mock_module):
     with pytest.raises(ToolError):
         target = _mock_path(mock_module)
         with patch(target, new_callable=AsyncMock, return_value=None):
-            await _invoke_tool(mcp, tool_name, args)
+            await mcp.call_tool(tool_name, args)
 
 
 @pytest.mark.asyncio
@@ -627,7 +582,7 @@ async def test_error_response_raises(mcp, tool_name, args, mock_module):
     with pytest.raises(ToolError):
         target = _mock_path(mock_module)
         with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            await _invoke_tool(mcp, tool_name, args)
+            await mcp.call_tool(tool_name, args)
 
 
 # ---------------------------------------------------------------------------
@@ -692,8 +647,8 @@ async def test_fundamentals_url_and_general_call(mcp):
 
     target = _mock_path("get_fundamentals_data")
     with patch(target, side_effect=_side_effect):
-        result = await _invoke_tool(mcp, "get_fundamentals_data", {"ticker": "AAPL.US"})
-    content = result[0]
+        result = await mcp.call_tool("get_fundamentals_data", {"ticker": "AAPL.US"})
+    content = result.content[0]
     text = content.resource.text if hasattr(content, "resource") else content.text
     parsed = json.loads(text)
     assert parsed["General"]["Type"] == "Common Stock"
@@ -701,7 +656,7 @@ async def test_fundamentals_url_and_general_call(mcp):
 
 
 # ---------------------------------------------------------------------------
-# 6. Sanitization — invisible chars and recursive stripping
+# 6. Sanitization — invisible chars, recursive stripping, news HTML/truncation
 # ---------------------------------------------------------------------------
 
 
@@ -749,13 +704,14 @@ class TestSanitizeData:
         assert _sanitize_data(3.14) == 3.14
 
 
-class TestNewsArticleFormatting:
+class TestNewsArticleSanitization:
     @pytest.mark.asyncio
-    async def test_news_payload_preserves_content_but_strips_invisible_chars(self, mcp):
+    async def test_html_stripped_and_content_truncated(self, mcp):
+        long_content = "<p>" + "A" * 6000 + "</p>"
         articles = [
             {
-                "title": "Break\u200bing News",
-                "content": "<p>Keep markup</p>\u202ehidden",
+                "title": "<b>Breaking</b> News",
+                "content": long_content,
                 "link": "https://example.com",
             }
         ]
@@ -765,5 +721,7 @@ class TestNewsArticleFormatting:
         )
         parsed = json.loads(text)
         article = parsed[0]
+        assert "<b>" not in article["title"]
         assert article["title"] == "Breaking News"
-        assert article["content"] == "<p>Keep markup</p>hidden"
+        assert "<p>" not in article["content"]
+        assert len(article["content"]) == 5000

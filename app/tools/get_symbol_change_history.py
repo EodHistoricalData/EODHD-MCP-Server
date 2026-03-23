@@ -63,6 +63,10 @@ def register(mcp: FastMCP):
             "Recent symbol changes last 90 days" → start_date="2025-12-06", end_date="2026-03-06"
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # Validate inputs
         if fmt != "json":

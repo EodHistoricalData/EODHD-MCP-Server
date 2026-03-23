@@ -42,6 +42,10 @@ def register(mcp: FastMCP):
             "What stock exchanges does EODHD support?" → get_exchanges_list()
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

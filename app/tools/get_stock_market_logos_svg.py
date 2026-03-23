@@ -44,6 +44,10 @@ def register(mcp: FastMCP):
             "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').")

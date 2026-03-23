@@ -11,6 +11,23 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+_NEWS_CONTENT_MAX_LEN = 5000
+
+
+def _sanitize_articles(data: list) -> list:
+    """Strip HTML tags from title/content and truncate content to reduce injection surface."""
+    for article in data:
+        if not isinstance(article, dict):
+            continue
+        for field in ("title", "content"):
+            val = article.get(field)
+            if isinstance(val, str):
+                val = _HTML_TAG_RE.sub("", val)
+                if field == "content" and len(val) > _NEWS_CONTENT_MAX_LEN:
+                    val = val[:_NEWS_CONTENT_MAX_LEN]
+                article[field] = val
+    return data
 
 
 ALLOWED_FMT = {"json", "xml"}
@@ -74,6 +91,10 @@ def register(mcp: FastMCP):
             "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate required conditions ---
         if not ticker and not tag:
@@ -122,5 +143,9 @@ def register(mcp: FastMCP):
             if not isinstance(data, str):
                 raise ToolError("Unexpected XML response format from API.")
             return format_text_response(data, "application/xml", resource_path="news/feed.xml")
+
+        # Sanitize article text fields before returning
+        if isinstance(data, list):
+            data = _sanitize_articles(data)
 
         return format_json_response(data)

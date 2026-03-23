@@ -46,6 +46,11 @@ def register(mcp: FastMCP):
             - type (str): asset type (Common Stock, ETF, etc.)
             - exchange (str): exchange code
             - alternatives (list): if ambiguous, top 10 matches each with ticker, name, isin, type, exchange
+
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if not query or not isinstance(query, str):
             raise ToolError("Parameter 'query' is required and must be a non-empty string.")
