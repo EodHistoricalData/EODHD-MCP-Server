@@ -7,7 +7,7 @@ from typing import Any, Literal
 import httpx
 from fastmcp.server.dependencies import get_http_request
 
-from .config import EODHD_RETRY_ENABLED, get_api_key
+from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
 
 logger = logging.getLogger("eodhd-mcp.api_client")
 
@@ -74,7 +74,7 @@ def _ensure_api_token(url: str) -> str:
     if "api_token=" in url:
         return url
 
-    token = _resolve_eodhd_token_from_request() or get_api_key()
+    token = _resolve_eodhd_token_from_request() or EODHD_API_KEY
     if not token:
         return url  # best-effort; caller may have other auth patterns
 
