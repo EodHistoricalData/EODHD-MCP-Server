@@ -22,6 +22,27 @@ from fastmcp.exceptions import ToolError
 
 API_SUCCESS = {"ok": True}
 
+# Tools that expect bytes from make_request (response_mode="bytes")
+_BYTES_TOOLS = {
+    "get_stock_market_logos",
+    "get_mp_praams_report_bond_by_isin",
+    "get_mp_praams_report_equity_by_isin",
+    "get_mp_praams_report_equity_by_ticker",
+}
+# Tools that expect str from make_request (SVG text)
+_TEXT_TOOLS = {
+    "get_stock_market_logos_svg",
+}
+
+
+def _default_mock_return(mock_module: str) -> object:
+    """Return an appropriate mock value based on the tool's expected response type."""
+    if mock_module in _BYTES_TOOLS:
+        return b"\x89PNG fake image data"
+    if mock_module in _TEXT_TOOLS:
+        return "<svg>test</svg>"
+    return API_SUCCESS
+
 
 @pytest.fixture(scope="module")
 def mcp():
@@ -39,7 +60,8 @@ def _mock_path(module_name: str) -> str:
 async def _call(mcp, tool_name, args, mock_module, mock_return=None):
     """Call a tool with mocked make_request, return (result_text, mock)."""
     target = _mock_path(mock_module)
-    mock = AsyncMock(return_value=mock_return if mock_return is not None else API_SUCCESS)
+    ret = mock_return if mock_return is not None else _default_mock_return(mock_module)
+    mock = AsyncMock(return_value=ret)
     with patch(target, mock):
         result = await mcp.call_tool(tool_name, args)
     content = result.content[0]
@@ -401,6 +423,7 @@ async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_matc
 @pytest.mark.asyncio
 async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     mock_ws = AsyncMock()
+    mock_ws.recv = AsyncMock(side_effect=TimeoutError)
     connect_mock = AsyncMock(return_value=mock_ws)
 
     with patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock):
@@ -718,8 +741,11 @@ class TestNewsArticleSanitization:
             }
         ]
         text, _ = await _call(
-            mcp, "get_company_news", {"ticker": "AAPL.US"},
-            "get_company_news", mock_return=articles,
+            mcp,
+            "get_company_news",
+            {"ticker": "AAPL.US"},
+            "get_company_news",
+            mock_return=articles,
         )
         parsed = json.loads(text)
         article = parsed[0]
