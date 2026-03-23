@@ -9,7 +9,6 @@ reject requests when formats don't match exactly.
 import logging
 import re
 from datetime import datetime, timezone
-from urllib.parse import quote_plus
 
 from fastmcp.exceptions import ToolError
 
@@ -17,23 +16,6 @@ logger = logging.getLogger("eodhd-mcp.formatter")
 
 # Characters that would break a URL path segment or query string.
 _URL_UNSAFE_RE = re.compile(r"[?&#/\s]")
-
-
-# ── Query-string helpers ─────────────────────────────────────────────────
-
-
-def build_query_param(key: str, val: str | int | float | None) -> str:
-    """Return ``&key=value`` (URL-encoded) or ``""`` when *val* is ``None``/empty."""
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
-
-
-def build_query_bool(key: str, val: bool | None) -> str:
-    """Return ``&key=1`` / ``&key=0`` or ``""`` when *val* is ``None``."""
-    if val is None:
-        return ""
-    return f"&{key}={(1 if val else 0)}"
 
 
 # ── Ticker / exchange sanitisers ─────────────────────────────────────────
