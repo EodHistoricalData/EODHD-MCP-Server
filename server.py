@@ -85,14 +85,6 @@ def main(argv: list[str] | None = None) -> int:
     if unknown:
         logger.warning("Ignoring extra args from client: %d item(s)", len(unknown))
 
-    from app.config import get_api_key
-
-    if get_api_key() == "demo":
-        logger.warning(
-            "No EODHD_API_KEY set — using 'demo' key (severe rate limits, restricted symbols). "
-            "Set EODHD_API_KEY env var or pass --apikey to use your key.",
-        )
-
     mcp = FastMCP("eodhd-datasets")
     register_all_tools(mcp)
     register_all_resources(mcp)
