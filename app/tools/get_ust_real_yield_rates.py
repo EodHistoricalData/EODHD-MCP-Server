@@ -51,12 +51,6 @@ def register(mcp: FastMCP):
             "real yield rates for 2025" → year=2025
             "last 10 inflation-adjusted treasury yields" → limit=10
             "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
-
-
-        Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
-            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
-            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
 

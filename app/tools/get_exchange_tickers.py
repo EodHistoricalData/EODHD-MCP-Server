@@ -48,12 +48,6 @@ def register(mcp: FastMCP):
             "All tickers on London Stock Exchange" → get_exchange_tickers(exchange_code="LSE")
             "Show me delisted US stocks" → get_exchange_tickers(exchange_code="US", delisted=True)
             "ETFs trading on XETRA" → get_exchange_tickers(exchange_code="XETRA", type="etf")
-
-
-        Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
-            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
-            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if not exchange_code or not isinstance(exchange_code, str):
             raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")

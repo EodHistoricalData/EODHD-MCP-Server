@@ -47,12 +47,6 @@ def register(mcp: FastMCP):
             "Apple logo" → get_stock_market_logos(symbol="AAPL.US")
             "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
             "Toyota logo from Tokyo" → get_stock_market_logos(symbol="7203.TSE")
-
-
-        Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
-            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
-            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(

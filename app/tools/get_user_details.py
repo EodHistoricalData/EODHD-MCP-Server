@@ -44,12 +44,6 @@ def register(mcp: FastMCP):
         Examples:
             "What plan am I on?" → get_user_details()
             "How many API calls have I used today?" → get_user_details()
-
-
-        Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
-            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
-            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # Endpoint: /api/user
         # The API returns JSON by default; no fmt parameter needed.

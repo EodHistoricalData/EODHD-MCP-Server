@@ -77,12 +77,6 @@ def register(mcp: FastMCP):
             - /api/cboe/index?filter[index_code]=BDE30P
               &filter[feed_type]=snapshot_official_closing
               &filter[date]=2017-02-01
-
-
-        Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
-            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
-            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):

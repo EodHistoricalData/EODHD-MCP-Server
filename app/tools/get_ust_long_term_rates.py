@@ -52,12 +52,6 @@ def register(mcp: FastMCP):
             "long-term treasury rates for 2024" → year=2024
             "20-year bond rates this year, first 20 records" → year=2026, limit=20
             "real long-term rate averages for 2022" → year=2022
-
-
-        Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
-            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
-            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         url = f"{EODHD_API_BASE}/ust/long-term-rates?1=1"
 
