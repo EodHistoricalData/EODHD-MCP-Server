@@ -1,19 +1,12 @@
 # get_earnings_trends.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(val)}"
 
 
 def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
@@ -70,17 +63,15 @@ def register(mcp: FastMCP):
             raise ToolError("Parameter 'symbols' is required (e.g., 'AAPL.US' or ['AAPL.US','MSFT.US']).")
 
         url = f"{EODHD_API_BASE}/calendar/trends?1=1"
-        url += _q("symbols", sym_param)
+        url += build_query_param("symbols", sym_param)
         # JSON-only; still pass fmt for parity with other tools (server ignores non-JSON anyway)
-        url += _q("fmt", (fmt or "json").lower())
+        url += build_query_param("fmt", (fmt or "json").lower())
 
         if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request via env
+            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 

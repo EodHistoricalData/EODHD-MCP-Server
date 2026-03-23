@@ -86,8 +86,6 @@ def register(mcp: FastMCP):
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 

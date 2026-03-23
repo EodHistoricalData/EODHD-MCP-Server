@@ -1,19 +1,12 @@
 # get_mp_indices_list.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -54,13 +47,11 @@ def register(mcp: FastMCP):
             raise ToolError("Only JSON is supported for this endpoint.")
 
         url = f"{EODHD_API_BASE}/mp/unicornbay/spglobal/list?1=1"
-        url += _q("fmt", "json")
+        url += build_query_param("fmt", "json")
         if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request
+            url += build_query_param("api_token", api_token)  # otherwise appended by make_request
 
         data = await make_request(url)
-        if data is None:
-            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
