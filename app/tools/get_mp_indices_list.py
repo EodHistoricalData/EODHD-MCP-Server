@@ -1,12 +1,13 @@
 # get_mp_indices_list.py
 
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from mcp.types import ToolAnnotations
+
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
-from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
-from mcp.types import ToolAnnotations
 
 
 def register(mcp: FastMCP):

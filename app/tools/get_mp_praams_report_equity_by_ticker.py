@@ -2,13 +2,14 @@
 
 from urllib.parse import quote_plus
 
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from mcp.types import ToolAnnotations
+
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_binary_response
-from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
-from mcp.types import ToolAnnotations
 
 
 async def _run_praams_report_equity_by_ticker(

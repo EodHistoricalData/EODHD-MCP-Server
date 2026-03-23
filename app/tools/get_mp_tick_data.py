@@ -1,12 +1,13 @@
 # get_mp_tick_data.py
 
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.response_formatter import format_json_response
 
 
 def _to_int(name: str, v: int | str | None) -> int | None:

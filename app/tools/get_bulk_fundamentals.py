@@ -2,18 +2,14 @@
 
 from urllib.parse import quote_plus
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
+from app.response_formatter import format_json_response, format_text_response
 
 
 def register(mcp: FastMCP):
@@ -94,7 +90,7 @@ def register(mcp: FastMCP):
         url = f"{EODHD_API_BASE}/bulk-fundamentals/{quote_plus(exchange)}?fmt={fmt}"
 
         if symbols:
-            url += _q("symbols", symbols.strip())
+            url += build_query_param("symbols", symbols.strip())
 
         if offset is not None:
             try:
@@ -115,7 +111,7 @@ def register(mcp: FastMCP):
             url += f"&limit={lim}"
 
         if version:
-            url += _q("version", version.strip())
+            url += build_query_param("version", version.strip())
 
         if api_token:
             url += f"&api_token={api_token}"
