@@ -2,12 +2,13 @@
 
 import re
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 
 ISO3_RE = re.compile(r"^[A-Z]{3}$")
 ALLOWED_FMT = {"json", "csv"}

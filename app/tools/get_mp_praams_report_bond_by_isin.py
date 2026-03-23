@@ -2,12 +2,13 @@
 
 from urllib.parse import quote_plus
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_binary_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.config import EODHD_API_BASE
+from app.response_formatter import ResourceResponse, format_binary_response
 
 
 def _q(key: str, val: str | int | None) -> str:
@@ -52,7 +53,9 @@ async def _run_praams_report_bond_by_isin(
         raise ToolError(str(data["error"]))
     if not isinstance(data, bytes) or not data:
         raise ToolError("Unexpected response format from API.")
-    return format_binary_response(data, "application/pdf", resource_path=f"reports/praams/bond/isin/{quote_plus(ci)}.pdf")
+    return format_binary_response(
+        data, "application/pdf", resource_path=f"reports/praams/bond/isin/{quote_plus(ci)}.pdf"
+    )
 
 
 def register(mcp: FastMCP):

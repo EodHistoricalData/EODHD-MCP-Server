@@ -1,14 +1,17 @@
 # get_support_resistance_levels.py
 
+from collections.abc import Callable
 from datetime import datetime
+from typing import Any
+
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response
-from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
-from mcp.types import ToolAnnotations
 
 ALLOWED_METHODS = {"classic", "fibonacci", "woodie", "camarilla", "demark"}
 
@@ -91,7 +94,7 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
     }
 
 
-CALC_MAP = {
+CALC_MAP: dict[str, Callable[..., dict[str, Any]]] = {
     "classic": _calc_classic,
     "fibonacci": _calc_fibonacci,
     "woodie": _calc_woodie,

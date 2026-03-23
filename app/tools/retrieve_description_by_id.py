@@ -2,10 +2,11 @@ import re
 from pathlib import Path
 from typing import Any
 
-from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.response_formatter import format_json_response
 
 _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "references"
 
