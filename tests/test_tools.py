@@ -414,8 +414,10 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
             },
         )
 
+    from app.config import get_api_key
+
     connect_mock.assert_awaited_once_with(
-        "wss://ws.eodhistoricaldata.com/ws/crypto?api_token=demo",
+        f"wss://ws.eodhistoricaldata.com/ws/crypto?api_token={get_api_key()}",
         open_timeout=7.5,
         ping_interval=ANY,
         ping_timeout=ANY,

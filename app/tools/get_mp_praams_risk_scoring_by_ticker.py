@@ -1,23 +1,12 @@
 # get_mp_praams_risk_scoring_by_ticker.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    """
-    Helper to build query parameters safely.
-    Skips None/empty, URL-encodes values.
-    """
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def _canon_ticker(v: str) -> str | None:
@@ -57,12 +46,10 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
     # Example: /api/mp/praams/analyse/equity/ticker/AAPL?api_token=...  (JSON only)
     url = f"{EODHD_API_BASE}/mp/praams/analyse/equity/ticker/{ct}?1=1"
     if api_token:
-        url += _q("api_token", api_token)  # otherwise appended by make_request via env
+        url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
 
     # Call upstream
     data = await make_request(url)
-    if data is None:
-        raise ToolError("No response from API.")
 
     if isinstance(data, dict) and data.get("error"):
         raise ToolError(str(data["error"]))

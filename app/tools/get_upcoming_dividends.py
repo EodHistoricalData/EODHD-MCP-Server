@@ -1,19 +1,12 @@
 # get_upcoming_dividends.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -81,26 +74,24 @@ def register(mcp: FastMCP):
         # --- Build URL ---
         # Base: /api/calendar/dividends?filter[symbol]=...&filter[date_from]=...&page[limit]=...&page[offset]=...&fmt=json
         url = f"{EODHD_API_BASE}/calendar/dividends?1=1"
-        url += _q("fmt", fmt)
+        url += build_query_param("fmt", fmt)
 
         # Filters
-        url += _q("filter[symbol]", symbol)
-        url += _q("filter[date_eq]", date_eq)
-        url += _q("filter[date_from]", date_from)
-        url += _q("filter[date_to]", date_to)
+        url += build_query_param("filter[symbol]", symbol)
+        url += build_query_param("filter[date_eq]", date_eq)
+        url += build_query_param("filter[date_from]", date_from)
+        url += build_query_param("filter[date_to]", date_to)
 
         # Pagination
-        url += _q("page[limit]", page_limit)
-        url += _q("page[offset]", page_offset)
+        url += build_query_param("page[limit]", page_limit)
+        url += build_query_param("page[offset]", page_offset)
 
         # Token (make_request will add env token if omitted)
         if api_token:
-            url += _q("api_token", api_token)
+            url += build_query_param("api_token", api_token)
 
         # --- Request upstream ---
         data = await make_request(url)
-        if data is None:
-            raise ToolError("No response from API.")
 
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))

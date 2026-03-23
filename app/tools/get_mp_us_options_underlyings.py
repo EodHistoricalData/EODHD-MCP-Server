@@ -1,19 +1,12 @@
 # get_mp_us_options_underlyings.py
 
-from urllib.parse import quote_plus
-
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
+from app.input_formatter import build_query_param
 from app.response_formatter import format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-
-def _q(key: str, val: str | int | None) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 
 def register(mcp: FastMCP):
@@ -47,18 +40,16 @@ def register(mcp: FastMCP):
 
         """
         base = f"{EODHD_API_BASE}/mp/unicornbay/options/underlying-symbols?1=1"
-        base += _q("page[offset]", page_offset)
-        base += _q("page[limit]", page_limit)
+        base += build_query_param("page[offset]", page_offset)
+        base += build_query_param("page[limit]", page_limit)
         if api_token:
-            base += _q("api_token", api_token)
+            base += build_query_param("api_token", api_token)
         # format
         if fmt:
-            base += _q("fmt", fmt)
+            base += build_query_param("fmt", fmt)
 
         data = await make_request(base)
 
-        if data is None:
-            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
         try:
