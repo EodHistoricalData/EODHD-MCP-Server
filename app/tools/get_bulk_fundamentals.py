@@ -10,6 +10,12 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 
+def _q(key: str, val: str | int | None) -> str:
+    if val is None or val == "":
+        return ""
+    return f"&{key}={quote_plus(str(val))}"
+
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_bulk_fundamentals(
@@ -88,7 +94,7 @@ def register(mcp: FastMCP):
         url = f"{EODHD_API_BASE}/bulk-fundamentals/{quote_plus(exchange)}?fmt={fmt}"
 
         if symbols:
-            url += build_query_param("symbols", symbols.strip())
+            url += _q("symbols", symbols.strip())
 
         if offset is not None:
             try:
@@ -109,13 +115,15 @@ def register(mcp: FastMCP):
             url += f"&limit={lim}"
 
         if version:
-            url += build_query_param("version", version.strip())
+            url += _q("version", version.strip())
 
         if api_token:
             url += f"&api_token={api_token}"
 
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
+        if data is None:
+            raise ToolError("No response from API.")
         if isinstance(data, dict) and data.get("error"):
             raise ToolError(str(data["error"]))
 
