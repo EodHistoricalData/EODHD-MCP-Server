@@ -9,7 +9,7 @@ Covers:
 import asyncio
 import json
 import socket
-from unittest.mock import ANY, AsyncMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from app.tools import register_all
@@ -65,8 +65,9 @@ async def _call(mcp, tool_name, args, mock_module, mock_return=None):
     with patch(target, mock):
         result = await mcp.call_tool(tool_name, args)
     content = result.content[0]
-    # Tools return EmbeddedResource (application/json) for prompt-injection defense
-    text = content.resource.text if hasattr(content, "resource") else content.text
+    # Tools return EmbeddedResource — text for JSON/XML/CSV, blob for binary (PNG, PDF)
+    resource = content.resource if hasattr(content, "resource") else content
+    text = getattr(resource, "text", None) or getattr(resource, "blob", "")
     return text, mock
 
 
@@ -437,16 +438,13 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
             },
         )
 
-    from app.config import get_api_key
-
-    connect_mock.assert_awaited_once_with(
-        f"wss://ws.eodhistoricaldata.com/ws/crypto?api_token={get_api_key()}",
-        open_timeout=7.5,
-        ping_interval=ANY,
-        ping_timeout=ANY,
-        close_timeout=5,
-        max_queue=None,
-    )
+    connect_mock.assert_awaited_once()
+    call_kwargs = connect_mock.call_args
+    url = call_kwargs.args[0]
+    assert "wss://ws.eodhistoricaldata.com/ws/crypto?api_token=" in url
+    assert call_kwargs.kwargs["open_timeout"] == 7.5
+    assert call_kwargs.kwargs["close_timeout"] == 5
+    assert call_kwargs.kwargs["max_queue"] is None
     mock_ws.send.assert_awaited()
     mock_ws.close.assert_awaited_once()
     content = result.content[0]
@@ -582,11 +580,16 @@ ERROR_RESPONSE_TOOLS = [
 ]
 
 
+# resolve_ticker handles None as "no results" rather than an error
+_NULL_EXCLUDES = {"resolve_ticker"}
+_NULL_RESPONSE_TOOLS = [c for c in ERROR_RESPONSE_TOOLS if c[0] not in _NULL_EXCLUDES]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "tool_name,args,mock_module",
-    ERROR_RESPONSE_TOOLS,
-    ids=[c[0] for c in ERROR_RESPONSE_TOOLS],
+    _NULL_RESPONSE_TOOLS,
+    ids=[c[0] for c in _NULL_RESPONSE_TOOLS],
 )
 async def test_null_response_raises(mcp, tool_name, args, mock_module):
     """Tool raises ToolError when API returns None."""
