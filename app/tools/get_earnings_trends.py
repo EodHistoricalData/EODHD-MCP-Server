@@ -53,6 +53,10 @@ def register(mcp: FastMCP):
             "Compare Tesla and Nvidia earnings trends" → symbols="TSLA.US,NVDA.US"
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         sym_param = _normalize_symbols(symbols)
         if not sym_param:

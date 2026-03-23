@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import json
 import os
@@ -9,7 +10,7 @@ from fastmcp import Client
 # ---------- Common defaults (can be overridden per test) ----------
 COMMON: Dict[str, Any] = {
     # "api_token": "PLACE_YOUR_API_TOKEN_HERE",
-    "api_token": os.getenv("EODHD_API_KEY", "demo"),
+    "api_token": os.getenv("EODHD_API_KEY"),
     "fmt": "json",
     "ticker": "AAPL.US",
     "start_date": "2023-01-01",
@@ -49,7 +50,7 @@ def _build_params(test: Test) -> Dict[str, Any]:
 
 # ---------- Where to load tests from (single registration point) ----------
 TEST_MODULES = [
-    "all_tests_beta",
+    #"all_tests_beta",
     "all_tests",# add more like "eod", "intraday", etc.
 ]
 
@@ -103,4 +104,20 @@ async def run_tests(endpoint: str = "http://127.0.0.1:8000/mcp") -> None:
 
 # ---------- CLI entry ----------
 if __name__ == "__main__":
-    asyncio.run(run_tests())
+    parser = argparse.ArgumentParser(description="Run MCP tool tests against HTTP server.")
+    parser.add_argument(
+        "--apikey",
+        "--api-key",
+        dest="api_key",
+        default=None,
+        help="EODHD API key (overrides EODHD_API_KEY env var).",
+    )
+    parser.add_argument(
+        "--endpoint",
+        default="http://127.0.0.1:8000/mcp",
+        help="HTTP endpoint URL (default: http://127.0.0.1:8000/mcp).",
+    )
+    args = parser.parse_args()
+    if args.api_key:
+        COMMON["api_token"] = args.api_key
+    asyncio.run(run_tests(endpoint=args.endpoint))

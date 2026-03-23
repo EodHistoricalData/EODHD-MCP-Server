@@ -1,6 +1,5 @@
 # get_support_resistance_levels.py
 
-from collections.abc import Callable
 from datetime import datetime
 
 from app.api_client import make_request
@@ -12,8 +11,6 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 ALLOWED_METHODS = {"classic", "fibonacci", "woodie", "camarilla", "demark"}
-ThreePointCalc = Callable[[float, float, float], dict]
-DemarkCalc = Callable[[float, float, float, float], dict]
 
 
 def _calc_classic(high: float, low: float, close: float) -> dict:
@@ -94,11 +91,12 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
     }
 
 
-CALC_MAP: dict[str, ThreePointCalc] = {
+CALC_MAP = {
     "classic": _calc_classic,
     "fibonacci": _calc_fibonacci,
     "woodie": _calc_woodie,
     "camarilla": _calc_camarilla,
+    "demark": _calc_demark,
 }
 
 
@@ -149,7 +147,6 @@ def register(mcp: FastMCP):
             "Classic pivot points for Apple last month" → ticker="AAPL.US", method="classic", start_date="2026-02-01"
             "Fibonacci support/resistance for Bitcoin weekly" → ticker="BTC-USD.CC", method="fibonacci", period="w"
             "Camarilla levels for Tesla in 2025" → ticker="TSLA.US", method="camarilla", start_date="2025-01-01", end_date="2025-12-31"
-
         """
         # --- Validation ---
         ticker = sanitize_ticker(ticker)
@@ -183,6 +180,7 @@ def register(mcp: FastMCP):
             raise ToolError("No price data available for the given ticker and date range.")
 
         # --- Calculate support/resistance for each bar ---
+        calc_fn = CALC_MAP[method]
         results = []
         for bar in data:
             h = bar.get("high")
@@ -195,11 +193,9 @@ def register(mcp: FastMCP):
             if method == "demark":
                 if o is None:
                     continue
-                demark_calc: DemarkCalc = _calc_demark
-                levels = demark_calc(h, low, c, o)
+                levels = calc_fn(h, low, c, o)
             else:
-                pivot_calc: ThreePointCalc = CALC_MAP[method]
-                levels = pivot_calc(h, low, c)
+                levels = calc_fn(h, low, c)
 
             results.append(
                 {

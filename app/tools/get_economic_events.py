@@ -51,6 +51,10 @@ def register(mcp: FastMCP):
             "All events in March 2026, first 200" → start_date="2026-03-01", end_date="2026-03-31", limit=200
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:

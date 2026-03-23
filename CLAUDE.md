@@ -41,7 +41,7 @@ server.py             — entry point, transport selection, argparse
 ## Conventions
 - Every tool file exports `register(mcp: FastMCP)` — no exceptions
 - All tools are read-only (`readOnlyHint=True`)
-- Input sanitisation: call `sanitize_ticker()`, `sanitize_exchange()` from `app/input_formatter.py` (only reject URL-breaking chars; let API validate)
+- Input sanitisation: call `sanitize_ticker()`, `sanitize_exchange()` from `app/formatter.py` (only reject URL-breaking chars; let API validate)
 - Errors: raise `ToolError` for user-facing errors (MCP-native)
 - API responses: return `json.dumps(data, indent=2)`
 - Docstrings: every tool function has detailed docstring with Args, Returns, Examples

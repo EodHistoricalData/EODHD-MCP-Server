@@ -345,6 +345,10 @@ def register(mcp: FastMCP):
             "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate basics
         if fmt != "json":

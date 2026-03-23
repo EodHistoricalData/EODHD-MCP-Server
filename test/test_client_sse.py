@@ -1,5 +1,6 @@
 # test_client_sse.py
 
+import argparse
 import asyncio
 import json
 import os
@@ -11,7 +12,7 @@ from fastmcp import Client
 # ---------- Common defaults ----------
 COMMON: Dict[str, Any] = {
     #"api_token": "PLACE_YOUR_API_TOKEN_HERE",
-    "api_token": os.getenv("EODHD_API_KEY", "demo"),
+    "api_token": os.getenv("EODHD_API_KEY"),
     "fmt": "json",
     "ticker": "AAPL.US",
     "start_date": "2023-01-01",
@@ -102,7 +103,20 @@ async def run_tests(
 
 # ---------- CLI entry ----------
 if __name__ == "__main__":
-    import sys
-
-    cli_endpoint = sys.argv[1] if len(sys.argv) > 1 else None
-    asyncio.run(run_tests(endpoint=cli_endpoint))
+    parser = argparse.ArgumentParser(description="Run MCP tool tests against SSE server.")
+    parser.add_argument(
+        "--apikey",
+        "--api-key",
+        dest="api_key",
+        default=None,
+        help="EODHD API key (overrides EODHD_API_KEY env var).",
+    )
+    parser.add_argument(
+        "--endpoint",
+        default=None,
+        help="SSE endpoint URL (default: http://127.0.0.1:8000/sse or $MCP_ENDPOINT).",
+    )
+    args = parser.parse_args()
+    if args.api_key:
+        COMMON["api_token"] = args.api_key
+    asyncio.run(run_tests(endpoint=args.endpoint))

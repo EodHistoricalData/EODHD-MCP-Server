@@ -77,8 +77,6 @@ def register(mcp: FastMCP):
             - /api/cboe/index?filter[index_code]=BDE30P
               &filter[feed_type]=snapshot_official_closing
               &filter[date]=2017-02-01
-
-
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):

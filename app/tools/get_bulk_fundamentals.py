@@ -4,8 +4,7 @@ from urllib.parse import quote_plus
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+from app.response_formatter import format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -21,7 +20,7 @@ def register(mcp: FastMCP):
         version: str | None = None,  # "1.2" for single-symbol-like output
         fmt: str = "json",  # 'json' (default) or 'csv'
         api_token: str | None = None,  # per-call override
-    ) -> ResourceResponse:
+    ) -> list:
         """
 
         Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
@@ -69,6 +68,10 @@ def register(mcp: FastMCP):
             "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
 
 
+        Demo:
+            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if not exchange or not isinstance(exchange, str):
             raise ToolError(
