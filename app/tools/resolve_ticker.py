@@ -1,7 +1,6 @@
 # app/tools/resolve_ticker.py
 
 import logging
-
 from urllib.parse import quote
 
 from fastmcp import FastMCP

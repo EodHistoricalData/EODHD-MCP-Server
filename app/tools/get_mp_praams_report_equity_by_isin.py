@@ -2,12 +2,13 @@
 
 from urllib.parse import quote_plus
 
-from app.api_client import make_request
-from app.input_formatter import build_url
-from app.response_formatter import ResourceResponse, format_binary_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_binary_response
 
 
 def _canon_isin(v: str) -> str | None:

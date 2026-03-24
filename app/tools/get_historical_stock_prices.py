@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range, sanitize_ticker
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 
 logger = logging.getLogger(__name__)
@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 ALLOWED_PERIODS = {"d", "w", "m"}  # daily, weekly, monthly (per docs)
 ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}  # default is csv in API, but we default to json here
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))

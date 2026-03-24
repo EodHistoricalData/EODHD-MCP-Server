@@ -13,9 +13,6 @@ Covers:
 import base64
 import json
 
-import pytest
-from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
-
 from app.response_formatter import (
     _resource_uri,
     _sanitize_data,
@@ -24,7 +21,7 @@ from app.response_formatter import (
     format_json_response,
     format_text_response,
 )
-
+from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 # ---------------------------------------------------------------------------
 # _strip_invisible_chars

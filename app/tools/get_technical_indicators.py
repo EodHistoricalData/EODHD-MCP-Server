@@ -1,12 +1,13 @@
 # app/tools/get_technical_indicators.py
 import logging
 
-from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +56,7 @@ SPLITADJ_ONLY_SUPPORTED = {
     "macd",
 }
 
+
 def _normalize_function(fn: str) -> str | None:
     if not isinstance(fn, str) or not fn.strip():
         return None
@@ -83,6 +85,7 @@ def _validate_float(name: str, val: int | float | str | None) -> str | None:
     except Exception:
         return f"Parameter '{name}' must be a number."
     return None
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))

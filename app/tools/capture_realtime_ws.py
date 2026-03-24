@@ -1,9 +1,8 @@
 # app/tools/capture_realtime_ws.py
 
-import logging
-
 import asyncio
 import json
+import logging
 import socket
 import time
 from urllib.parse import urlparse
@@ -17,10 +16,10 @@ from app.response_formatter import ResourceResponse, format_json_response
 # WebSocket runtime
 try:
     import websockets
-
-logger = logging.getLogger(__name__)
 except Exception:  # pragma: no cover
     websockets = None  # type: ignore[assignment]  # We'll error nicely at runtime if unavailable.
+
+logger = logging.getLogger(__name__)
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
 

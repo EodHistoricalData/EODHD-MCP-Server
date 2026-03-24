@@ -12,6 +12,7 @@ from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
+
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
     async def get_insider_transactions(

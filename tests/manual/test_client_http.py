@@ -4,12 +4,12 @@ import asyncio
 import json
 import os
 from importlib import import_module
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any
 
 from fastmcp import Client
 
 # ---------- Common defaults (can be overridden per manual) ----------
-COMMON: Dict[str, Any] = {
+COMMON: dict[str, Any] = {
     # "api_token": "PLACE_YOUR_API_TOKEN_HERE",
     "api_token": os.getenv("EODHD_API_KEY"),
     "fmt": "json",
@@ -21,8 +21,9 @@ COMMON: Dict[str, Any] = {
 }
 
 # ---------- Test registry ----------
-Test = Dict[str, Any]
-TESTS: List[Test] = []
+Test = dict[str, Any]
+TESTS: list[Test] = []
+
 
 def register_test(test: Test) -> None:
     """
@@ -39,8 +40,9 @@ def register_test(test: Test) -> None:
         raise ValueError("Test must include 'name' and 'tool'.")
     TESTS.append(test)
 
-def _build_params(test: Test) -> Dict[str, Any]:
-    params: Dict[str, Any] = {}
+
+def _build_params(test: Test) -> dict[str, Any]:
+    params: dict[str, Any] = {}
     use_common = test.get("use_common", [])
     for key in use_common:
         if key in COMMON and COMMON[key] is not None:
@@ -49,11 +51,13 @@ def _build_params(test: Test) -> Dict[str, Any]:
     params.update(test.get("params", {}))
     return params
 
+
 # ---------- Where to load auto from (single registration point) ----------
 TEST_MODULES = [
-    #"all_tests_beta",
-    "all_tests",# add more like "eod", "intraday", etc.
+    # "all_tests_beta",
+    "all_tests",  # add more like "eod", "intraday", etc.
 ]
+
 
 def _load_test_modules() -> None:
     for mod_name in TEST_MODULES:
@@ -63,6 +67,7 @@ def _load_test_modules() -> None:
             mod.register(register_test, COMMON)
         else:
             raise RuntimeError(f"Test module '{mod_name}' must define a callable 'register(register_fn, COMMON)'.")
+
 
 # ---------- Pretty print helpers ----------
 def _pp(obj: Any) -> str:
@@ -79,6 +84,7 @@ def _pp(obj: Any) -> str:
         return str(obj)
     except Exception:
         return str(obj)
+
 
 # ---------- Runner ----------
 async def run_tests(endpoint: str = "http://127.0.0.1:8000/mcp") -> None:
@@ -102,6 +108,7 @@ async def run_tests(endpoint: str = "http://127.0.0.1:8000/mcp") -> None:
                 print("Result:\n", _pp(result))
             except Exception as e:
                 print("ERROR:", e)
+
 
 # ---------- CLI entry ----------
 if __name__ == "__main__":

@@ -89,7 +89,7 @@ def _render_text(mcp: FastMCP, name: str, arguments: dict | None = None) -> str:
     """Render a prompt and return the first message text."""
     import asyncio
 
-    result = asyncio.run(mcp.render_prompt(name, arguments=arguments or {}))
+    result = asyncio.run(mcp._get_prompt(name, arguments=arguments or {}))
     return result.messages[0].content.text
 
 
