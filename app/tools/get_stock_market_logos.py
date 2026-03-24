@@ -2,13 +2,12 @@
 
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_binary_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_binary_response
 
 
 def register(mcp: FastMCP):
@@ -39,15 +38,14 @@ def register(mcp: FastMCP):
         Notes:
             - Marketplace product: 10 API calls per request.
             - Response is a binary PNG image.
-            - Supported exchanges include: AS, AT, AU, BA, BK, BR, BSE, CN, CO, CSE,
-              DU, F, HE, HK, HM, IC, IR, IS, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
-              MCX, MI, MU, MX, NEO, NSE, NZ, OL, PA, RG, SA, SG, SHE, SHG, SN, SR,
-              ST, STU, SW, TA, TO, TSE, TW, TWO, US, V, VI, VS, VX, XETRA.
+            - Supported exchanges include: AS, AT, AU, BA, BK, BR, CO, CSE,
+              DU, F, HE, HK, HM, IC, IR, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
+              MU, MX, NEO, OL, PA, SHE, SHG, SN, SA,
+              ST, STU, SW, TA, TO, TW, TWO, US, V, VI, VS, VX, XETRA.
 
         Examples:
             "Apple logo" → get_stock_market_logos(symbol="AAPL.US")
             "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
-            "Toyota logo from Tokyo" → get_stock_market_logos(symbol="7203.TSE")
         """
         if not symbol or not isinstance(symbol, str):
             raise ToolError(
@@ -56,14 +54,9 @@ def register(mcp: FastMCP):
 
         symbol = symbol.strip().upper()
 
-        url = f"{EODHD_API_BASE}/logo/{quote_plus(symbol)}?1=1"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(f"logo/{quote_plus(symbol)}", {"api_token": api_token})
 
         data = await make_request(url, response_mode="bytes")
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if not isinstance(data, bytes) or not data:
             raise ToolError("Unexpected response format from API.")

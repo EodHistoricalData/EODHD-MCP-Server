@@ -1,13 +1,16 @@
 # get_upcoming_earnings.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
@@ -67,29 +70,29 @@ def register(mcp: FastMCP):
         """
         sym_param = _normalize_symbols(symbols)
 
+        # --- Coerce dates ---
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
+
         # Build base URL
-        url = f"{EODHD_API_BASE}/calendar/earnings?1=1"
-
-        # Add parameters:
-        if sym_param:
-            url += build_query_param("symbols", sym_param)
-            # Per spec: when symbols provided, 'from'/'to' are ignored — so we do NOT append them.
-        else:
-            url += build_query_param("from", start_date)
-            url += build_query_param("to", end_date)
-
-        url += build_query_param("fmt", (fmt or "json").lower())
-
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+        # Per spec: when symbols provided, 'from'/'to' are ignored — so we do NOT append them.
+        url = build_url(
+            "calendar/earnings",
+            {
+                "symbols": sym_param,
+                "from": None if sym_param else start_date,
+                "to": None if sym_param else end_date,
+                "fmt": (fmt or "json").lower(),
+                "api_token": api_token,
+            },
+        )
 
         # Hit API
         output_fmt = (fmt or "json").lower()
         data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
 
         # Normalize output
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if output_fmt == "csv":
             if not isinstance(data, str):

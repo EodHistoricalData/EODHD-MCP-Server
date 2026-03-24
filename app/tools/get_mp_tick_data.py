@@ -1,23 +1,15 @@
 # get_mp_tick_data.py
 
+import logging
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_timestamp_param, validate_timestamp_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
-
-
-def _to_int(name: str, v: int | str | None) -> int | None:
-    if v is None:
-        return None
-    if isinstance(v, int):
-        return v
-    if isinstance(v, str) and v.isdigit():
-        return int(v)
-    raise ValueError(f"'{name}' must be an integer UNIX timestamp in seconds (UTC).")
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -28,7 +20,7 @@ def register(mcp: FastMCP):
         to_timestamp: int | str | None = None,  # UNIX seconds (UTC)
         limit: int | str | None = None,  # 1-10000
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [Marketplace] Fetch individual trade ticks (tick-by-tick data) for US stocks. Use when
@@ -75,25 +67,9 @@ def register(mcp: FastMCP):
         if len(ticker) > 30:
             raise ToolError("Parameter 'ticker' must be at most 30 characters.")
 
-        url = f"{EODHD_API_BASE}/mp/unicornbay/tickdata/ticks?s={ticker}"
-
-        if from_timestamp is not None:
-            try:
-                f_ts = _to_int("from_timestamp", from_timestamp)
-            except ValueError as ve:
-                raise ToolError(str(ve))
-            if f_ts is not None and f_ts < 0:
-                raise ToolError("'from_timestamp' must be a non-negative UNIX timestamp.")
-            url += f"&from={f_ts}"
-
-        if to_timestamp is not None:
-            try:
-                t_ts = _to_int("to_timestamp", to_timestamp)
-            except ValueError as ve:
-                raise ToolError(str(ve))
-            if t_ts is not None and t_ts < 0:
-                raise ToolError("'to_timestamp' must be a non-negative UNIX timestamp.")
-            url += f"&to={t_ts}"
+        from_ts = coerce_timestamp_param(from_timestamp, "from_timestamp")
+        to_ts = coerce_timestamp_param(to_timestamp, "to_timestamp")
+        validate_timestamp_range(from_ts, to_ts)
 
         if limit is not None:
             try:
@@ -102,17 +78,24 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'limit' must be an integer (1-10000).")
             if lim < 1 or lim > 10000:
                 raise ToolError("Parameter 'limit' must be between 1 and 10000.")
-            url += f"&limit={lim}"
+        else:
+            lim = None
 
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "mp/unicornbay/tickdata/ticks",
+            {
+                "s": ticker,
+                "from": from_ts,
+                "to": to_ts,
+                "limit": lim,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

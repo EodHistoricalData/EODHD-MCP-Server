@@ -1,3 +1,5 @@
+import logging
+
 import re
 from pathlib import Path
 from typing import Any
@@ -6,7 +8,9 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "references"
 
@@ -364,7 +368,7 @@ def register(mcp: FastMCP):
         type: int | str | None = 0,
         id: int | str | None = None,
         api_token: str | None = None,  # noqa: ARG001 — kept for MCP tool interface parity
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Retrieve built-in EODHD API documentation by numeric type and id. Use when

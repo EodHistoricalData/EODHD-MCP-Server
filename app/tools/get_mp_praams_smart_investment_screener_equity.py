@@ -1,14 +1,16 @@
 # get_mp_praams_smart_investment_screener_equity.py
 
+import logging
 from typing import Any
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 
 def _is_int(v: Any) -> bool:
@@ -61,6 +63,7 @@ def _canon_range_1_7(_name: str, v: Any) -> int | None:
     try:
         iv = int(v)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
     if 1 <= iv <= 7:
         return iv
@@ -218,13 +221,14 @@ async def _run_explore_equity(
     body: dict[str, Any],
     api_token: str | None,
 ) -> list:
-    url = f"{EODHD_API_BASE}/mp/praams/explore/equity?1=1"
-    if skip is not None:
-        url += f"&skip={int(skip)}"
-    if take is not None:
-        url += f"&take={int(take)}"
-    if api_token:
-        url += f"&api_token={api_token}"
+    url = build_url(
+        "mp/praams/explore/equity",
+        {
+            "skip": int(skip) if skip is not None else None,
+            "take": int(take) if take is not None else None,
+            "api_token": api_token,
+        },
+    )
 
     data = await make_request(
         url,
@@ -233,12 +237,11 @@ async def _run_explore_equity(
         headers={"Content-Type": "application/json"},
     )
 
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -286,7 +289,7 @@ def register(mcp: FastMCP):
         orderBy: str | None = None,
         # auth
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Screen and filter equities using multi-factor risk-return criteria.
@@ -368,42 +371,6 @@ def register(mcp: FastMCP):
             capitalisation=capitalisation,
             currency=currency,
             order_by=orderBy,
-        )
-        if b_err:
-            raise ToolError(b_err)
-        assert body is not None
-
-        return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)
-
-    # Optional alias (compact, mirrors your curl example)
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_smart_screener_equity(
-        skip: int | None = 0,
-        take: int | None = 50,
-        countries: list[int] | None = None,
-        sectors: list[int] | None = None,
-        dividendsMin: int | None = None,
-        dividendsMax: int | None = None,
-        solvencyMin: int | None = None,
-        solvencyMax: int | None = None,
-        api_token: str | None = None,
-    ) -> list:
-        """
-        [PRAAMS] Convenience alias for equity screening with common filters.
-        Screen equities by country, sector, dividends, and solvency scores.
-        For full filter set, use get_mp_praams_smart_screener_equity.
-        """
-        st_err = _validate_skip_take(skip, take)
-        if st_err:
-            raise ToolError(st_err)
-
-        body, b_err = _build_body(
-            countries=countries,
-            sectors=sectors,
-            dividends_min=dividendsMin,
-            dividends_max=dividendsMax,
-            solvency_min=solvencyMin,
-            solvency_max=solvencyMax,
         )
         if b_err:
             raise ToolError(b_err)

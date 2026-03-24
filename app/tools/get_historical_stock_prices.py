@@ -1,20 +1,20 @@
 # get_historical_stock_prices.py
 
-from datetime import datetime
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
-from app.response_formatter import format_json_response, format_text_response
+from app.input_formatter import build_url, coerce_date_param, validate_date_range, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_PERIODS = {"d", "w", "m"}  # daily, weekly, monthly (per docs)
 ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}  # default is csv in API, but we default to json here
-
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -27,7 +27,7 @@ def register(mcp: FastMCP):
         fmt: str = "json",
         filter: str | None = None,  # e.g., "last_close", "last_volume"
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Get historical daily, weekly, or monthly OHLCV price data for any stock, ETF, index, or crypto.
@@ -61,7 +61,6 @@ def register(mcp: FastMCP):
             "Weekly Tesla for 2025" → ticker="TSLA.US", period="w", start_date="2025-01-01", end_date="2025-12-31"
             "Monthly S&P 500 since 2020" → ticker="GSPC.INDX", period="m", start_date="2020-01-01"
 
-
         Demo:
             To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
@@ -79,25 +78,22 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
-        # --- Build URL per docs ---
-        # Base: /api/eod/{ticker}
-        # Params: period, order, from, to, fmt, (optional) filter, api_token
-        url = f"{EODHD_API_BASE}/eod/{ticker}?period={period}&order={order}&fmt={fmt}"
-
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if filter:
-            url += f"&filter={filter}"
-
-        # Per-call token override; make_request() appends env token if none present.
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"eod/{ticker}",
+            {
+                "period": period,
+                "order": order,
+                "fmt": fmt,
+                "from": start_date,
+                "to": end_date,
+                "filter": filter,
+                "api_token": api_token,
+            },
+        )
 
         # --- Execute request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")

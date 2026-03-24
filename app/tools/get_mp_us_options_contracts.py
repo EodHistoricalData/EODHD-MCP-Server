@@ -1,16 +1,17 @@
 # get_mp_us_options_contracts.py
 
+import logging
 from collections.abc import Sequence
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.input_formatter import build_query_param, build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
@@ -62,7 +63,7 @@ def register(mcp: FastMCP):
         fields: str | Sequence[str] | None = None,  # fields[options-contracts]
         api_token: str | None = None,
         fmt: str | None = "json",
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [Marketplace] Get available US options contracts (calls and puts) for a stock or ETF.
@@ -117,39 +118,46 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
-        base = f"{EODHD_API_BASE}/mp/unicornbay/options/contracts?1=1"
-        # filters
-        base += build_query_param("filter[contract]", contract)
-        base += build_query_param("filter[underlying_symbol]", underlying_symbol)
-        base += build_query_param("filter[exp_date_eq]", exp_date_eq)
-        base += build_query_param("filter[exp_date_from]", exp_date_from)
-        base += build_query_param("filter[exp_date_to]", exp_date_to)
-        base += build_query_param("filter[tradetime_eq]", tradetime_eq)
-        base += build_query_param("filter[tradetime_from]", tradetime_from)
-        base += build_query_param("filter[tradetime_to]", tradetime_to)
-        base += build_query_param("filter[type]", type)
-        base += build_query_param("filter[strike_eq]", strike_eq)
-        base += build_query_param("filter[strike_from]", strike_from)
-        base += build_query_param("filter[strike_to]", strike_to)
-        # sort & pagination
-        base += build_query_param("sort", sort)
-        base += build_query_param("page[offset]", page_offset)
-        base += build_query_param("page[limit]", page_limit)
-        # fields
-        base += _q_fields_contracts(fields)
-        # token
-        if api_token:
-            base += build_query_param("api_token", api_token)
-        # format
-        if fmt:
-            base += build_query_param("fmt", fmt)
+        # --- coerce dates ---
+        exp_date_eq = coerce_date_param(exp_date_eq, "exp_date_eq")
+        exp_date_from = coerce_date_param(exp_date_from, "exp_date_from")
+        exp_date_to = coerce_date_param(exp_date_to, "exp_date_to")
+        validate_date_range(exp_date_from, exp_date_to, "exp_date_from", "exp_date_to")
+        tradetime_eq = coerce_date_param(tradetime_eq, "tradetime_eq")
+        tradetime_from = coerce_date_param(tradetime_from, "tradetime_from")
+        tradetime_to = coerce_date_param(tradetime_to, "tradetime_to")
+        validate_date_range(tradetime_from, tradetime_to, "tradetime_from", "tradetime_to")
 
-        data = await make_request(base)
+        # build_url handles non-bracket params; bracket-keyed params appended via build_query_param
+        # (urlencode would percent-encode [ and ] in keys, breaking filter[*] and page[*])
+        url = build_url(
+            "mp/unicornbay/options/contracts",
+            {
+                "sort": sort,
+                "api_token": api_token,
+                "fmt": fmt,
+            },
+        )
+        url += build_query_param("filter[contract]", contract)
+        url += build_query_param("filter[underlying_symbol]", underlying_symbol)
+        url += build_query_param("filter[exp_date_eq]", exp_date_eq)
+        url += build_query_param("filter[exp_date_from]", exp_date_from)
+        url += build_query_param("filter[exp_date_to]", exp_date_to)
+        url += build_query_param("filter[tradetime_eq]", tradetime_eq)
+        url += build_query_param("filter[tradetime_from]", tradetime_from)
+        url += build_query_param("filter[tradetime_to]", tradetime_to)
+        url += build_query_param("filter[type]", type)
+        url += build_query_param("filter[strike_eq]", strike_eq)
+        url += build_query_param("filter[strike_from]", strike_from)
+        url += build_query_param("filter[strike_to]", strike_to)
+        url += build_query_param("page[offset]", page_offset)
+        url += build_query_param("page[limit]", page_limit)
+        url += _q_fields_contracts(fields)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
+        data = await make_request(url)
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

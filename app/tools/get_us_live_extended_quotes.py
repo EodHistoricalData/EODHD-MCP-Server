@@ -1,14 +1,17 @@
 # get_us_live_extended_quotes.py
 
+import logging
+
 from collections.abc import Iterable, Sequence
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+logger = logging.getLogger(__name__)
 
 ALLOWED_FMT = {"json", "csv"}
 MAX_PAGE_LIMIT = 100  # per spec
@@ -120,26 +123,19 @@ def register(mcp: FastMCP):
                 raise ToolError("'page_offset' must be an integer >= 0.")
 
         # --- Build URL ---
-        # Example:
-        #   /api/us-quote-delayed?s=AAPL.US,TSLA.US&fmt=json&page[limit]=100&page[offset]=0
-        base = f"{EODHD_API_BASE}/us-quote-delayed"
-        query = f"?s={','.join(syms)}&fmt={fmt}"
-
-        if page_limit is not None:
-            query += f"&page[limit]={page_limit}"
-        if page_offset is not None:
-            query += f"&page[offset]={page_offset}"
-        if api_token:
-            query += f"&api_token={api_token}"
-
-        url = f"{base}{query}"
+        params: dict[str, str | int | float | bool | None] = {
+            "s": ",".join(syms),
+            "fmt": fmt,
+            "page[limit]": page_limit,
+            "page[offset]": page_offset,
+            "api_token": api_token,
+        }
+        url = build_url("us-quote-delayed", params)
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

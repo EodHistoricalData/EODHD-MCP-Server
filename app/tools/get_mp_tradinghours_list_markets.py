@@ -1,13 +1,15 @@
 # get_mp_tradinghours_list_markets.py
 
+import logging
+
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
@@ -17,7 +19,7 @@ def register(mcp: FastMCP):
     async def get_mp_tradinghours_list_markets(
         group: str | None = None,  # core, extended, all, allowed (default: all)
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [TradingHours] List all tracked global markets and exchanges. Use as the starting point
@@ -64,18 +66,18 @@ def register(mcp: FastMCP):
             if group not in ALLOWED_GROUPS:
                 raise ToolError(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
 
-        url = f"{EODHD_API_BASE}/mp/tradinghours/markets?1=1"
-        if group:
-            url += build_query_param("group", group)
-        if api_token:
-            url += build_query_param("api_token", api_token)
+        url = build_url(
+            "mp/tradinghours/markets",
+            {
+                "group": group,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

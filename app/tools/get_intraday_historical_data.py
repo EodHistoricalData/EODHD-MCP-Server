@@ -1,161 +1,26 @@
 # get_intraday_historical_data.py
 
-from datetime import datetime, timezone
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import build_url, coerce_timestamp_param, sanitize_ticker, validate_timestamp_range
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_INTERVALS = {"1m", "5m", "1h"}  # per docs
 ALLOWED_FMT = {"json", "csv"}
 
-# Max allowed “from->to” span per docs (in days)
+# Max allowed "from->to" span per docs (in days)
 MAX_RANGE_DAYS = {
     "1m": 120,
     "5m": 600,
     "1h": 7200,
 }
-
-
-def _to_unix_seconds(dt_obj: datetime) -> int:
-    """Convert aware/naive datetime to Unix seconds (UTC)."""
-    if dt_obj.tzinfo is None:
-        dt_obj = dt_obj.replace(tzinfo=timezone.utc)
-    else:
-        dt_obj = dt_obj.astimezone(timezone.utc)
-    return int(dt_obj.timestamp())
-
-
-def _parse_date_to_unix(value: int | float | str) -> int | None:
-    """
-    Best-effort parser:
-      - If it's numeric: treat as seconds (10+ digits) or ms (13 digits) and coerce to seconds.
-      - If it's a string date/datetime, try many common formats and ISO-8601 variants.
-      - Returns None when it cannot be parsed.
-    """
-    # --- Numeric branch ---
-    if isinstance(value, (int, float)):
-        iv = int(value)
-        # Heuristic: if it's very large (e.g., 13-digit), assume milliseconds
-        if iv > 10_000_000_000:  # ~ year 2286; safe ms detector
-            iv //= 1000
-        return iv if iv > 0 else None
-
-    if not isinstance(value, str):
-        return None
-
-    s = value.strip()
-    if not s:
-        return None
-
-    # Digits-only strings: seconds or milliseconds
-    if s.isdigit():
-        iv = int(s)
-        if iv > 10_000_000_000:
-            iv //= 1000
-        return iv if iv > 0 else None
-
-    # Handle trailing 'Z' ISO-8601
-    # e.g. 2024-06-30T15:00:00Z
-    if s.endswith("Z"):
-        try:
-            dt_obj = datetime.fromisoformat(s.replace("Z", "+00:00"))
-            return _to_unix_seconds(dt_obj)
-        except Exception:
-            pass
-
-    # Try vanilla ISO-8601 first (without 'Z')
-    try:
-        # fromisoformat covers many variants: YYYY-MM-DD, with time, with offset, etc.
-        dt_obj = datetime.fromisoformat(s)
-        return _to_unix_seconds(dt_obj)
-    except Exception:
-        pass
-
-    # If string looks like just a calendar date without time, we’ll try many formats
-    # and assume 00:00:00 UTC.
-    date_formats = [
-        # ISO date
-        "%Y-%m-%d",
-        "%Y/%m/%d",
-        "%Y.%m.%d",
-        # Day-first
-        "%d-%m-%Y",
-        "%d/%m/%Y",
-        "%d.%m.%Y",
-        "%d-%m-%y",
-        "%d/%m/%y",
-        "%d.%m.%y",
-        # Month-first (US)
-        "%m-%d-%Y",
-        "%m/%d/%Y",
-        "%m.%d.%Y",
-        "%m-%d-%y",
-        "%m/%d/%y",
-        "%m.%d.%y",
-        # With time (no timezone)
-        "%Y-%m-%d %H:%M",
-        "%Y-%m-%d %H:%M:%S",
-        "%d-%m-%Y %H:%M",
-        "%d-%m-%Y %H:%M:%S",
-        "%m/%d/%Y %H:%M",
-        "%m/%d/%Y %H:%M:%S",
-        # Month names
-        "%b %d, %Y",
-        "%d %b %Y",
-        "%B %d, %Y",
-        "%d %B %Y",
-        "%b %d, %y",
-        "%d %b %y",
-        "%B %d, %y",
-        "%d %B %y",
-        # T-separated without timezone
-        "%Y-%m-%dT%H:%M",
-        "%Y-%m-%dT%H:%M:%S",
-    ]
-
-    for fmt in date_formats:
-        try:
-            dt_obj = datetime.strptime(s, fmt)
-            # If parsed is a date-only pattern (most are), treat as midnight UTC
-            return _to_unix_seconds(dt_obj)
-        except Exception:
-            continue
-
-    # Could not parse
-    return None
-
-
-def _coerce_from_to(
-    from_raw: int | str | None,
-    to_raw: int | str | None,
-) -> tuple[int | None, int | None, str | None]:
-    """
-    Convert 'from'/'to' inputs (which may be unix seconds or a date string) to (from_ts, to_ts).
-    Returns (from_ts, to_ts, error_message).
-    """
-    from_ts = None
-    to_ts = None
-
-    if from_raw is not None:
-        from_ts = _parse_date_to_unix(from_raw)
-        if not from_ts:
-            return None, None, "'from_timestamp' (or its string form) is not a valid date/time."
-
-    if to_raw is not None:
-        to_ts = _parse_date_to_unix(to_raw)
-        if not to_ts:
-            return None, None, "'to_timestamp' (or its string form) is not a valid date/time."
-
-    if from_ts is not None and to_ts is not None and from_ts > to_ts:
-        return None, None, "'from_timestamp' cannot be greater than 'to_timestamp'."
-
-    return from_ts, to_ts, None
 
 
 def register(mcp: FastMCP):
@@ -224,9 +89,9 @@ def register(mcp: FastMCP):
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         # --- Coerce 'from'/'to' into Unix seconds (auto-detect strings, ms, etc.) ---
-        from_ts, to_ts, err = _coerce_from_to(from_timestamp, to_timestamp)
-        if err:
-            raise ToolError(err)
+        from_ts = coerce_timestamp_param(from_timestamp, "from_timestamp")
+        to_ts = coerce_timestamp_param(to_timestamp, "to_timestamp")
+        validate_timestamp_range(from_ts, to_ts)
 
         # --- Enforce documented maximum range ---
         if from_ts is not None and to_ts is not None:
@@ -237,26 +102,22 @@ def register(mcp: FastMCP):
 
         # --- Build URL ---
         # Base: /api/intraday/{ticker}?fmt=...&interval=...&from=...&to=...&split-dt=1
-        url = f"{EODHD_API_BASE}/intraday/{ticker}?fmt={fmt}&interval={interval}"
-
-        if from_ts is not None:
-            url += f"&from={from_ts}"
-        if to_ts is not None:
-            url += f"&to={to_ts}"
-        if split_dt:
-            url += "&split-dt=1"
-
-        # Per-call token override; make_request() will append env token if none present.
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"intraday/{ticker}",
+            {
+                "fmt": fmt,
+                "interval": interval,
+                "from": from_ts,
+                "to": to_ts,
+                "split-dt": 1 if split_dt else None,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize errors / outputs ---
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

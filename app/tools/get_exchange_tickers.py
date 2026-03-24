@@ -1,13 +1,15 @@
 # get_exchange_tickers.py
 
+import logging
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"common_stock", "preferred_stock", "stock", "etf", "fund"}
 
@@ -20,7 +22,7 @@ def register(mcp: FastMCP):
         type: str | None = None,  # one of ALLOWED_TYPES
         fmt: str = "json",  # API supports csv; we default to json
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         List all tickers (symbols) available on a given exchange. Use when the user needs to
@@ -33,7 +35,6 @@ def register(mcp: FastMCP):
 
         For the list of all exchanges, use get_exchanges_list.
         For exchange metadata and trading hours, use get_exchange_details.
-
 
         Returns:
             Array of ticker objects, each with:
@@ -59,20 +60,20 @@ def register(mcp: FastMCP):
         if type is not None and type not in ALLOWED_TYPES:
             raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
 
-        url = f"{EODHD_API_BASE}/exchange-symbol-list/{exchange_code}?fmt={fmt}"
-        if delisted:
-            url += "&delisted=1"
-        if type:
-            url += f"&type={type}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"exchange-symbol-list/{exchange_code}",
+            {
+                "fmt": fmt,
+                "delisted": 1 if delisted else None,
+                "type": type,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

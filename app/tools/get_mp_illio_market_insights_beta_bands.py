@@ -1,13 +1,16 @@
 # get_mp_illio_market_insights_beta_bands.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -39,7 +42,7 @@ def _canon_id(v: str) -> str | None:
     return _CANONICAL_MAP.get(k)
 
 
-async def _run_beta_bands(id: str, fmt: str, api_token: str | None) -> list:
+async def _run_beta_bands(id: str, fmt: str, api_token: str | None) -> ResourceResponse:
     """
     Internal runner for Beta Bands chapter.
 
@@ -66,22 +69,23 @@ async def _run_beta_bands(id: str, fmt: str, api_token: str | None) -> list:
     #   /api/mp/illio/chapters/beta-bands/{id}
     # Example:
     #   /api/mp/illio/chapters/beta-bands/NDX?api_token=...&fmt=json
-    url = f"{EODHD_API_BASE}/mp/illio/chapters/beta-bands/{cid}?1=1"
-    url += build_query_param("fmt", "json")  # explicit for symmetry with other tools
-
-    if api_token:
-        url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+    url = build_url(
+        f"mp/illio/chapters/beta-bands/{cid}",
+        {
+            "fmt": "json",
+            "api_token": api_token,
+        },
+    )
 
     # Call upstream
     data = await make_request(url)
 
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     # Normalize and return
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -90,7 +94,7 @@ def register(mcp: FastMCP):
         id: str,  # one of {'SnP500','DJI','NDX'} (common aliases accepted)
         fmt: str = "json",  # JSON only (Marketplace returns JSON)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [Illio] Analyze beta sensitivity distribution of index constituents relative to the market.
@@ -115,18 +119,5 @@ def register(mcp: FastMCP):
           - 100k calls / 24h, 1k requests / minute
           - Output is JSON
 
-        """
-        return await _run_beta_bands(id=id, fmt=fmt, api_token=api_token)
-
-    # Optional alias for convenience/back-compat
-    @mcp.tool()
-    async def mp_illio_market_insights_beta_bands(
-        id: str,
-        fmt: str = "json",
-        api_token: str | None = None,
-    ) -> list:
-        """
-        [Illio] Alias for get_mp_illio_market_insights_beta_bands.
-        Analyze beta sensitivity distribution of index constituents relative to the market.
         """
         return await _run_beta_bands(id=id, fmt=fmt, api_token=api_token)

@@ -1,16 +1,17 @@
 # get_stock_screener_data.py
 
 import json
+import logging
 from typing import Any
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 
 def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
@@ -30,6 +31,7 @@ def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
     try:
         return json.dumps(filters, separators=(",", ":"))
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
 
@@ -57,7 +59,7 @@ def register(mcp: FastMCP):
         offset: int = 0,  # 0..999
         fmt: str | None = None,  # NEW: accept fmt to avoid validation errors
         api_token: str | None = None,  # per-call override (else env)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Screen and filter stocks by fundamental and technical criteria.
@@ -122,26 +124,23 @@ def register(mcp: FastMCP):
             raise ToolError("Invalid 'signals' value. Provide a list of strings or comma-separated string.")
 
         # Build URL
-        url = f"{EODHD_API_BASE}/screener?1=1"
-        if sort:
-            url += build_query_param("sort", sort)
-        url += build_query_param("limit", str(limit))
-        url += build_query_param("offset", str(offset))
-        if filt_str:
-            url += build_query_param("filters", filt_str)
-        if sig_str:
-            url += build_query_param("signals", sig_str)
-
         # (We deliberately do NOT append fmt, since the endpoint is JSON-only.)
-
-        if api_token:
-            url += build_query_param("api_token", api_token)
+        url = build_url(
+            "screener",
+            {
+                "sort": sort,
+                "limit": str(limit),
+                "offset": str(offset),
+                "filters": filt_str,
+                "signals": sig_str,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

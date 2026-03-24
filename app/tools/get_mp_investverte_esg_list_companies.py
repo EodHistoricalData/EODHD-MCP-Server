@@ -1,13 +1,17 @@
 # get_mp_investverte_esg_list_companies.py
 
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -15,7 +19,7 @@ def register(mcp: FastMCP):
     async def get_mp_investverte_esg_list_companies(
         fmt: str | None = "json",
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [InvestVerte] List all companies available in the ESG dataset.
@@ -50,18 +54,13 @@ def register(mcp: FastMCP):
             raise ToolError("Only 'json' is supported by this tool.")
 
         # Base URL for Investverte companies list
-        url = f"{EODHD_API_BASE}/mp/investverte/companies?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url("mp/investverte/companies", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            raise ToolError(str(data["error"]))
 
         try:
             # Expected: list of {"symbol": ..., "name": ...}
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

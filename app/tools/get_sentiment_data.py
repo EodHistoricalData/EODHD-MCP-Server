@@ -1,36 +1,20 @@
 # get_sentiment_data.py
 
-import re
+import logging
 from collections.abc import Iterable
-from datetime import datetime
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
-
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
-def _valid_date(d: str | None) -> bool:
-    if d is None:
-        return True
-    if not DATE_RE.match(d):
-        return False
-    try:
-        datetime.strptime(d, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
+logger = logging.getLogger(__name__)
 
 def _normalize_symbols(symbols: Iterable[str]) -> str:
     # Turn a sequence like ["AAPL.US","BTC-USD.CC"] into "AAPL.US,BTC-USD.CC"
     return ",".join(s.strip() for s in symbols if s and str(s).strip())
-
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -40,7 +24,7 @@ def register(mcp: FastMCP):
         end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
         fmt: str = "json",
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Get aggregated sentiment scores for stocks based on news and social media analysis.
@@ -69,7 +53,6 @@ def register(mcp: FastMCP):
             "Bitcoin and Ethereum sentiment" → symbols="BTC-USD.CC,ETH-USD.CC"
             "Microsoft sentiment in Q4 2025" → symbols="MSFT.US", start_date="2025-10-01", end_date="2025-12-31"
 
-
         Demo:
             To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
@@ -82,29 +65,26 @@ def register(mcp: FastMCP):
         if fmt != "json":
             raise ToolError("Only 'json' is supported for this endpoint.")
 
-        if not _valid_date(start_date):
-            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
-        if not _valid_date(end_date):
-            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         # Build URL
-        url = f"{EODHD_API_BASE}/sentiments?fmt={fmt}&s={symbols}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "sentiments",
+            {
+                "fmt": fmt,
+                "s": symbols,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

@@ -1,15 +1,17 @@
 # get_bulk_fundamentals.py
 
+import logging
+
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response, format_text_response
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -22,7 +24,7 @@ def register(mcp: FastMCP):
         version: str | None = None,  # "1.2" for single-symbol-like output
         fmt: str = "json",  # 'json' (default) or 'csv'
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
@@ -87,11 +89,7 @@ def register(mcp: FastMCP):
         if fmt not in allowed_fmt:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(allowed_fmt)}")
 
-        url = f"{EODHD_API_BASE}/bulk-fundamentals/{quote_plus(exchange)}?fmt={fmt}"
-
-        if symbols:
-            url += build_query_param("symbols", symbols.strip())
-
+        off = None
         if offset is not None:
             try:
                 off = int(offset)
@@ -99,8 +97,8 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'offset' must be a non-negative integer.")
             if off < 0:
                 raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            url += f"&offset={off}"
 
+        lim = None
         if limit is not None:
             try:
                 lim = int(limit)
@@ -108,20 +106,20 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'limit' must be a positive integer (max 500).")
             if lim <= 0 or lim > 500:
                 raise ToolError("Parameter 'limit' must be between 1 and 500.")
-            url += f"&limit={lim}"
 
-        if version:
-            url += build_query_param("version", version.strip())
-
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"bulk-fundamentals/{quote_plus(exchange)}",
+            {
+                "fmt": fmt,
+                "symbols": symbols.strip() if symbols else None,
+                "offset": off,
+                "limit": lim,
+                "version": version.strip() if version else None,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
-
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

@@ -1,13 +1,15 @@
 # get_cboe_indices_list.py
 
+import logging
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -15,7 +17,7 @@ def register(mcp: FastMCP):
     async def get_cboe_indices_list(
         fmt: str | None = "json",
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         List all available CBOE indices with their latest values. Use when the user wants to
@@ -26,7 +28,6 @@ def register(mcp: FastMCP):
         for ~38 CBOE indices. Paginated via 'links.next'. Costs 10 API calls per request.
 
         For detailed component-level data on a specific CBOE index, use get_cboe_index_data.
-
 
         Returns:
             Object with:
@@ -56,19 +57,13 @@ def register(mcp: FastMCP):
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
-        # Base URL for CBOE indices list
-        url = f"{EODHD_API_BASE}/cboe/indices?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url("cboe/indices", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            raise ToolError(str(data["error"]))
 
         try:
             # Expected: dict with 'meta', 'data', 'links'
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

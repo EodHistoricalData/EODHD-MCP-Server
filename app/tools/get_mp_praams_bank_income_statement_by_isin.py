@@ -1,13 +1,15 @@
 # get_mp_praams_bank_income_statement_by_isin.py
 
+import logging
+
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 
 def _canon_isin(v: str) -> str | None:
@@ -49,23 +51,19 @@ async def _run_praams_income_statement_by_isin(
     # Build URL
     # Example:
     #   /api/mp/praams/bank/income_statement/isin/US46625H1005?api_token=... (JSON only)
-    url = f"{EODHD_API_BASE}/mp/praams/bank/income_statement/isin/{ci}?1=1"
-    if api_token:
-        url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+    url = build_url(f"mp/praams/bank/income_statement/isin/{ci}", {"api_token": api_token})
 
     # Call upstream
     data = await make_request(url)
-
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     # Normalize and return
     # The API responds with:
     #   {"success": ..., "items": [...], "message": "...", "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -73,7 +71,7 @@ def register(mcp: FastMCP):
     async def get_mp_praams_bank_income_statement_by_isin(
         isin: str,  # e.g. 'US46625H1005' (JPM), 'US0605051046' (BAC)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Retrieve bank-specific income statement time series by ISIN code.
@@ -105,17 +103,6 @@ def register(mcp: FastMCP):
           - Output is JSON only
 
         """
-        return await _run_praams_income_statement_by_isin(
-            isin=isin,
-            api_token=api_token,
-        )
-
-    # Optional alias for convenience/back-compat (shorter name)
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_bank_income_statement_by_isin(
-        isin: str,
-        api_token: str | None = None,
-    ) -> list:
         return await _run_praams_income_statement_by_isin(
             isin=isin,
             api_token=api_token,

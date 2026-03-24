@@ -1,13 +1,16 @@
 # get_mp_indices_list.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -15,7 +18,7 @@ def register(mcp: FastMCP):
     async def mp_indices_list(
         fmt: str = "json",  # API returns JSON; expose for symmetry
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [Marketplace] List all available S&P and Dow Jones indices with end-of-day details.
@@ -47,16 +50,12 @@ def register(mcp: FastMCP):
         if fmt != "json":
             raise ToolError("Only JSON is supported for this endpoint.")
 
-        url = f"{EODHD_API_BASE}/mp/unicornbay/spglobal/list?1=1"
-        url += build_query_param("fmt", "json")
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request
+        url = build_url("mp/unicornbay/spglobal/list", {"fmt": "json", "api_token": api_token})
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

@@ -1,13 +1,17 @@
 # get_ust_real_yield_rates.py
 
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -17,7 +21,7 @@ def register(mcp: FastMCP):
         limit: int | str | None = None,  # page[limit]
         offset: int | str | None = None,  # page[offset]
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Fetch US Treasury inflation-adjusted (real) yield curve rates. Use when asked about TIPS yields,
@@ -53,8 +57,7 @@ def register(mcp: FastMCP):
             "last 10 inflation-adjusted treasury yields" → limit=10
             "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
         """
-        url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
-
+        y: int | None = None
         if year is not None:
             try:
                 y = int(year)
@@ -62,8 +65,8 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'year' must be an integer (e.g. 2024).")
             if y < 1900:
                 raise ToolError("Parameter 'year' must be >= 1900.")
-            url += f"&filter[year]={y}"
 
+        lim: int | None = None
         if limit is not None:
             try:
                 lim = int(limit)
@@ -71,8 +74,8 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'limit' must be a positive integer.")
             if lim <= 0:
                 raise ToolError("Parameter 'limit' must be a positive integer.")
-            url += f"&page[limit]={lim}"
 
+        off: int | None = None
         if offset is not None:
             try:
                 off = int(offset)
@@ -80,17 +83,21 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'offset' must be a non-negative integer.")
             if off < 0:
                 raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            url += f"&page[offset]={off}"
 
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "ust/real-yield-rates",
+            {
+                "filter[year]": y,
+                "page[limit]": lim,
+                "page[offset]": off,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e
