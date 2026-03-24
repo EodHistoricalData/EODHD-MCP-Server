@@ -1,4 +1,4 @@
-# test_client_stdio.py
+# tests/manual/test_client_stdio.py
 import asyncio
 import json
 import os

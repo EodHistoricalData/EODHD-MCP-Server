@@ -1,3 +1,4 @@
+# tests/manual/test_client_http.py
 import argparse
 import asyncio
 import json

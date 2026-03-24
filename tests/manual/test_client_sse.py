@@ -1,4 +1,4 @@
-# test_client_sse.py
+# tests/manual/test_client_sse.py
 
 import argparse
 import asyncio

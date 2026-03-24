@@ -1,3 +1,4 @@
+# tests/auto/test_response_formatter.py
 """Tests for app.response_formatter — format_text, format_binary, format_json, sanitization.
 
 Covers:

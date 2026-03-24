@@ -1,3 +1,4 @@
+# tests/manual/all_tests_beta.py
 # This module registers all "new" auto cases to facilitate debugging only new features.
 
 def register(add_test, COMMON):

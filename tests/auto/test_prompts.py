@@ -1,3 +1,4 @@
+# tests/auto/test_prompts.py
 """Tests for app.prompts — registration, templates, safe-register error handling."""
 
 import logging

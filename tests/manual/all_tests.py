@@ -1,3 +1,4 @@
+# tests/manual/all_tests.py
 # This module registers all manual cases in one place.
 # It's possible to split it into multiple files later (e.g. auto/eod.py, auto/news.py)
 # and add them to TEST_MODULES in manual client (test_client_http.py, test_client_sse.py etc.

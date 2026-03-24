@@ -1,3 +1,4 @@
+# tests/auto/test_tools.py
 """Parametrized auto for all 74 tool files.
 
 Covers:

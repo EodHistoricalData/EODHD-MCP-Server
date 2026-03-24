@@ -1,3 +1,4 @@
+# tests/auto/test_tool_registration.py
 """Tests for app.tools — tool list integrity and registration."""
 
 import pytest

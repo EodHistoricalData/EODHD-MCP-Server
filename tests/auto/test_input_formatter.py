@@ -1,3 +1,4 @@
+# tests/auto/test_input_formatter.py
 """Tests for app.formatter — sanitize_ticker, sanitize_exchange, date functions.
 
 Covers:
