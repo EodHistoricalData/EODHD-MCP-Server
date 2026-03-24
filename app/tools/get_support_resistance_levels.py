@@ -3,12 +3,13 @@
 import logging
 from collections.abc import Callable
 
-from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +47,7 @@ def _calc_fibonacci(high: float, low: float, close: float) -> dict:
         "support_2": round(pp - 0.618 * r, 4),
         "support_3": round(pp - 1.000 * r, 4),
     }
+
 
 def _calc_woodie(high: float, low: float, close: float) -> dict:
     """Woodie Pivot Points (extra weight on close)."""
@@ -92,6 +94,7 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
         "resistance_1": round(x / 2 - low, 4),
         "support_1": round(x / 2 - high, 4),
     }
+
 
 CALC_MAP: dict[str, ThreePointCalc] = {
     "classic": _calc_classic,

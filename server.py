@@ -91,7 +91,7 @@ def main(argv: list[str] | None = None) -> int:
             "No EODHD_API_KEY set. Set EODHD_API_KEY env var or pass --apikey to use your key.",
         )
 
-    mcp = FastMCP("eodhd-datasets")
+    mcp: FastMCP = FastMCP("eodhd-datasets")
     register_all_tools(mcp)
     register_all_resources(mcp)
     register_all_prompts(mcp)

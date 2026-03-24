@@ -58,4 +58,4 @@ jobs:
       - name: Run semgrep (SAST + taint)
         run: pipx run semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
       - name: Run pip-audit
-        run: pip-audit
+        run: pip-audit --ignore-vuln CVE-2026-4539  # pygments 2.19.2, no fix available yet

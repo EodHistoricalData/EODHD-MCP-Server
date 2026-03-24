@@ -1,6 +1,5 @@
 # app/tools/retrieve_description_by_id.py
 import logging
-
 import re
 from pathlib import Path
 from typing import Any
