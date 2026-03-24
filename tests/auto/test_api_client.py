@@ -1,3 +1,4 @@
+# tests/auto/test_api_client.py
 """Tests for app.api_client — token injection, backoff, make_request, retry,
 rate limiting, token redaction, token resolution, HTTP methods."""
 

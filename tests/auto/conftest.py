@@ -1,3 +1,4 @@
+# tests/auto/conftest.py
 import os
 
 os.environ.setdefault("EODHD_API_KEY", "test_key_for_ci")

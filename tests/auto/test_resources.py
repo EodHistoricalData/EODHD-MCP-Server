@@ -1,3 +1,4 @@
+# tests/auto/test_resources.py
 from app.resources import REFERENCES_DIR, _build_resource_list
 
 

@@ -1,3 +1,4 @@
+# tests/auto/test_server.py
 """Tests for server.py — build_parser and main()."""
 
 from unittest.mock import MagicMock, patch
