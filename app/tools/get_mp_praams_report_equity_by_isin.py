@@ -1,19 +1,13 @@
 # get_mp_praams_report_equity_by_isin.py
 
-import logging
-
 from urllib.parse import quote_plus
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_binary_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import ResourceResponse, format_binary_response
-
-logger = logging.getLogger(__name__)
 
 
 def _canon_isin(v: str) -> str | None:
@@ -37,19 +31,17 @@ async def _run_praams_report_equity_by_isin(
 
     email = email.strip()
 
-    url = f"{EODHD_API_BASE}/mp/praams/reports/equity/isin/{quote_plus(ci)}?1=1"
-    url += build_query_param("email", email)
-    if is_full is not None:
-        url += build_query_param("isFull", str(is_full).lower())
-    if api_token:
-        url += build_query_param("api_token", api_token)
+    url = build_url(
+        f"mp/praams/reports/equity/isin/{quote_plus(ci)}",
+        {
+            "email": email,
+            "isFull": str(is_full).lower() if is_full is not None else None,
+            "api_token": api_token,
+        },
+    )
 
     data = await make_request(url, response_mode="bytes")
-    if data is None:
-        raise ToolError("No response from API.")
 
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     if not isinstance(data, bytes) or not data:
         raise ToolError("Unexpected response format from API.")
     return format_binary_response(
@@ -108,13 +100,4 @@ def register(mcp: FastMCP):
 
 
         """
-        return await _run_praams_report_equity_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)
-
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_report_equity_by_isin(
-        isin: str,
-        email: str,
-        is_full: bool | None = None,
-        api_token: str | None = None,
-    ) -> ResourceResponse:
         return await _run_praams_report_equity_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)

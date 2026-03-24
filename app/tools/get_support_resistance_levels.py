@@ -1,22 +1,18 @@
 # get_support_resistance_levels.py
 
-import logging
-
 from collections.abc import Callable
-from typing import Any
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import coerce_date_param, validate_date_range, sanitize_ticker
-from app.response_formatter import ResourceResponse, format_json_response
-
-logger = logging.getLogger(__name__)
-
 ALLOWED_METHODS = {"classic", "fibonacci", "woodie", "camarilla", "demark"}
+ThreePointCalc = Callable[[float, float, float], dict]
+DemarkCalc = Callable[[float, float, float, float], dict]
+
 
 def _calc_classic(high: float, low: float, close: float) -> dict:
     """Classic (Floor) Pivot Points."""
@@ -31,6 +27,7 @@ def _calc_classic(high: float, low: float, close: float) -> dict:
         "support_2": round(pp - (high - low), 4),
         "support_3": round(low - 2 * (high - pp), 4),
     }
+
 
 def _calc_fibonacci(high: float, low: float, close: float) -> dict:
     """Fibonacci Pivot Points."""
@@ -59,6 +56,7 @@ def _calc_woodie(high: float, low: float, close: float) -> dict:
         "support_2": round(pp - (high - low), 4),
     }
 
+
 def _calc_camarilla(high: float, low: float, close: float) -> dict:
     """Camarilla Pivot Points."""
     r = high - low
@@ -74,6 +72,7 @@ def _calc_camarilla(high: float, low: float, close: float) -> dict:
         "support_3": round(close - r * 1.1 / 4, 4),
         "support_4": round(close - r * 1.1 / 2, 4),
     }
+
 
 def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
     """DeMark Pivot Points."""
@@ -91,13 +90,13 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
         "support_1": round(x / 2 - high, 4),
     }
 
-CALC_MAP: dict[str, Callable[..., dict[str, Any]]] = {
+CALC_MAP: dict[str, ThreePointCalc] = {
     "classic": _calc_classic,
     "fibonacci": _calc_fibonacci,
     "woodie": _calc_woodie,
     "camarilla": _calc_camarilla,
-    "demark": _calc_demark,
 }
+
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -163,23 +162,24 @@ def register(mcp: FastMCP):
         validate_date_range(start_date, end_date)
 
         # --- Fetch OHLCV data ---
-        url = f"{EODHD_API_BASE}/eod/{ticker}?period={period}&order=a&fmt=json"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"eod/{ticker}",
+            {
+                "period": period,
+                "order": "a",
+                "fmt": "json",
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         if not isinstance(data, list) or len(data) == 0:
             raise ToolError("No price data available for the given ticker and date range.")
 
         # --- Calculate support/resistance for each bar ---
-        calc_fn = CALC_MAP[method]
         results = []
         for bar in data:
             h = bar.get("high")
@@ -192,9 +192,11 @@ def register(mcp: FastMCP):
             if method == "demark":
                 if o is None:
                     continue
-                levels = calc_fn(h, low, c, o)
+                demark_calc: DemarkCalc = _calc_demark
+                levels = demark_calc(h, low, c, o)
             else:
-                levels = calc_fn(h, low, c)
+                pivot_calc: ThreePointCalc = CALC_MAP[method]
+                levels = pivot_calc(h, low, c)
 
             results.append(
                 {

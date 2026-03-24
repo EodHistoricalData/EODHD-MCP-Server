@@ -1,17 +1,14 @@
 # get_sentiment_data.py
 
 import logging
-
 from collections.abc import Iterable
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-from app.api_client import make_request
-from app.input_formatter import coerce_date_param, validate_date_range
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -73,18 +70,18 @@ def register(mcp: FastMCP):
         validate_date_range(start_date, end_date)
 
         # Build URL
-        url = f"{EODHD_API_BASE}/sentiments?fmt={fmt}&s={symbols}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "sentiments",
+            {
+                "fmt": fmt,
+                "s": symbols,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

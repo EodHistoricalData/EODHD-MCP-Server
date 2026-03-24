@@ -9,7 +9,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
+from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -60,25 +60,24 @@ def register(mcp: FastMCP):
         if not query or not isinstance(query, str):
             raise ToolError("Parameter 'query' is required and must be a non-empty string.")
 
+        allowed = {"stock", "etf", "fund", "bond", "index", "crypto"}
+        if asset_type and asset_type not in allowed:
+            raise ToolError(f"Invalid 'asset_type'. Allowed: {sorted(allowed)}")
+
         encoded_query = quote(query.strip(), safe="")
-        url = f"{EODHD_API_BASE}/search/{encoded_query}?fmt=json&limit=10"
-
-        if asset_type:
-            allowed = {"stock", "etf", "fund", "bond", "index", "crypto"}
-            if asset_type not in allowed:
-                raise ToolError(f"Invalid 'asset_type'. Allowed: {sorted(allowed)}")
-            url += f"&type={quote(asset_type)}"
-
-        if preferred_exchange:
-            url += f"&exchange={quote(str(preferred_exchange))}"
-
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"search/{encoded_query}",
+            {
+                "fmt": "json",
+                "limit": 10,
+                "type": asset_type,
+                "exchange": preferred_exchange,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         if not isinstance(data, list) or len(data) == 0:
             return format_json_response({"resolved": None, "message": f"No results found for '{query}'."})
 

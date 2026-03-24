@@ -1,15 +1,13 @@
 # get_mp_tick_data.py
 
-
 import logging
-
-from fastmcp import FastMCP
-from fastmcp.exceptions import ToolError
-from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_timestamp_param, validate_timestamp_range
 from app.response_formatter import ResourceResponse, format_json_response
+from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from mcp.types import ToolAnnotations
 
 logger = logging.getLogger(__name__)
 
@@ -95,9 +93,6 @@ def register(mcp: FastMCP):
         )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

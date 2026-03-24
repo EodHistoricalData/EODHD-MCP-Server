@@ -1,16 +1,14 @@
 # get_stocks_from_search.py
 
 import logging
-
 from urllib.parse import quote
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -87,25 +85,22 @@ def register(mcp: FastMCP):
         # --- Build URL ---
         # Endpoint shape: /api/search/{query_string}?fmt=json&limit=...&bonds_only=1&exchange=...&type=...
         encoded_query = quote(query, safe="")
-        url = f"{EODHD_API_BASE}/search/{encoded_query}?fmt={fmt}&limit={limit}"
-
-        if bonds_only:
-            url += "&bonds_only=1"
-        if exchange:
-            url += f"&exchange={quote(str(exchange))}"
-        if type:
-            url += f"&type={quote(type)}"
-
-        # Per-call token override (note: demo does NOT work for Search)
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"search/{encoded_query}",
+            {
+                "fmt": fmt,
+                "limit": limit,
+                "bonds_only": 1 if bonds_only else None,
+                "exchange": exchange,
+                "type": type,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url)
 
         # --- Normalize / return ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)

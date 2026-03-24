@@ -3,7 +3,7 @@
 import logging
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -67,6 +67,11 @@ def register(mcp: FastMCP):
             raise ToolError("'limit' must be an integer between 0 and 1000.")
         if country is not None and (not isinstance(country, str) or len(country.strip()) != 2):
             raise ToolError("'country' must be a 2-letter ISO code (e.g., 'US').")
+
+        # --- coerce dates ---
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         # --- build URL ---
         # Example:

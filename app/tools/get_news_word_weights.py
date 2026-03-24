@@ -2,14 +2,12 @@
 
 import logging
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
-
-from app.api_client import make_request
-from app.input_formatter import coerce_date_param, validate_date_range
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -69,23 +67,19 @@ def register(mcp: FastMCP):
             if not isinstance(limit, int) or limit <= 0:
                 raise ToolError("'limit' must be a positive integer when provided.")
 
-        # Build URL with nested filter/page params
-        # Example:
-        # /api/news-word-weights?s=AAPL.US&filter[date_from]=2025-04-08&filter[date_to]=2025-04-16&page[limit]=10&fmt=json
-        url = f"{EODHD_API_BASE}/news-word-weights?s={ticker}&fmt={fmt}"
-        if start_date:
-            url += f"&filter[date_from]={start_date}"
-        if end_date:
-            url += f"&filter[date_to]={end_date}"
-        if limit is not None:
-            url += f"&page[limit]={limit}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "news-word-weights",
+            {
+                "s": ticker,
+                "fmt": fmt,
+                "filter[date_from]": start_date,
+                "filter[date_to]": end_date,
+                "page[limit]": limit,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
             return format_json_response(data)
