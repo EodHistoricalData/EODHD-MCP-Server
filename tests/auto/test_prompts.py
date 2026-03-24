@@ -29,19 +29,19 @@ class TestDedupe:
 
 class TestSafeRegister:
     def test_missing_module_logs_warning(self, caplog):
-        mcp = FastMCP("test")
+        mcp = FastMCP("manual")
         with caplog.at_level(logging.WARNING):
             _safe_register(mcp, "nonexistent_module_xyz")
         assert "module not found" in caplog.text
 
     def test_module_without_register_logs_warning(self, caplog):
-        mcp = FastMCP("test")
+        mcp = FastMCP("manual")
         with caplog.at_level(logging.WARNING):
             _safe_register(mcp, "analyze_stock", attr="no_such_func")
         assert "no callable" in caplog.text
 
     def test_register_that_raises_logs_error(self, caplog, monkeypatch):
-        mcp = FastMCP("test")
+        mcp = FastMCP("manual")
         bad_mod = types.ModuleType("bad")
         bad_mod.register = lambda _mcp: 1 / 0
 
@@ -54,7 +54,7 @@ class TestSafeRegister:
         assert "Failed to register" in caplog.text
 
     def test_import_generic_exception_logs_error(self, caplog, monkeypatch):
-        mcp = FastMCP("test")
+        mcp = FastMCP("manual")
 
         def _raise(*_a, **_kw):
             raise RuntimeError("boom")
@@ -72,7 +72,7 @@ class TestSafeRegister:
 
 class TestRegisterAll:
     def test_registers_without_errors(self):
-        mcp = FastMCP("test")
+        mcp = FastMCP("manual")
         register_all(mcp)
 
     def test_prompts_list_not_empty(self):
@@ -94,7 +94,7 @@ def _render_text(mcp: FastMCP, name: str, arguments: dict | None = None) -> str:
 
 class TestAnalyzeStockPrompt:
     def setup_method(self):
-        self.mcp = FastMCP("test")
+        self.mcp = FastMCP("manual")
         from app.prompts.analyze_stock import register
 
         register(self.mcp)
@@ -117,7 +117,7 @@ class TestAnalyzeStockPrompt:
 
 class TestCompareStocksPrompt:
     def setup_method(self):
-        self.mcp = FastMCP("test")
+        self.mcp = FastMCP("manual")
         from app.prompts.compare_stocks import register
 
         register(self.mcp)
@@ -135,7 +135,7 @@ class TestCompareStocksPrompt:
 
 class TestMarketOverviewPrompt:
     def setup_method(self):
-        self.mcp = FastMCP("test")
+        self.mcp = FastMCP("manual")
         from app.prompts.market_overview import register
 
         register(self.mcp)

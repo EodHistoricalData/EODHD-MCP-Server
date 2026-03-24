@@ -1,6 +1,6 @@
-# This module registers all test cases in one place.
-# It's possible to split it into multiple files later (e.g. tests/eod.py, tests/news.py)
-# and add them to TEST_MODULES in test client (test_client_http.py, test_client_sse.py etc.
+# This module registers all manual cases in one place.
+# It's possible to split it into multiple files later (e.g. auto/eod.py, auto/news.py)
+# and add them to TEST_MODULES in manual client (test_client_http.py, test_client_sse.py etc.
 
 def register(add_test, COMMON):
 
@@ -790,7 +790,7 @@ def register(add_test, COMMON):
         },
     })
 
-    # tests/catalog_technical_indicators.py
+    # auto/catalog_technical_indicators.py
 
     # --- SMA ---
     add_test({
@@ -1654,7 +1654,7 @@ def register(add_test, COMMON):
         "use_common": ["api_token"],
         "params": {
             "ticker": "AAPL",
-            "email": "test@example.com",
+            "email": "manual@example.com",
         },
     })
 
@@ -1665,7 +1665,7 @@ def register(add_test, COMMON):
         "use_common": ["api_token"],
         "params": {
             "isin": "US0378331005",
-            "email": "test@example.com",
+            "email": "manual@example.com",
         },
     })
 
@@ -1676,7 +1676,7 @@ def register(add_test, COMMON):
         "use_common": ["api_token"],
         "params": {
             "isin": "US7593518852",
-            "email": "test@example.com",
+            "email": "manual@example.com",
         },
     })
 

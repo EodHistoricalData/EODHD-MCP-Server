@@ -1,4 +1,4 @@
-"""Parametrized tests for all 74 tool files.
+"""Parametrized auto for all 74 tool files.
 
 Covers:
   1. URL construction — mock make_request, verify URL path + query params
@@ -40,14 +40,14 @@ def _default_mock_return(mock_module: str) -> object:
     if mock_module in _BYTES_TOOLS:
         return b"\x89PNG fake image data"
     if mock_module in _TEXT_TOOLS:
-        return "<svg>test</svg>"
+        return "<svg>manual</svg>"
     return API_SUCCESS
 
 
 @pytest.fixture(scope="module")
 def mcp():
     """Register all tools once for the module."""
-    server = FastMCP("test")
+    server = FastMCP("manual")
     register_all(server)
     return server
 
@@ -268,19 +268,19 @@ URL_CASES = [
     ),
     (
         "get_mp_praams_report_bond_by_isin",
-        {"isin": "US0378331005", "email": "test@test.com"},
+        {"isin": "US0378331005", "email": "manual@manual.com"},
         "get_mp_praams_report_bond_by_isin",
         ["/mp/praams/reports/bond/"],
     ),
     (
         "get_mp_praams_report_equity_by_isin",
-        {"isin": "US0378331005", "email": "test@test.com"},
+        {"isin": "US0378331005", "email": "manual@manual.com"},
         "get_mp_praams_report_equity_by_isin",
         ["/mp/praams/reports/equity/isin/"],
     ),
     (
         "get_mp_praams_report_equity_by_ticker",
-        {"ticker": "AAPL.US", "email": "test@test.com"},
+        {"ticker": "AAPL.US", "email": "manual@manual.com"},
         "get_mp_praams_report_equity_by_ticker",
         ["/mp/praams/reports/equity/ticker/"],
     ),
@@ -509,7 +509,7 @@ ERROR_RESPONSE_TOOLS = [
     ("stock_screener", {}, "get_stock_screener_data"),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator"),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data"),
-    # Expanded coverage for error-path tests (TST-10)
+    # Expanded coverage for error-path auto (TST-10)
     ("get_exchange_tickers", {"exchange_code": "US"}, "get_exchange_tickers"),
     ("get_stocks_from_search", {"query": "apple"}, "get_stocks_from_search"),
     ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends"),
@@ -622,7 +622,7 @@ SUCCESS_TOOLS = [
     ("get_exchange_tickers", {"exchange_code": "US"}, "get_exchange_tickers", [{"Code": "AAPL"}]),
     ("get_historical_stock_prices", {"ticker": "AAPL.US"}, "get_historical_stock_prices", [{"close": 150}]),
     ("get_live_price_data", {"ticker": "AAPL.US"}, "get_live_price_data", {"close": 150}),
-    ("get_user_details", {}, "get_user_details", {"name": "test"}),
+    ("get_user_details", {}, "get_user_details", {"name": "manual"}),
     ("get_upcoming_earnings", {}, "get_upcoming_earnings", {"earnings": []}),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator", [{"value": 1.5}]),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data", {"AAPL.US": []}),
@@ -652,7 +652,7 @@ async def test_success_returns_json(mcp, tool_name, args, mock_module, mock_data
 
 
 # ---------------------------------------------------------------------------
-# 5. get_fundamentals_data — multi-request tool (dedicated tests)
+# 5. get_fundamentals_data — multi-request tool (dedicated auto)
 # ---------------------------------------------------------------------------
 
 
@@ -713,13 +713,13 @@ class TestSanitizeData:
         from app.response_formatter import _sanitize_data
 
         data = {
-            "name": "test\u200b",
+            "name": "manual\u200b",
             "items": ["\u200bhidden", {"nested": "val\ufeff"}],
             "count": 42,
         }
         result = _sanitize_data(data)
         assert result == {
-            "name": "test",
+            "name": "manual",
             "items": ["hidden", {"nested": "val"}],
             "count": 42,
         }

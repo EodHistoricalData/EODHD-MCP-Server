@@ -1,4 +1,4 @@
-# get_mp_tick_data.py
+# app/tools/get_mp_tick_data.py
 
 import logging
 

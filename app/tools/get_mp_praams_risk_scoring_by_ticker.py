@@ -1,4 +1,4 @@
-# get_mp_praams_risk_scoring_by_ticker.py
+# app/tools/get_mp_praams_risk_scoring_by_ticker.py
 
 import logging
 
@@ -71,7 +71,7 @@ def register(mcp: FastMCP):
 
         [PRAAMS] Get risk scores and risk-return decomposition for an equity identified by ticker symbol.
         Returns overall PRAAMS ratio (1-7), sub-scores for valuation, performance, profitability,
-        growth, dividends, volatility, liquidity, stress-test, country risk, and solvency.
+        growth, dividends, volatility, liquidity, stress-manual, country risk, and solvency.
         Use when assessing investment risk for a specific stock or ETF. Consumes 10 API calls per request.
         For lookup by ISIN instead of ticker, use get_mp_praams_risk_scoring_by_isin.
         For a full PDF report, use get_mp_praams_report_equity_by_ticker.
@@ -90,7 +90,7 @@ def register(mcp: FastMCP):
                 - dividends (object): dividend yield, payout ratio, score
                 - analystView (object): consensus target price, recommendations, score
                 - volatility (object): historical volatility, VaR, score
-                - stressTest (object): stress-test scenarios and score
+                - stressTest (object): stress-manual scenarios and score
                 - liquidity (object): trading volume, bid-ask spread, score
                 - countryRisk (object): country-level risk assessment and score
                 - solvency (object): debt ratios, interest coverage, score

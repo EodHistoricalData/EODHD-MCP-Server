@@ -1,4 +1,4 @@
-# get_user_details.py
+# app/tools/get_user_details.py
 
 import logging
 

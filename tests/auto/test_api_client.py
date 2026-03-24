@@ -197,12 +197,12 @@ class TestCloseClient:
 
 
 # ---------------------------------------------------------------------------
-# make_request — existing tests
+# make_request — existing auto
 # ---------------------------------------------------------------------------
 
 
 class TestMakeRequest:
-    """Integration-ish tests for make_request using respx mocks."""
+    """Integration-ish auto for make_request using respx mocks."""
 
     @pytest.mark.asyncio
     @respx.mock

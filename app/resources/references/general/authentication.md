@@ -456,7 +456,7 @@ $ curl "https://eodhd.com/api/internal-user?api_token=demo"
 {
   "name": "API Documentation 2",
   "email": "supportlevel1@eodhistoricaldata.com",
-  "subscriptionType": "test",
+  "subscriptionType": "manual",
   "paymentMethod": "Not Available",
   "apiRequests": 19340,
   "apiRequestsDate": "2026-02-16",

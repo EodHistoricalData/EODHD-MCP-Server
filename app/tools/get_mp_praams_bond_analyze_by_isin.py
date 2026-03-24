@@ -1,4 +1,4 @@
-# get_mp_praams_bond_analyze_by_isin.py
+# app/tools/get_mp_praams_bond_analyze_by_isin.py
 
 import logging
 
@@ -72,7 +72,7 @@ def register(mcp: FastMCP):
         """
 
         [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
-        Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-test results,
+        Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-manual results,
         volatility, liquidity, country risk narratives, and issuer-level fundamentals.
         Use for detailed bond-specific due diligence. Consumes 10 API calls per request.
         For bond screening across multiple instruments, use get_mp_praams_smart_screener_bond.
@@ -92,7 +92,7 @@ def register(mcp: FastMCP):
                 - growthMomentum (object): issuer growth & momentum
                 - marketView (object): spread history, yield curve positioning
                 - volatility (object): price volatility, duration-adjusted risk
-                - stressTest (object): stress-test scenarios and score
+                - stressTest (object): stress-manual scenarios and score
                 - liquidity (object): trading volume, bid-ask spread, score
                 - countryRisk (object): country-level risk assessment and score
                 - solvency (object): issuer creditworthiness, leverage, coverage ratios

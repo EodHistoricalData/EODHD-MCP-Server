@@ -5,8 +5,8 @@ Python 3.10+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Sem
 ## Commands
 ```bash
 # Tests
-pytest tests/ -v --tb=short
-pytest tests/ -v --cov=app --cov-report=term-missing   # with coverage
+pytest tests/auto/ -v --tb=short
+pytest tests/auto/ -v --cov=app --cov-report=term-missing   # with coverage
 # Lint & format
 ruff check app/ server.py
 ruff format --check app/ server.py

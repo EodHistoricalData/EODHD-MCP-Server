@@ -1,4 +1,4 @@
-# get_mp_tradinghours_lookup_markets.py
+# app/tools/get_mp_tradinghours_lookup_markets.py
 
 import logging
 

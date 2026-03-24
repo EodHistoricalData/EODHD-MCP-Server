@@ -1,3 +1,4 @@
+# app/input_formatter.py
 """Shared input formatting helpers for EODHD MCP tools.
 
 Unlike strict validators, these helpers coerce flexible user input into

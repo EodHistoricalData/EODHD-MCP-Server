@@ -1,4 +1,4 @@
-# get_exchange_tickers.py
+# app/tools/get_exchange_tickers.py
 
 import logging
 

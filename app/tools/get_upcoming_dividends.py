@@ -1,9 +1,9 @@
-# get_upcoming_dividends.py
+# app/tools/get_upcoming_dividends.py
 
 import logging
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_query_param, build_url, coerce_date_param, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -53,7 +53,7 @@ def register(mcp: FastMCP):
 
 
         Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
@@ -86,15 +86,15 @@ def register(mcp: FastMCP):
             "calendar/dividends",
             {
                 "fmt": fmt,
-                "filter[symbol]": symbol,
-                "filter[date_eq]": date_eq,
-                "filter[date_from]": date_from,
-                "filter[date_to]": date_to,
-                "page[limit]": page_limit,
-                "page[offset]": page_offset,
                 "api_token": api_token,
             },
         )
+        url += build_query_param("filter[symbol]", symbol)
+        url += build_query_param("filter[date_eq]", date_eq)
+        url += build_query_param("filter[date_from]", date_from)
+        url += build_query_param("filter[date_to]", date_to)
+        url += build_query_param("page[limit]", page_limit)
+        url += build_query_param("page[offset]", page_offset)
 
         # --- Request upstream ---
         data = await make_request(url)

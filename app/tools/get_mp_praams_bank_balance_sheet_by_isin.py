@@ -1,4 +1,4 @@
-# get_mp_praams_bank_balance_sheet_by_isin.py
+# app/tools/get_mp_praams_bank_balance_sheet_by_isin.py
 
 import logging
 

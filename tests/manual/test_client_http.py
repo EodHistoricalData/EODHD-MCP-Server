@@ -7,7 +7,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from fastmcp import Client
 
-# ---------- Common defaults (can be overridden per test) ----------
+# ---------- Common defaults (can be overridden per manual) ----------
 COMMON: Dict[str, Any] = {
     # "api_token": "PLACE_YOUR_API_TOKEN_HERE",
     "api_token": os.getenv("EODHD_API_KEY"),
@@ -25,9 +25,9 @@ TESTS: List[Test] = []
 
 def register_test(test: Test) -> None:
     """
-    Register a test.
+    Register a manual.
 
-    test = {
+    manual = {
       "name": "Human-friendly name",
       "tool": "get_historical_stock_prices",
       "use_common": ["api_token", "fmt", "ticker", "start_date", "end_date"],  # optional list
@@ -48,7 +48,7 @@ def _build_params(test: Test) -> Dict[str, Any]:
     params.update(test.get("params", {}))
     return params
 
-# ---------- Where to load tests from (single registration point) ----------
+# ---------- Where to load auto from (single registration point) ----------
 TEST_MODULES = [
     #"all_tests_beta",
     "all_tests",# add more like "eod", "intraday", etc.
@@ -87,7 +87,7 @@ async def run_tests(endpoint: str = "http://127.0.0.1:8000/mcp") -> None:
         tools = await client.list_tools()
         print("Available tools:", [t["name"] if isinstance(t, dict) else t for t in tools])
 
-        print("\n=== Running tests ===")
+        print("\n=== Running auto ===")
         for idx, test in enumerate(TESTS, start=1):
             name = test["name"]
             tool = test["tool"]
@@ -104,7 +104,7 @@ async def run_tests(endpoint: str = "http://127.0.0.1:8000/mcp") -> None:
 
 # ---------- CLI entry ----------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run MCP tool tests against HTTP server.")
+    parser = argparse.ArgumentParser(description="Run MCP tool auto against HTTP server.")
     parser.add_argument(
         "--apikey",
         "--api-key",

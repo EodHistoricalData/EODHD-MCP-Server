@@ -1,4 +1,4 @@
-# get_cboe_indices_list.py
+# app/tools/get_cboe_indices_list.py
 
 import logging
 

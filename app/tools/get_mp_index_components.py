@@ -1,4 +1,4 @@
-# get_mp_index_components.py
+# app/tools/get_mp_index_components.py
 
 import logging
 from urllib.parse import quote_plus

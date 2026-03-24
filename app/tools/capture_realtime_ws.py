@@ -1,4 +1,4 @@
-# capture_realtime_ws.py
+# app/tools/capture_realtime_ws.py
 
 import logging
 
@@ -111,7 +111,7 @@ def register(mcp: FastMCP):
             connect_timeout (float): Overall connection timeout in seconds.
 
         Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL, MSFT, TSLA (stocks), EURUSD, and BTC-USD in Websocket API.
         """
         if websockets is None:

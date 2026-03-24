@@ -1,4 +1,4 @@
-# get_ust_long_term_rates.py
+# app/tools/get_ust_long_term_rates.py
 
 
 import logging
@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_query_param, build_url
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -87,13 +87,11 @@ def register(mcp: FastMCP):
 
         url = build_url(
             "ust/long-term-rates",
-            {
-                "filter[year]": y,
-                "page[limit]": lim,
-                "page[offset]": off,
-                "api_token": api_token,
-            },
+            {"api_token": api_token},
         )
+        url += build_query_param("filter[year]", y)
+        url += build_query_param("page[limit]", lim)
+        url += build_query_param("page[offset]", off)
 
         data = await make_request(url)
 

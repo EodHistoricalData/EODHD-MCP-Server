@@ -42,7 +42,7 @@ def _build_params(test: Test) -> Dict[str, Any]:
     params.update(test.get("params", {}))
     return params
 
-# ---------- Load test modules ----------
+# ---------- Load manual modules ----------
 _env_list = os.getenv("MCP_TEST_MODULES")
 TEST_MODULES = [m.strip() for m in _env_list.split(",")] if _env_list else ["all_tests"]
 
@@ -81,7 +81,7 @@ async def _run_suite(session: ClientSession) -> None:
     tool_names = [t.name for t in getattr(tools_resp, "tools", [])]
     print("Available tools:", tool_names)
 
-    print("\n=== Running tests (STDIO) ===")
+    print("\n=== Running auto (STDIO) ===")
     for idx, test in enumerate(TESTS, start=1):
         name = test["name"]
         tool = test["tool"]
@@ -126,7 +126,7 @@ async def run_tests_stdio(cmdline: str) -> None:
             await _run_suite(session)
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run MCP tool tests against STDIO server.")
+    parser = argparse.ArgumentParser(description="Run MCP tool auto against STDIO server.")
     parser.add_argument(
         "--cmd",
         dest="stdio_cmd",

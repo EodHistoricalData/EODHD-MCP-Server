@@ -240,7 +240,7 @@ class TestParseDatetimeString:
 class TestDateAmbiguity:
     def test_ambiguous_slash_day_first_wins(self):
         """'01/02/2024' → day-first format wins → Feb 1, not Jan 2.
-        This documents current behavior (BUG-2). If changed, update this test."""
+        This documents current behavior (BUG-2). If changed, update this manual."""
         result = format_date_ymd("01/02/2024")
         assert result == "2024-02-01"  # day-first: dd/mm/yyyy → Feb 1
 

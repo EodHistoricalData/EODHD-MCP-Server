@@ -1,4 +1,4 @@
-# get_historical_stock_prices.py
+# app/tools/get_historical_stock_prices.py
 
 import logging
 
@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
             "Monthly S&P 500 since 2020" → ticker="GSPC.INDX", period="m", start_date="2020-01-01"
 
         Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
