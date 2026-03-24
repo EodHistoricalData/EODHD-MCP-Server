@@ -1,4 +1,4 @@
-# This module registers all "new" tests cases to facilitate debugging only new features.
+# This module registers all "new" auto cases to facilitate debugging only new features.
 
 def register(add_test, COMMON):
 
@@ -226,7 +226,7 @@ def register(add_test, COMMON):
         "use_common": ["api_token"],
         "params": {
             "ticker": "AAPL",
-            "email": "test@example.com",
+            "email": "manual@example.com",
         },
     })
 
@@ -237,7 +237,7 @@ def register(add_test, COMMON):
         "use_common": ["api_token"],
         "params": {
             "isin": "US0378331005",
-            "email": "test@example.com",
+            "email": "manual@example.com",
         },
     })
 
@@ -248,6 +248,6 @@ def register(add_test, COMMON):
         "use_common": ["api_token"],
         "params": {
             "isin": "US7593518852",
-            "email": "test@example.com",
+            "email": "manual@example.com",
         },
     })

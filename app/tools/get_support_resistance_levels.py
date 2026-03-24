@@ -1,5 +1,6 @@
-# get_support_resistance_levels.py
+# app/tools/get_support_resistance_levels.py
 
+import logging
 from collections.abc import Callable
 
 from app.api_client import make_request
@@ -8,6 +9,8 @@ from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_METHODS = {"classic", "fibonacci", "woodie", "camarilla", "demark"}
 ThreePointCalc = Callable[[float, float, float], dict]

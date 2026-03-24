@@ -42,7 +42,7 @@ jobs:
       - name: Run tests
         env:
           EODHD_API_KEY: test_key_for_ci
-        run: python -m pytest tests/ -v --tb=short
+        run: python -m pytest tests/auto/ -v --tb=short
 
   security:
     runs-on: ubuntu-latest

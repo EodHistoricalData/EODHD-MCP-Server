@@ -1,4 +1,4 @@
-# get_mp_praams_report_equity_by_ticker.py
+# app/tools/get_mp_praams_report_equity_by_ticker.py
 
 from urllib.parse import quote_plus
 
@@ -53,7 +53,7 @@ def register(mcp: FastMCP):
 
         [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ticker symbol.
         Covers 120,000+ global equities. Report includes valuation, performance, profitability,
-        growth, dividends, analyst view, plus risk factors (volatility, stress-test, liquidity,
+        growth, dividends, analyst view, plus risk factors (volatility, stress-manual, liquidity,
         country, solvency). Requires an email for delivery notification. Consumes 10 API calls per request.
         For report by ISIN, use get_mp_praams_report_equity_by_isin.
         For JSON risk scoring without PDF, use get_mp_praams_risk_scoring_by_ticker.
@@ -82,7 +82,7 @@ def register(mcp: FastMCP):
             - Coverage: 120,000+ global equities (stocks, ETFs).
             - Return factors: valuation, performance, analyst view, profitability,
               growth, dividends/coupons.
-            - Risk factors: default, volatility, stress-test, selling difficulty,
+            - Risk factors: default, volatility, stress-manual, selling difficulty,
               country, other risks.
             - Demo tickers: AAPL, TSLA, AMZN.
 

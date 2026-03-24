@@ -1,4 +1,4 @@
-# get_stock_market_logos_svg.py
+# app/tools/get_stock_market_logos_svg.py
 
 from urllib.parse import quote_plus
 

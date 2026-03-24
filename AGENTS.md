@@ -4,8 +4,8 @@ MCP server exposing 74 EODHD financial data API tools via HTTP, SSE, and stdio t
 Python 3.10+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
 ## Commands
 ```bash
-pytest tests/ -v --tb=short                              # run tests
-pytest tests/ -v --cov=app --cov-report=term-missing     # with coverage
+pytest auto/ -v --tb=short                              # run auto
+pytest auto/ -v --cov=app --cov-report=term-missing     # with coverage
 ruff check app/ server.py                                # lint
 ruff format --check app/ server.py                       # format check
 mypy app/ server.py --ignore-missing-imports             # type check

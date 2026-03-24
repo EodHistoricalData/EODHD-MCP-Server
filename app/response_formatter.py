@@ -1,3 +1,4 @@
+# app/response_formatter.py
 """Structured response formatting for MCP tool outputs.
 
 This module keeps API payloads typed as MCP resources and applies only

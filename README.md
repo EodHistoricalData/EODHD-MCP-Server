@@ -215,8 +215,8 @@ Your MCP client will translate these into calls like:
 
 ### Running the built-in test clients
 
-The test/ directory contains MCP clients that exercise the server end-to-end using the
-test catalog in test/all_tests.py.
+The tests/manual/ directory contains MCP clients that exercise the server end-to-end using the
+test catalog in tests/manual/all_tests.py.
 
 ***HTTP test***
 
@@ -230,7 +230,7 @@ python -m entrypoints.server_http
 # Terminal 2: run HTTP client tests
 
 ```bash
-python test/test_client_http.py
+python tests/manual/test_client_http.py
 # uses http://127.0.0.1:8000/mcp by default
 ```
 
@@ -245,16 +245,16 @@ python -m entrypoints.server_sse
 # Terminal 2: run SSE client tests
 
 ```bash
-python test/test_client_sse.py
+python tests/manual/test_client_sse.py
 ```
 
 ***STDIO test***
 
 ```bash
-python test/test_client_stdio.py   --cmd "python3 -m entrypoints.server_stdio --apikey YOUR_EODHD_API_KEY"
+python tests/manual/test_client_stdio.py   --cmd "python3 -m entrypoints.server_stdio --apikey YOUR_EODHD_API_KEY"
 ```
 
-These clients load test/all_tests.py (plus all_tests_beta.py if you choose) which registers a comprehensive set of working calls against all the tools.
+These clients load tests/manual/all_tests.py (plus all_tests_beta.py if you choose) which registers a comprehensive set of working calls against all the tools.
 
 ---
 
@@ -444,7 +444,7 @@ where the server normalizes aliases to the correct index.
 
 * `get_mp_investverte_esg_view_sector`
 
-For specific parameter examples and edge-case coverage, see test/all_tests.py,
+For specific parameter examples and edge-case coverage, see tests/manual/all_tests.py,
 which registers a wide set of “happy-path” and near-boundary calls against all tools.
 
 ---
@@ -575,7 +575,7 @@ Open an issue for bugs, questions or feature requests.
 If you plan a larger change (new tools, new Marketplace integration, etc.), please describe
 your approach in the issue first.
 
-Add or update tests in test/all_tests.py (and optionally all_tests_beta.py) to cover
+Add or update tests in tests/manual/all_tests.py (and optionally all_tests_beta.py) to cover
 new behavior.
 
 Run the HTTP / SSE / STDIO test clients to ensure everything passes.

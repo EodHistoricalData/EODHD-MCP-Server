@@ -7,8 +7,8 @@
 .ruff_cache
 .pytest_cache
 __pycache__
-tests/
-test/
+tests/auto/
+tests/manual/
 *.md
 !requirements.txt
 htmlcov/

@@ -1,4 +1,4 @@
-# get_exchange_details.py
+# app/tools/get_exchange_details.py
 
 import logging
 

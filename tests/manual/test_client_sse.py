@@ -39,7 +39,7 @@ def _build_params(test: Test) -> Dict[str, Any]:
     params.update(test.get("params", {}))
     return params
 
-# ---------- Where to load tests from ----------
+# ---------- Where to load auto from ----------
 TEST_MODULES = [
     "all_tests_beta",
     "all_tests",# add more like "eod", "intraday", etc.
@@ -86,7 +86,7 @@ async def run_tests(
         tools = await client.list_tools()
         print("Available tools:", [getattr(t, "name", t) for t in tools])
 
-        print("\n=== Running tests ===")
+        print("\n=== Running auto ===")
         for idx, test in enumerate(TESTS, start=1):
             name = test["name"]
             tool = test["tool"]
@@ -103,7 +103,7 @@ async def run_tests(
 
 # ---------- CLI entry ----------
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run MCP tool tests against SSE server.")
+    parser = argparse.ArgumentParser(description="Run MCP tool auto against SSE server.")
     parser.add_argument(
         "--apikey",
         "--api-key",

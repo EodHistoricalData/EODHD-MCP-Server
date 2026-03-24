@@ -1,4 +1,4 @@
-# get_mp_indices_list.py
+# app/tools/get_mp_indices_list.py
 
 import logging
 

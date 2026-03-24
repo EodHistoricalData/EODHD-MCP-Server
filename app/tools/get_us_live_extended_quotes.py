@@ -1,11 +1,11 @@
-# get_us_live_extended_quotes.py
+# app/tools/get_us_live_extended_quotes.py
 
 import logging
 
 from collections.abc import Iterable, Sequence
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_query_param, build_url
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -101,7 +101,7 @@ def register(mcp: FastMCP):
 
 
         Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
@@ -123,14 +123,16 @@ def register(mcp: FastMCP):
                 raise ToolError("'page_offset' must be an integer >= 0.")
 
         # --- Build URL ---
-        params: dict[str, str | int | float | bool | None] = {
-            "s": ",".join(syms),
-            "fmt": fmt,
-            "page[limit]": page_limit,
-            "page[offset]": page_offset,
-            "api_token": api_token,
-        }
-        url = build_url("us-quote-delayed", params)
+        url = build_url(
+            "us-quote-delayed",
+            {
+                "s": ",".join(syms),
+                "fmt": fmt,
+                "api_token": api_token,
+            },
+        )
+        url += build_query_param("page[limit]", page_limit)
+        url += build_query_param("page[offset]", page_offset)
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")

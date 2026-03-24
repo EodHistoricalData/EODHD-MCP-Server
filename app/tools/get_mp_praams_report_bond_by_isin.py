@@ -1,4 +1,4 @@
-# get_mp_praams_report_bond_by_isin.py
+# app/tools/get_mp_praams_report_bond_by_isin.py
 
 from urllib.parse import quote_plus
 
@@ -62,7 +62,7 @@ def register(mcp: FastMCP):
         [PRAAMS] Generate a comprehensive multi-factor PDF report for a bond by ISIN code.
         Covers 120,000+ global bonds (corporate and sovereign). Report includes valuation,
         performance, coupon analysis, profitability, growth, plus risk factors (volatility,
-        stress-test, liquidity, country, solvency). Requires an email for delivery notification.
+        stress-manual, liquidity, country, solvency). Requires an email for delivery notification.
         Consumes 10 API calls per request.
         For JSON bond analysis without PDF, use get_mp_praams_bond_analyze_by_isin.
         For equity PDF reports, use get_mp_praams_report_equity_by_ticker or by_isin.
@@ -91,7 +91,7 @@ def register(mcp: FastMCP):
             - Coverage: 120,000+ global bonds (corporate and sovereign).
             - Return factors: valuation, performance, analyst view, profitability,
               growth, dividends/coupons.
-            - Risk factors: default, volatility, stress-test, selling difficulty,
+            - Risk factors: default, volatility, stress-manual, selling difficulty,
               country, other risks.
             - Demo ISINs: US7593518852, US91282CJN20.
 

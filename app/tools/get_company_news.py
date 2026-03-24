@@ -1,4 +1,4 @@
-# get_company_news.py
+# app/tools/get_company_news.py
 
 import logging
 
@@ -59,7 +59,7 @@ def register(mcp: FastMCP):
             "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
 
         Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """

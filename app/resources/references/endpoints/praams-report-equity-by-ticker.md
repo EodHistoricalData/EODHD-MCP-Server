@@ -106,7 +106,7 @@ def download_equity_report_by_ticker(ticker, email, api_token, is_full=False, ou
     return output_path
 
 # Demo usage
-path = download_equity_report_by_ticker("AAPL", "test@test.com", "demo")
+path = download_equity_report_by_ticker("AAPL", "manual@manual.com", "demo")
 print(f"Report saved to: {path}")
 ```
 

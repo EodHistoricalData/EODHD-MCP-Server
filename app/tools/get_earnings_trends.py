@@ -1,4 +1,4 @@
-# get_earnings_trends.py
+# app/tools/get_earnings_trends.py
 
 import logging
 
@@ -56,7 +56,7 @@ def register(mcp: FastMCP):
 
 
         Demo:
-            To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """

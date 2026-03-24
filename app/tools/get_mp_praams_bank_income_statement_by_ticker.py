@@ -1,4 +1,4 @@
-# get_mp_praams_bank_income_statement_by_ticker.py
+# app/tools/get_mp_praams_bank_income_statement_by_ticker.py
 
 import logging
 

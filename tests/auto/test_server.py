@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from server import build_parser, main
 
 # ---------------------------------------------------------------------------
-# build_parser — existing tests
+# build_parser — existing auto
 # ---------------------------------------------------------------------------
 
 

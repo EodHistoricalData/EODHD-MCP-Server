@@ -10,12 +10,12 @@ from fastmcp import FastMCP
 @pytest.fixture
 def bare_mcp():
     """A bare FastMCP instance with no tools registered."""
-    return FastMCP("test")
+    return FastMCP("manual")
 
 
 @pytest.fixture
 def mcp_with_tools():
     """FastMCP with all tools registered."""
-    server = FastMCP("test")
+    server = FastMCP("manual")
     register_all_tools(server)
     return server

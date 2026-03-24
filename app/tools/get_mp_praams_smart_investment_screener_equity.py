@@ -1,4 +1,4 @@
-# get_mp_praams_smart_investment_screener_equity.py
+# app/tools/get_mp_praams_smart_investment_screener_equity.py
 
 import logging
 from typing import Any

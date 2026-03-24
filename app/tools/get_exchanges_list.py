@@ -1,4 +1,4 @@
-# get_exchanges_list.py
+# app/tools/get_exchanges_list.py
 
 import logging
 
