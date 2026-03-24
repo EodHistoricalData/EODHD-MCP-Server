@@ -1,5 +1,7 @@
 # capture_realtime_ws.py
 
+import logging
+
 import asyncio
 import json
 import socket
@@ -10,11 +12,13 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
 
 # WebSocket runtime
 try:
     import websockets
+
+logger = logging.getLogger(__name__)
 except Exception:  # pragma: no cover
     websockets = None  # type: ignore[assignment]  # We'll error nicely at runtime if unavailable.
 
@@ -66,7 +70,7 @@ def register(mcp: FastMCP):
         ping_interval: float = 20.0,
         ping_timeout: float = 20.0,
         connect_timeout: float = 15.0,
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Capture real-time streaming market data via WebSocket for a fixed time window. Use when

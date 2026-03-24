@@ -1,5 +1,7 @@
 # get_mp_us_options_eod.py
 
+import logging
+
 from collections.abc import Sequence
 from urllib.parse import quote_plus
 
@@ -10,7 +12,9 @@ from mcp.types import ToolAnnotations
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_bool, build_query_param
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
@@ -49,7 +53,7 @@ def register(mcp: FastMCP):
         compact: bool | None = None,  # compact=1 to minimize payload
         api_token: str | None = None,
         fmt: str | None = "json",
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [Marketplace] Fetch end-of-day pricing data for US options contracts. Use when asked about
@@ -131,5 +135,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

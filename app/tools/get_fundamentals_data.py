@@ -1,16 +1,17 @@
 # get_fundamentals_data.py
 
 import datetime as dt
+import logging
 from typing import Any
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 # --------------------------------
 # Utilities & small helpers
@@ -23,6 +24,7 @@ def _to_date(s: str | None) -> dt.date | None:
     try:
         return dt.date.fromisoformat(s)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
 
@@ -35,6 +37,7 @@ def _in_range(date_str: str, start: dt.date | None, end: dt.date | None) -> bool
     try:
         d = dt.date.fromisoformat(date_str)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return False
     if start and d < start:
         return False
@@ -44,18 +47,9 @@ def _in_range(date_str: str, start: dt.date | None, end: dt.date | None) -> bool
 
 
 def _build_url(ticker: str, params: dict[str, Any]) -> str:
-    base = f"{EODHD_API_BASE}/fundamentals/{ticker}?fmt=json"
-    parts: list[str] = []
-    for k, v in params.items():
-        if v is None:
-            continue
-        if isinstance(v, bool):
-            parts.append(f"{k}={'1' if v else '0'}")
-        else:
-            parts.append(f"{k}={v}")
-    if parts:
-        return base + "&" + "&".join(parts)
-    return base
+    all_params: dict[str, Any] = {"fmt": "json"}
+    all_params.update(params)
+    return build_url(f"fundamentals/{ticker}", all_params)
 
 
 def _merge_tree(dest: dict[str, Any], src: dict[str, Any]) -> None:
@@ -300,7 +294,7 @@ def register(mcp: FastMCP):
         include_financials: bool = True,
         # Keep parity with your other tools
         fmt: str = "json",
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Retrieve fundamental data for a single stock, ETF, mutual fund, index, or crypto.
@@ -310,7 +304,6 @@ def register(mcp: FastMCP):
         Supports date-range pruning to limit financials and earnings to a specific window.
         For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
         For price data, use get_historical_stock_prices or get_live_price_data instead.
-
 
         Returns:
             Nested object; structure depends on asset Type:
@@ -358,10 +351,11 @@ def register(mcp: FastMCP):
         ticker = sanitize_ticker(ticker)
 
         token = _token_override(api_token, api_key)
+        from_date = coerce_date_param(from_date, "from_date")
+        to_date = coerce_date_param(to_date, "to_date")
+        validate_date_range(from_date, to_date, "from_date", "to_date")
         start = _to_date(from_date)
         end = _to_date(to_date)
-        if to_date and from_date and start and end and end < start:
-            raise ToolError("'to_date' must be >= 'from_date'.")
 
         # --- 1) Detect Type (via General)
         try:
@@ -431,5 +425,6 @@ def register(mcp: FastMCP):
         # --- 6) Return full JSON (do not reduce)
         try:
             return format_json_response(assembled)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

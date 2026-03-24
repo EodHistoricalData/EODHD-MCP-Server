@@ -9,7 +9,7 @@ reject requests when formats don't match exactly.
 import logging
 import re
 from datetime import datetime, timezone
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from fastmcp.exceptions import ToolError
 
@@ -20,6 +20,30 @@ _URL_UNSAFE_RE = re.compile(r"[?&#/\s]")
 
 
 # ── Query-string helpers ─────────────────────────────────────────────────
+
+
+def build_url(path: str, params: dict[str, str | int | float | bool | None] | None = None) -> str:
+    """Build a full EODHD API URL with properly encoded query string.
+    *path* is relative to ``EODHD_API_BASE`` (leading ``/`` is stripped).
+    *params* values that are ``None`` or ``""`` are silently dropped so callers
+    can pass every optional parameter without ``if`` guards.
+    """
+    from app.config import EODHD_API_BASE  # late import avoids circular deps
+
+    base = f"{EODHD_API_BASE}/{path.lstrip('/')}"
+    if not params:
+        return base
+    clean: dict[str, str | int | float] = {}
+    for k, v in params.items():
+        if v is None or v == "":
+            continue
+        if isinstance(v, bool):
+            clean[k] = 1 if v else 0
+        else:
+            clean[k] = v
+    if not clean:
+        return base
+    return f"{base}?{urlencode(clean)}"
 
 
 def build_query_param(key: str, val: str | int | float | None) -> str:
@@ -221,6 +245,46 @@ def format_date_ymd(value: int | float | str | None) -> str | None:
     return format_date(value, "%Y-%m-%d")
 
 
+def coerce_date_param(
+    value: int | float | str | None,
+    param_name: str = "date",
+) -> str | None:
+    """Coerce a flexible date input to ``YYYY-MM-DD`` or raise :class:`ToolError`.
+
+    Returns ``None`` when *value* is ``None`` (i.e. the parameter was omitted).
+    Raises ``ToolError`` when *value* is non-empty but unparseable.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+
+    from fastmcp.exceptions import ToolError  # late import avoids circular deps
+
+    result = format_date_ymd(value)
+    if result is None:
+        raise ToolError(f"'{param_name}' could not be parsed as a date. Got: {value!r}")
+    return result
+
+
+def validate_date_range(
+    start: str | None,
+    end: str | None,
+    start_name: str = "start_date",
+    end_name: str = "end_date",
+) -> None:
+    """Raise :class:`ToolError` if *start* is after *end*.
+
+    Both values must already be ``YYYY-MM-DD`` strings (as returned by
+    :func:`coerce_date_param`).  ``None`` on either side is treated as
+    unbounded.
+    """
+    if start and end and start > end:
+        from fastmcp.exceptions import ToolError
+
+        raise ToolError(f"'{start_name}' cannot be after '{end_name}'.")
+
+
 def format_date_unix(value: int | float | str | None) -> int | None:
     """Coerce any date input to Unix seconds (UTC).
 
@@ -236,3 +300,45 @@ def format_date_unix(value: int | float | str | None) -> int | None:
         return None
 
     return _to_unix_seconds(dt)
+
+
+def coerce_timestamp_param(
+    value: int | float | str | None,
+    param_name: str = "timestamp",
+) -> int | None:
+    """Coerce a flexible date/time input to Unix seconds (UTC) or raise :class:`ToolError`.
+
+    Accepts Unix timestamps (seconds or milliseconds), ISO-8601 strings,
+    and common date/datetime formats.  Returns ``None`` when *value* is
+    ``None`` (i.e. the parameter was omitted).
+    Raises ``ToolError`` when *value* is non-empty but unparseable.
+    """
+    if value is None:
+        return None
+    if isinstance(value, str) and not value.strip():
+        return None
+
+    from fastmcp.exceptions import ToolError  # late import avoids circular deps
+
+    result = format_date_unix(value)
+    if result is None:
+        raise ToolError(f"'{param_name}' could not be parsed as a date/time. Got: {value!r}")
+    return result
+
+
+def validate_timestamp_range(
+    start: int | None,
+    end: int | None,
+    start_name: str = "from_timestamp",
+    end_name: str = "to_timestamp",
+) -> None:
+    """Raise :class:`ToolError` if *start* is after *end*.
+
+    Both values must already be Unix seconds (as returned by
+    :func:`coerce_timestamp_param`).  ``None`` on either side is treated as
+    unbounded.
+    """
+    if start is not None and end is not None and start > end:
+        from fastmcp.exceptions import ToolError
+
+        raise ToolError(f"'{start_name}' cannot be after '{end_name}'.")

@@ -1,5 +1,7 @@
 # get_mp_praams_bond_analyze_by_isin.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -7,7 +9,9 @@ from mcp.types import ToolAnnotations
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def _canon_isin(v: str) -> str | None:
@@ -61,8 +65,9 @@ async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> list:
     # We just pretty-print whatever comes back.
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -70,7 +75,7 @@ def register(mcp: FastMCP):
     async def get_mp_praams_bond_analyze_by_isin(
         isin: str,  # e.g. 'US7593518852' (demo supports US7593518852, US91282CJN20)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
@@ -115,5 +120,5 @@ def register(mcp: FastMCP):
     async def mp_praams_bond_analyze_by_isin(
         isin: str,
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)

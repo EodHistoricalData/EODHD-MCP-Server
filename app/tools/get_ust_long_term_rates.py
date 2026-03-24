@@ -1,13 +1,17 @@
 # get_ust_long_term_rates.py
 
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -17,7 +21,7 @@ def register(mcp: FastMCP):
         limit: int | str | None = None,  # page[limit]
         offset: int | str | None = None,  # page[offset]
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Fetch US Treasury long-term rate composites and averages. Use when asked about 20-year bond
@@ -93,5 +97,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

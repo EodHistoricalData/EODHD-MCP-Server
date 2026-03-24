@@ -1,30 +1,16 @@
 # get_insider_transactions.py
 
-import re
-from datetime import datetime
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-
-
-def _valid_date(d: str | None) -> bool:
-    if d is None:
-        return True
-    if not DATE_RE.match(d):
-        return False
-    try:
-        datetime.strptime(d, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
+logger = logging.getLogger(__name__)
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -35,7 +21,7 @@ def register(mcp: FastMCP):
         symbol: str | None = None,  # maps to 'code' (e.g., 'AAPL' or 'AAPL.US')
         fmt: str = "json",  # API returns json; we gate to json
         api_token: str | None = None,  # per-call token override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Fetch SEC Form 4 insider trading transactions -- purchases and sales by company officers, directors, and major shareholders.
@@ -71,7 +57,6 @@ def register(mcp: FastMCP):
             "Recent insider transactions, top 50" → limit=50
             "Tesla insider buys and sells in Feb 2026" → symbol="TSLA.US", start_date="2026-02-01", end_date="2026-02-28"
 
-
         Demo:
             To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
@@ -84,26 +69,24 @@ def register(mcp: FastMCP):
         if not isinstance(limit, int) or not (1 <= limit <= 1000):
             raise ToolError("'limit' must be an integer between 1 and 1000.")
 
-        if not _valid_date(start_date):
-            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
-        if not _valid_date(end_date):
-            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         # --- Build URL per docs ---
         # Example:
         # /api/insider-transactions?fmt=json&limit=100&from=2024-03-01&to=2024-03-02&code=AAPL.US
-        url = f"{EODHD_API_BASE}/insider-transactions?fmt={fmt}&limit={limit}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if symbol:
-            url += f"&code={symbol}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
+        url = build_url(
+            "insider-transactions",
+            {
+                "fmt": fmt,
+                "limit": limit,
+                "from": start_date,
+                "to": end_date,
+                "code": symbol,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url)
@@ -114,5 +97,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

@@ -1,5 +1,7 @@
 # get_mp_praams_report_equity_by_ticker.py
 
+import logging
+
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
@@ -10,6 +12,8 @@ from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_binary_response
+
+logger = logging.getLogger(__name__)
 
 
 async def _run_praams_report_equity_by_ticker(

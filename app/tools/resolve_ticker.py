@@ -1,5 +1,7 @@
 # app/tools/resolve_ticker.py
 
+import logging
+
 from urllib.parse import quote
 
 from fastmcp import FastMCP
@@ -8,7 +10,9 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -18,7 +22,7 @@ def register(mcp: FastMCP):
         preferred_exchange: str | None = None,
         asset_type: str | None = None,
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         """
         Resolve a company name, partial ticker, or ISIN to SYMBOL.EXCHANGE format (and ISIN).
 

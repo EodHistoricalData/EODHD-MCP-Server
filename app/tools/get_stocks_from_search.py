@@ -1,5 +1,7 @@
 # get_stocks_from_search.py
 
+import logging
+
 from urllib.parse import quote
 
 from fastmcp import FastMCP
@@ -8,7 +10,9 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
 
@@ -23,7 +27,7 @@ def register(mcp: FastMCP):
         type: str | None = None,  # one of ALLOWED_TYPES
         fmt: str = "json",  # API supports json here
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Search for financial instruments by name, ticker, or ISIN. Use when the user wants to
@@ -105,5 +109,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

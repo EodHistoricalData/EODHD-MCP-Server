@@ -1,31 +1,17 @@
 # get_historical_market_cap.py
 
-import re
-from datetime import datetime
+import logging
 
+from app.api_client import make_request
+from app.input_formatter import coerce_date_param, validate_date_range, build_url
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+logger = logging.getLogger(__name__)
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 ALLOWED_FMT = {"json", "csv"}
-
-
-def _valid_date(d: str | None) -> bool:
-    if d is None:
-        return True
-    if not DATE_RE.match(d):
-        return False
-    try:
-        datetime.strptime(d, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -44,7 +30,6 @@ def register(mcp: FastMCP):
         Use when the user asks about market cap history, company valuation over time, or market cap trends.
         This is the only tool for historical market cap -- do not confuse with fundamental data or price history.
 
-
         Returns:
             Array of weekly data points, each with:
             - date (str): observation date YYYY-MM-DD
@@ -54,7 +39,6 @@ def register(mcp: FastMCP):
             "Apple market cap history in 2025" → ticker="AAPL.US", start_date="2025-01-01", end_date="2025-12-31"
             "Microsoft market cap last 6 months" → ticker="MSFT.US", start_date="2025-09-06", end_date="2026-03-06"
             "Google market cap since 2023" → ticker="GOOG.US", start_date="2023-01-01"
-
 
         Demo:
             To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
@@ -68,30 +52,26 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
-        if not _valid_date(start_date):
-            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
-        if not _valid_date(end_date):
-            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         # --- Build URL ---
         # Example: /api/historical-market-cap/AAPL.US?fmt=json&from=2025-03-01&to=2025-04-01
-        url = f"{EODHD_API_BASE}/historical-market-cap/{ticker}?fmt={fmt}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
+        url = build_url(
+            f"historical-market-cap/{ticker}",
+            {
+                "fmt": fmt,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
 
         # --- Normalize / return ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         if fmt == "csv":
             if not isinstance(data, str):

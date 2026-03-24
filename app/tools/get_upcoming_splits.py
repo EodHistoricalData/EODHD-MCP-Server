@@ -1,5 +1,7 @@
 # get_upcoming_splits.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -8,6 +10,8 @@ from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):

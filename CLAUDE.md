@@ -41,9 +41,9 @@ server.py             — entry point, transport selection, argparse
 ## Conventions
 - Every tool file exports `register(mcp: FastMCP)` — no exceptions
 - All tools are read-only (`readOnlyHint=True`)
-- Input sanitisation: call `sanitize_ticker()`, `sanitize_exchange()` from `app/formatter.py` (only reject URL-breaking chars; let API validate)
+- Input sanitisation: call `sanitize_ticker()`, `sanitize_exchange()` from `app/input_formatter.py` (only reject URL-breaking chars; let API validate)
 - Errors: raise `ToolError` for user-facing errors (MCP-native)
-- API responses: return `json.dumps(data, indent=2)`
+- API responses: return via `response_formatter` (`format_json_response`, `format_text_response`, `format_binary_response`) — typed MCP `EmbeddedResource` with invisible-char sanitization
 - Docstrings: every tool function has detailed docstring with Args, Returns, Examples
 - Ruff ignores are documented with rationale in `pyproject.toml`
 - `X | None` over `Optional[X]`
@@ -57,7 +57,7 @@ server.py             — entry point, transport selection, argparse
 - pytest with `asyncio_mode="auto"`
 - `respx` for HTTP mocking, `AsyncMock` for `make_request`
 - Parametrized tests for URL construction and error paths across all 74 tools
-- Coverage target: 50% (`fail_under` in pyproject.toml)
+- Coverage target: 60% (`fail_under` in pyproject.toml)
 - Markers: `@pytest.mark.slow`, `@pytest.mark.integration`
 - CI env: `EODHD_API_KEY=test_key_for_ci`
 ## CI Pipeline (GitHub Actions)

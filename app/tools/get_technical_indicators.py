@@ -1,5 +1,5 @@
 # get_technical_indicators.py
-from datetime import datetime
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -7,8 +7,10 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.input_formatter import sanitize_ticker
+from app.input_formatter import coerce_date_param, validate_date_range, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}
@@ -55,14 +57,12 @@ SPLITADJ_ONLY_SUPPORTED = {
     "macd",
 }
 
-
 def _normalize_function(fn: str) -> str | None:
     if not isinstance(fn, str) or not fn.strip():
         return None
     f = fn.strip().lower()
     f = FUNC_ALIASES.get(f, f)
     return f if f in ALLOWED_FUNCTIONS else None
-
 
 def _validate_period(name: str, val: int | str | None) -> str | None:
     if val is None or val == "":
@@ -75,7 +75,6 @@ def _validate_period(name: str, val: int | str | None) -> str | None:
         return f"Parameter '{name}' out of range [{PERIOD_MIN}, {PERIOD_MAX}]."
     return None
 
-
 def _validate_float(name: str, val: int | float | str | None) -> str | None:
     if val is None or val == "":
         return None
@@ -84,7 +83,6 @@ def _validate_float(name: str, val: int | float | str | None) -> str | None:
     except Exception:
         return f"Parameter '{name}' must be a number."
     return None
-
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -130,7 +128,6 @@ def register(mcp: FastMCP):
         For raw OHLCV price data, use get_historical_stock_prices instead.
         For fundamental analysis, use get_fundamentals_data instead.
 
-
         Returns:
             Array of objects, each with 'date' (str, YYYY-MM-DD) plus indicator-specific fields:
             - sma/ema/wma: {sma|ema|wma} (float)
@@ -159,7 +156,6 @@ def register(mcp: FastMCP):
             "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
             "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
 
-
         Demo:
             To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
@@ -180,9 +176,9 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         if filter and fmt != "json":
             raise ToolError("Parameter 'filter' works only with fmt='json'.")

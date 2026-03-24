@@ -1,50 +1,17 @@
 # get_company_news.py
 
-import re
-from datetime import datetime
+import logging
 
+from app.api_client import make_request
+from app.input_formatter import coerce_date_param, validate_date_range, build_url
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
-
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-_HTML_TAG_RE = re.compile(r"<[^>]+>")
-_NEWS_CONTENT_MAX_LEN = 5000
-
-
-def _sanitize_articles(data: list) -> list:
-    """Strip HTML tags from title/content and truncate content to reduce injection surface."""
-    for article in data:
-        if not isinstance(article, dict):
-            continue
-        for field in ("title", "content"):
-            val = article.get(field)
-            if isinstance(val, str):
-                val = _HTML_TAG_RE.sub("", val)
-                if field == "content" and len(val) > _NEWS_CONTENT_MAX_LEN:
-                    val = val[:_NEWS_CONTENT_MAX_LEN]
-                article[field] = val
-    return data
-
+logger = logging.getLogger(__name__)
 
 ALLOWED_FMT = {"json", "xml"}
-
-
-def _valid_date(d: str | None) -> bool:
-    if d is None:
-        return True
-    if not DATE_RE.match(d):
-        return False
-    try:
-        datetime.strptime(d, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
-
 
 def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
@@ -91,7 +58,6 @@ def register(mcp: FastMCP):
             "Crypto news, 50 results" → tag="crypto", limit=50
             "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
 
-
         Demo:
             To test data structure, use the test API key "demo" (documentation: https://eodhd.com/financial-apis/).
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
@@ -104,13 +70,9 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
-        if not _valid_date(start_date):
-            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
-        if not _valid_date(end_date):
-            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         if not isinstance(limit, int) or not (1 <= limit <= 1000):
             raise ToolError("'limit' must be an integer between 1 and 1000.")
@@ -118,33 +80,28 @@ def register(mcp: FastMCP):
             raise ToolError("'offset' must be a non-negative integer.")
 
         # --- Build URL per docs ---
-        url = f"{EODHD_API_BASE}/news?fmt={fmt}&limit={limit}&offset={offset}"
-        if ticker:
-            url += f"&s={ticker}"
-        if tag:
-            url += f"&t={tag}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request will append env token
+        url = build_url(
+            "news",
+            {
+                "fmt": fmt,
+                "limit": limit,
+                "offset": offset,
+                "s": ticker,
+                "t": tag,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "xml" else "json")
 
         # --- Normalize / return ---
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         if fmt == "xml":
             if not isinstance(data, str):
                 raise ToolError("Unexpected XML response format from API.")
             return format_text_response(data, "application/xml", resource_path="news/feed.xml")
-
-        # Sanitize article text fields before returning
-        if isinstance(data, list):
-            data = _sanitize_articles(data)
 
         return format_json_response(data)

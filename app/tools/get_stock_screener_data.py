@@ -1,5 +1,7 @@
 # get_stock_screener_data.py
 
+import logging
+
 import json
 from typing import Any
 
@@ -10,7 +12,9 @@ from mcp.types import ToolAnnotations
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
@@ -57,7 +61,7 @@ def register(mcp: FastMCP):
         offset: int = 0,  # 0..999
         fmt: str | None = None,  # NEW: accept fmt to avoid validation errors
         api_token: str | None = None,  # per-call override (else env)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Screen and filter stocks by fundamental and technical criteria.
@@ -143,5 +147,6 @@ def register(mcp: FastMCP):
             raise ToolError(str(data["error"]))
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

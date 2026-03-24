@@ -1,13 +1,15 @@
 # get_earnings_trends.py
 
+import logging
+
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 
 def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
@@ -28,7 +30,7 @@ def register(mcp: FastMCP):
         symbols: str | list[str],  # REQUIRED by API: 'AAPL.US' or ['AAPL.US','MSFT.US']
         fmt: str = "json",  # Trends are JSON-only (kept for consistency)
         api_token: str | None = None,  # per-call override (else uses env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         Get earnings trend data including EPS/revenue estimates, analyst revisions, and growth projections for specific stocks.
@@ -36,7 +38,6 @@ def register(mcp: FastMCP):
         Requires explicit symbol(s). Each request consumes ~10 API calls.
         Use when the user asks about earnings expectations, analyst estimate changes, or EPS growth trends.
         For earnings report dates and calendar, use get_upcoming_earnings instead.
-
 
         Returns:
             Array of trend records, each with:
@@ -63,21 +64,19 @@ def register(mcp: FastMCP):
         if not sym_param:
             raise ToolError("Parameter 'symbols' is required (e.g., 'AAPL.US' or ['AAPL.US','MSFT.US']).")
 
-        url = f"{EODHD_API_BASE}/calendar/trends?1=1"
-        url += build_query_param("symbols", sym_param)
-        # JSON-only; still pass fmt for parity with other tools (server ignores non-JSON anyway)
-        url += build_query_param("fmt", (fmt or "json").lower())
-
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+        url = build_url(
+            "calendar/trends",
+            {
+                "symbols": sym_param,
+                "fmt": (fmt or "json").lower(),
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            # Trends should always be JSON; fallback just in case
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

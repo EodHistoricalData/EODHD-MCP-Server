@@ -1,5 +1,7 @@
 # get_mp_tradinghours_lookup_markets.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -7,7 +9,9 @@ from mcp.types import ToolAnnotations
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
@@ -18,7 +22,7 @@ def register(mcp: FastMCP):
         q: str | None = None,  # free-form search term
         group: str | None = None,  # core, extended, all, allowed (default: all)
         api_token: str | None = None,  # per-call override
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [TradingHours] Search for markets by name, MIC code, country, or free-form query.
@@ -82,5 +86,6 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

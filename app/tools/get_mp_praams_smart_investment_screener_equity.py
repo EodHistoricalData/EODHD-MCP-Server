@@ -1,5 +1,7 @@
 # get_mp_praams_smart_investment_screener_equity.py
 
+import logging
+
 from typing import Any
 
 from fastmcp import FastMCP
@@ -8,7 +10,9 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def _is_int(v: Any) -> bool:
@@ -237,8 +241,9 @@ async def _run_explore_equity(
         raise ToolError(str(data["error"]))
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -286,7 +291,7 @@ def register(mcp: FastMCP):
         orderBy: str | None = None,
         # auth
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Screen and filter equities using multi-factor risk-return criteria.
@@ -387,7 +392,7 @@ def register(mcp: FastMCP):
         solvencyMin: int | None = None,
         solvencyMax: int | None = None,
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         """
         [PRAAMS] Convenience alias for equity screening with common filters.
         Screen equities by country, sector, dividends, and solvency scores.

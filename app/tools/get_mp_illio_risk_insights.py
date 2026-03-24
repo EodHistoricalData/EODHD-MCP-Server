@@ -1,13 +1,16 @@
 # get_mp_illio_risk_insights.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 # Canonical IDs as required by the endpoint
 _ALLOWED_IDS = {"SnP500", "DJI", "NDX"}
@@ -44,7 +47,7 @@ def register(mcp: FastMCP):
         id: str,  # one of {'SnP500','DJI','NDX'} (common aliases accepted)
         fmt: str = "json",  # JSON only (Marketplace returns JSON)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [Illio] Retrieve portfolio-level risk attributes for a major US index.
@@ -88,19 +91,14 @@ def register(mcp: FastMCP):
 
         # Build URL
         # Example: /api/mp/illio/categories/risk/SnP500?api_token=...&fmt=json
-        url = f"{EODHD_API_BASE}/mp/illio/categories/risk/{cid}?1=1"
-        url += build_query_param("fmt", "json")  # explicit for symmetry with other tools
-
-        if api_token:
-            url += build_query_param("api_token", api_token)  # otherwise appended by make_request via env
+        url = build_url(f"mp/illio/categories/risk/{cid}", {"fmt": "json", "api_token": api_token})
 
         # Call upstream
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         # Normalize and return
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

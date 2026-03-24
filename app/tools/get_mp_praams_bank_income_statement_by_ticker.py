@@ -1,5 +1,7 @@
 # get_mp_praams_bank_income_statement_by_ticker.py
 
+import logging
+
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
@@ -7,7 +9,9 @@ from mcp.types import ToolAnnotations
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.input_formatter import build_query_param
-from app.response_formatter import format_json_response
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def _canon_ticker(v: str) -> str | None:
@@ -64,8 +68,9 @@ async def _run_praams_bank_income_statement_by_ticker(
     # We just pretty-print whatever comes back.
     try:
         return format_json_response(data)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
@@ -73,7 +78,7 @@ def register(mcp: FastMCP):
     async def get_mp_praams_bank_income_statement_by_ticker(
         ticker: str,  # e.g. 'JPM', 'BAC', 'WFC'
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Retrieve bank-specific income statement time series by ticker symbol.
@@ -115,7 +120,7 @@ def register(mcp: FastMCP):
     async def mp_praams_bank_income_statement_by_ticker(
         ticker: str,
         api_token: str | None = None,
-    ) -> list:
+    ) -> ResourceResponse:
         return await _run_praams_bank_income_statement_by_ticker(
             ticker=ticker,
             api_token=api_token,

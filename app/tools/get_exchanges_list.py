@@ -1,13 +1,15 @@
 # get_exchanges_list.py
 
+import logging
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-from app.api_client import make_request
-from app.config import EODHD_API_BASE
-from app.response_formatter import format_json_response
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
@@ -15,7 +17,7 @@ def register(mcp: FastMCP):
     async def get_exchanges_list(
         fmt: str = "json",  # API supports csv too; tool defaults to json
         api_token: str | None = None,  # per-call override (env token otherwise)
-    ) -> list:
+    ) -> ResourceResponse:
         """
 
         List all available stock exchanges worldwide. Use when the user asks which exchanges
@@ -26,7 +28,6 @@ def register(mcp: FastMCP):
 
         For tickers listed on a specific exchange, use get_exchange_tickers.
         For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
-
 
         Returns:
             Array of exchange objects, each with:
@@ -45,16 +46,12 @@ def register(mcp: FastMCP):
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
-        url = f"{EODHD_API_BASE}/exchanges-list/?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url("exchanges-list/", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

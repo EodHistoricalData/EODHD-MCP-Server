@@ -1,5 +1,7 @@
 # get_stock_market_logos_svg.py
 
+import logging
+
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
@@ -9,6 +11,8 @@ from mcp.types import ToolAnnotations
 from app.api_client import make_request
 from app.config import EODHD_API_BASE
 from app.response_formatter import ResourceResponse, format_text_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
