@@ -18,6 +18,23 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 
 # ---------------------------------------------------------------------------
+# FastMCP compatibility — method names differ across versions
+# ---------------------------------------------------------------------------
+
+
+async def _invoke_tool(mcp, name, args):
+    """Call a tool on the FastMCP instance, compatible with all versions."""
+    if hasattr(mcp, "call_tool"):
+        result = await mcp.call_tool(name, args)
+    else:
+        result = await mcp._call_tool(name, args)
+    # Older versions return an object with .content; newer return list directly
+    if hasattr(result, "content"):
+        return list(result.content)
+    return list(result)
+
+
+# ---------------------------------------------------------------------------
 # Shared fixtures
 # ---------------------------------------------------------------------------
 
@@ -64,7 +81,7 @@ async def _call(mcp, tool_name, args, mock_module, mock_return=None):
     ret = mock_return if mock_return is not None else _default_mock_return(mock_module)
     mock = AsyncMock(return_value=ret)
     with patch(target, mock):
-        result = await mcp._call_tool(tool_name, args)
+        result = await _invoke_tool(mcp, tool_name, args)
     # _call_tool returns list[EmbeddedResource] directly
     content = result[0]
     # Tools return EmbeddedResource — text for JSON/XML/CSV, blob for binary (PNG, PDF)
@@ -420,7 +437,7 @@ VALIDATION_CASES = [
 async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_match):
     """Tool raises ToolError on invalid input."""
     with pytest.raises(ToolError, match=error_match):
-        await mcp._call_tool(tool_name, bad_args)
+        await _invoke_tool(mcp, tool_name, bad_args)
 
 
 @pytest.mark.asyncio
@@ -430,7 +447,8 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     connect_mock = AsyncMock(return_value=mock_ws)
 
     with patch("app.tools.capture_realtime_ws.websockets.connect", connect_mock):
-        result = await mcp._call_tool(
+        result = await _invoke_tool(
+            mcp,
             "capture_realtime_ws",
             {
                 "feed": "crypto",
@@ -467,7 +485,8 @@ async def test_capture_realtime_ws_timeout_has_specific_message(mcp):
             match=r"Timed out while establishing WebSocket connection to ws\.eodhistoricaldata\.com after 3\.0 seconds\.",
         ),
     ):
-        await mcp._call_tool(
+        await _invoke_tool(
+            mcp,
             "capture_realtime_ws",
             {
                 "feed": "us_trades",
@@ -488,7 +507,8 @@ async def test_capture_realtime_ws_dns_error_has_specific_message(mcp):
             match=r"Failed to resolve WebSocket host 'ws\.eodhistoricaldata\.com': Name or service not known\.",
         ),
     ):
-        await mcp._call_tool(
+        await _invoke_tool(
+            mcp,
             "capture_realtime_ws",
             {
                 "feed": "forex",
@@ -599,7 +619,7 @@ async def test_null_response_raises(mcp, tool_name, args, mock_module):
     with pytest.raises(ToolError):
         target = _mock_path(mock_module)
         with patch(target, new_callable=AsyncMock, return_value=None):
-            await mcp._call_tool(tool_name, args)
+            await _invoke_tool(mcp, tool_name, args)
 
 
 # Tools that still raise ToolError on error dicts (explicit check or type mismatch)
@@ -627,10 +647,10 @@ async def test_error_response_passthrough(mcp, tool_name, args, mock_module):
     target = _mock_path(mock_module)
     if tool_name in _ERROR_RAISES_TOOLS:
         with pytest.raises(ToolError), patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            await mcp._call_tool(tool_name, args)
+            await _invoke_tool(mcp, tool_name, args)
     elif tool_name in _ERROR_GRACEFUL_TOOLS:
         with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            result = await mcp._call_tool(tool_name, args)
+            result = await _invoke_tool(mcp, tool_name, args)
         content = result[0]
         resource = content.resource if hasattr(content, "resource") else content
         text = getattr(resource, "text", None) or ""
@@ -638,7 +658,7 @@ async def test_error_response_passthrough(mcp, tool_name, args, mock_module):
         assert parsed.get("resolved") is None
     else:
         with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            result = await mcp._call_tool(tool_name, args)
+            result = await _invoke_tool(mcp, tool_name, args)
         content = result[0]
         resource = content.resource if hasattr(content, "resource") else content
         text = getattr(resource, "text", None) or ""
@@ -708,7 +728,7 @@ async def test_fundamentals_url_and_general_call(mcp):
 
     target = _mock_path("get_fundamentals_data")
     with patch(target, side_effect=_side_effect):
-        result = await mcp._call_tool("get_fundamentals_data", {"ticker": "AAPL.US"})
+        result = await _invoke_tool(mcp, "get_fundamentals_data", {"ticker": "AAPL.US"})
     # _call_tool returns list[EmbeddedResource] directly
     content = result[0]
     text = content.resource.text if hasattr(content, "resource") else content.text
