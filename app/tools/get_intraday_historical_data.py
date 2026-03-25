@@ -55,11 +55,6 @@ def register(mcp: FastMCP):
             split_dt (bool, optional): If True, adds 'split-dt=1' to split date/time fields.
             api_token (str, optional): Per-call token override; env token used if omitted.
 
-        Notes:
-            - If no 'from'/'to' provided, API returns last 120 days by default (per docs).
-            - Max span depends on interval:
-                1m -> 120 days, 5m -> 600 days, 1h -> 7200 days.
-
         Returns:
             Array of intraday bar records, each with:
             - timestamp (int): Unix epoch seconds

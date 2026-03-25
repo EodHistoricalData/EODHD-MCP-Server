@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_query_param, build_url, coerce_date_param, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -74,12 +74,12 @@ def register(mcp: FastMCP):
             {
                 "s": ticker,
                 "fmt": fmt,
-                "filter[date_from]": start_date,
-                "filter[date_to]": end_date,
-                "page[limit]": limit,
                 "api_token": api_token,
             },
         )
+        url += build_query_param("filter[date_from]", start_date)
+        url += build_query_param("filter[date_to]", end_date)
+        url += build_query_param("page[limit]", limit)
 
         data = await make_request(url)
 

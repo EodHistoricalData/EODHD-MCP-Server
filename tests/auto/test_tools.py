@@ -150,7 +150,7 @@ URL_CASES = [
         ["/technical/AAPL.US", "function=sma"],
     ),
     # News
-    ("get_news_word_weights", {"ticker": "AAPL.US"}, "get_news_word_weights", ["/news", "s=AAPL.US"]),
+    ("get_news_word_weights", {"ticker": "AAPL.US"}, "get_news_word_weights", ["/news-word-weights", "s=AAPL.US"]),
     # Logos
     ("get_stock_market_logos", {"symbol": "AAPL.US"}, "get_stock_market_logos", ["/logo/AAPL.US"]),
     ("get_stock_market_logos_svg", {"symbol": "AAPL.US"}, "get_stock_market_logos_svg", ["/logo-svg/AAPL.US"]),
