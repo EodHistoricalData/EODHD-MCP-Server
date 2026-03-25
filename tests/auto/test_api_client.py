@@ -2,6 +2,9 @@
 """Tests for app.api_client — token injection, backoff, make_request, retry,
 rate limiting, token redaction, token resolution, HTTP methods."""
 
+import asyncio
+import time
+from itertools import pairwise
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -125,6 +128,12 @@ class TestResolveToken:
 class TestEnsureApiToken:
     """_ensure_api_token appends api_token from env when missing."""
 
+    def test_uses_latest_env_token_after_import(self, monkeypatch):
+        monkeypatch.setenv("EODHD_API_KEY", "cli_override_key")
+        url = "https://eodhd.com/api/eod/AAPL.US"
+        result = _ensure_api_token(url)
+        assert result.endswith("?api_token=cli_override_key")
+
     def test_adds_token_no_query_string(self):
         url = "https://eodhd.com/api/eod/AAPL.US"
         result = _ensure_api_token(url)
@@ -196,6 +205,14 @@ class TestCloseClient:
             await close_client()
         mock_client.aclose.assert_awaited_once()
 
+    @pytest.mark.asyncio
+    async def test_close_client_without_client_is_noop(self, monkeypatch):
+        import app.api_client as ac
+
+        monkeypatch.setattr(ac, "_http_client", None)
+        await close_client()
+        assert ac._http_client is None
+
 
 # ---------------------------------------------------------------------------
 # make_request — existing auto
@@ -204,6 +221,36 @@ class TestCloseClient:
 
 class TestMakeRequest:
     """Integration-ish auto for make_request using respx mocks."""
+
+    @pytest.mark.asyncio
+    async def test_make_request_lazily_creates_client(self, monkeypatch):
+        import app.api_client as ac
+
+        mock_client = AsyncMock()
+        mock_client.get = AsyncMock(
+            return_value=Response(
+                200,
+                json={"close": 150.0},
+                request=httpx.Request("GET", "https://eodhd.com/api/eod/AAPL.US"),
+            )
+        )
+        mock_client.aclose = AsyncMock()
+
+        monkeypatch.setattr(ac, "_http_client", None)
+        ac._last_request_time = 0.0
+        set_rate_limit(0.0)
+
+        try:
+            with patch("app.api_client.httpx.AsyncClient", return_value=mock_client) as mock_ctor:
+                result = await make_request("https://eodhd.com/api/eod/AAPL.US")
+            assert result == {"close": 150.0}
+            mock_ctor.assert_called_once()
+            assert ac._http_client is mock_client
+        finally:
+            set_rate_limit(0.1)
+            ac._last_request_time = 0.0
+            await close_client()
+
 
     @pytest.mark.asyncio
     @respx.mock
@@ -257,6 +304,42 @@ class TestMakeRequest:
         assert result is not None
         assert "error" in result
         assert route.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_are_rate_limited(self):
+        import app.api_client as ac
+
+        call_times: list[float] = []
+        mock_client = MagicMock()
+
+        async def fake_get(url, headers=None, timeout=None):
+            call_times.append(time.monotonic())
+            return Response(200, json={"ok": True}, request=httpx.Request("GET", url))
+
+        mock_client.get = AsyncMock(side_effect=fake_get)
+
+        ac._last_request_time = 0.0
+        ac._rate_limit_lock = None
+        ac._rate_limit_lock_loop = None
+        set_rate_limit(0.05)
+
+        try:
+            with patch("app.api_client._http_client", mock_client):
+                results = await asyncio.gather(
+                    make_request("https://eodhd.com/api/eod/AAPL.US"),
+                    make_request("https://eodhd.com/api/eod/MSFT.US"),
+                    make_request("https://eodhd.com/api/eod/GOOGL.US"),
+                )
+        finally:
+            set_rate_limit(0.1)
+            ac._last_request_time = 0.0
+            ac._rate_limit_lock = None
+            ac._rate_limit_lock_loop = None
+
+        assert results == [{"ok": True}, {"ok": True}, {"ok": True}]
+        assert len(call_times) == 3
+        gaps = [later - earlier for earlier, later in pairwise(call_times)]
+        assert all(gap >= 0.045 for gap in gaps)
 
     @pytest.mark.asyncio
     async def test_unsupported_method(self):

@@ -9,22 +9,54 @@ from typing import Any, Literal
 import httpx
 from fastmcp.server.dependencies import get_http_request
 
-from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
+from .config import EODHD_RETRY_ENABLED, get_api_key
 
 logger = logging.getLogger("eodhd-mcp.api_client")
 
-# Shared HTTP client — reuses TCP+TLS connections across tool calls
-_http_client: httpx.AsyncClient = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+# Shared HTTP client — created lazily inside a running event loop
+_http_client: httpx.AsyncClient | None = None
+
+
+def _create_http_client() -> httpx.AsyncClient:
+    """Create the shared HTTP client."""
+    return httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+
+
+async def _get_http_client() -> httpx.AsyncClient:
+    """Return the shared HTTP client, creating it on first use."""
+    global _http_client
+    if _http_client is None:
+        _http_client = _create_http_client()
+    return _http_client
 
 
 async def close_client() -> None:
     """Shut down the shared HTTP client (call on server exit)."""
-    await _http_client.aclose()
+    global _http_client
+    if _http_client is None:
+        return
+
+    client = _http_client
+    _http_client = None
+    await client.aclose()
 
 
 # Rate limiting
 _last_request_time: float = 0.0
 _rate_limit_delay: float = 0.1  # 100 ms between requests
+_rate_limit_lock: asyncio.Lock | None = None
+_rate_limit_lock_loop: asyncio.AbstractEventLoop | None = None
+
+
+def _get_rate_limit_lock() -> asyncio.Lock:
+    """Return the rate-limit lock for the current event loop."""
+    global _rate_limit_lock, _rate_limit_lock_loop
+    loop = asyncio.get_running_loop()
+    if _rate_limit_lock is None or _rate_limit_lock_loop is not loop:
+        _rate_limit_lock = asyncio.Lock()
+        _rate_limit_lock_loop = loop
+    return _rate_limit_lock
+
 
 # Retry configuration
 MAX_RETRIES = 3
@@ -152,7 +184,7 @@ def _ensure_api_token(url: str) -> str:
     if "api_token=" in url:
         return url
 
-    token = _resolve_eodhd_token_from_request() or EODHD_API_KEY
+    token = _resolve_eodhd_token_from_request() or get_api_key()
     if not token:
         return url  # best-effort; caller may have other auth patterns
 
@@ -162,11 +194,12 @@ def _ensure_api_token(url: str) -> str:
 async def _rate_limit() -> None:
     """Enforce a minimum gap between outgoing requests."""
     global _last_request_time
-    now = time.monotonic()
-    elapsed = now - _last_request_time
-    if elapsed < _rate_limit_delay:
-        await asyncio.sleep(_rate_limit_delay - elapsed)
-    _last_request_time = time.monotonic()
+    async with _get_rate_limit_lock():
+        now = time.monotonic()
+        elapsed = now - _last_request_time
+        if elapsed < _rate_limit_delay:
+            await asyncio.sleep(_rate_limit_delay - elapsed)
+        _last_request_time = time.monotonic()
 
 
 def _backoff(attempt: int) -> float:
@@ -224,6 +257,7 @@ async def make_request(
     _retry_on = retry_enabled if retry_enabled is not None else EODHD_RETRY_ENABLED
     retries = MAX_RETRIES if _retry_on else 0
 
+    client = await _get_http_client()
     last_error: Exception | None = None
 
     for attempt in range(retries + 1):
@@ -233,13 +267,13 @@ async def make_request(
             logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, _redact_url(url)[:120])
 
             if m == "GET":
-                response = await _http_client.get(url, headers=req_headers, timeout=timeout)
+                response = await client.get(url, headers=req_headers, timeout=timeout)
             elif m == "POST":
-                response = await _http_client.post(url, json=json_body, headers=req_headers, timeout=timeout)
+                response = await client.post(url, json=json_body, headers=req_headers, timeout=timeout)
             elif m == "PUT":
-                response = await _http_client.put(url, json=json_body, headers=req_headers, timeout=timeout)
+                response = await client.put(url, json=json_body, headers=req_headers, timeout=timeout)
             else:  # DELETE
-                response = await _http_client.delete(url, headers=req_headers, timeout=timeout)
+                response = await client.delete(url, headers=req_headers, timeout=timeout)
 
             # Handle rate limiting from the API
             if response.status_code == 429:
