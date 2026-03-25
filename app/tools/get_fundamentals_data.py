@@ -10,7 +10,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +89,14 @@ async def _fetch_filtered_block(
             params[k] = v
     url = _build_url(ticker, params)
     data = await make_request(url)
+    raise_on_api_error(data)
     return data
 
 
 async def _fetch_general(ticker: str, api_token: str | None) -> dict[str, Any]:
     url = _build_url(ticker, {"filter": "General", "api_token": api_token} if api_token else {"filter": "General"})
     data = await make_request(url)
+    raise_on_api_error(data)
     if not isinstance(data, dict) or "Type" not in data:
         raise RuntimeError("Unexpected 'General' response: missing 'Type'")
     return data
@@ -361,6 +363,8 @@ def register(mcp: FastMCP):
         # --- 1) Detect Type (via General)
         try:
             general = await _fetch_general(ticker, token)
+        except ToolError:
+            raise
         except Exception as e:
             raise ToolError(f"Failed to get General: {e}")
 
@@ -389,6 +393,8 @@ def register(mcp: FastMCP):
                     extra_params=extra_params if isinstance(extra_params, dict) else None,
                 )
                 _merge_tree(assembled, bulk)
+        except ToolError:
+            raise
         except Exception as e:
             raise ToolError("Failed to fetch sections " + repr(non_financial_sections) + ": " + repr(e))
 
@@ -416,6 +422,8 @@ def register(mcp: FastMCP):
                             block = await _fetch_filtered_block(ticker, token, path)
                             fin_full["Financials"][stmt][period] = block
                     _merge_tree(assembled, fin_full)
+            except ToolError:
+                raise
             except Exception as e:
                 raise ToolError(f"Failed to fetch Financials: {e}")
 

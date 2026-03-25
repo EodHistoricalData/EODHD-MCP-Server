@@ -291,3 +291,24 @@ class TestRaiseOnApiError:
     def test_error_dict_includes_status_and_detail(self):
         with pytest.raises(ToolError, match="403"):
             raise_on_api_error({"error": "Forbidden", "status_code": 403, "text": "invalid API key"})
+
+    def test_error_dict_includes_structured_upstream_context(self):
+        with pytest.raises(ToolError, match="code=OPERATION_NOT_PERMITTED"):
+            raise_on_api_error(
+                {
+                    "error": "EODHD API request failed with 401 Unauthorized.",
+                    "status_code": 401,
+                    "error_code": "OPERATION_NOT_PERMITTED",
+                    "upstream_message": "User 12 do not have access to this watch list DJI",
+                }
+            )
+
+    def test_error_dict_parses_json_detail_from_text(self):
+        with pytest.raises(ToolError, match="watch list DJI"):
+            raise_on_api_error(
+                {
+                    "error": "EODHD API request failed with 401 Unauthorized.",
+                    "status_code": 401,
+                    "text": '{"code":"OPERATION_NOT_PERMITTED","errorMessage":"User 12 do not have access to this watch list DJI"}',
+                }
+            )

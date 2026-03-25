@@ -8,7 +8,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_date_param, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -91,11 +91,9 @@ def register(mcp: FastMCP):
 
         # --- Request ---
         data = await make_request(url)
+        raise_on_api_error(data)
 
         # --- Normalize / return ---
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
             return format_json_response(data)
         except ToolError:

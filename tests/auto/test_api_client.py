@@ -217,11 +217,34 @@ class TestMakeRequest:
     @pytest.mark.asyncio
     @respx.mock
     async def test_4xx_returns_error(self):
-        respx.get(url__startswith="https://eodhd.com/api/eod/BAD").mock(return_value=Response(403, text="Forbidden"))
+        respx.get(url__startswith="https://eodhd.com/api/eod/BAD").mock(
+            return_value=Response(
+                403,
+                json={"code": "FORBIDDEN_PLAN", "errorMessage": "Upgrade required for this endpoint."},
+            )
+        )
         result = await make_request("https://eodhd.com/api/eod/BAD")
         assert result is not None
         assert "error" in result
         assert result["status_code"] == 403
+        assert result["error"] == "EODHD API request failed with 403 Forbidden."
+        assert result["error_code"] == "FORBIDDEN_PLAN"
+        assert result["upstream_message"] == "Upgrade required for this endpoint."
+        assert "api_token=" not in result["error"]
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_429_without_retry_returns_error(self):
+        respx.get(url__startswith="https://eodhd.com/api/limited").mock(
+            return_value=Response(429, text="Too Many Requests", headers={"Retry-After": "5"})
+        )
+        with patch("app.api_client.asyncio.sleep", new_callable=AsyncMock):
+            result = await make_request("https://eodhd.com/api/limited", retry_enabled=False)
+        assert result is not None
+        assert result["status_code"] == 429
+        assert result["retry_after"] == 5
+        assert result["upstream_message"] == "Retry after 5 seconds."
+        assert "rate limit exceeded" in result["error"].lower()
 
     @pytest.mark.asyncio
     @respx.mock

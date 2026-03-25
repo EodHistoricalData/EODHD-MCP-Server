@@ -3,6 +3,7 @@ import asyncio
 import logging
 import re
 import time
+from http import HTTPStatus
 from typing import Any, Literal
 
 import httpx
@@ -37,6 +38,82 @@ _TOKEN_RE = re.compile(r"api_token=[^&]+")
 def _redact_url(url: str) -> str:
     """Strip api_token values from a URL for safe logging."""
     return _TOKEN_RE.sub("api_token=***", url)
+
+
+def _truncate_text(text: str | None, limit: int = 2000) -> str | None:
+    """Trim large response bodies so error payloads stay readable."""
+    if not text:
+        return None
+    if len(text) > limit:
+        return text[:limit] + "…"
+    return text
+
+
+def _extract_api_error_details(response: httpx.Response) -> tuple[str | None, str | None, str | None]:
+    """Extract structured error details from an API response body when possible."""
+    response_text = _truncate_text(response.text)
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return None, None, response_text
+
+    if not isinstance(payload, dict):
+        return None, None, response_text
+
+    def _pick_str(*keys: str) -> str | None:
+        for key in keys:
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                return value.strip()
+        return None
+
+    error_code = _pick_str("code", "error_code", "errorCode", "type")
+    detail = _pick_str("errorMessage", "message", "detail", "description", "error_description")
+
+    if detail is None:
+        error_value = payload.get("error")
+        if isinstance(error_value, str) and error_value.strip():
+            detail = error_value.strip()
+
+    return error_code, detail, response_text
+
+
+def _http_status_phrase(status_code: int) -> str:
+    """Return a standard reason phrase when available."""
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "HTTP Error"
+
+
+def _build_http_error(
+    response: httpx.Response,
+    *,
+    base_message: str | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a structured, agent-readable error payload from an HTTP response."""
+    status_code = response.status_code
+    error_code, upstream_message, response_text = _extract_api_error_details(response)
+
+    error = base_message or f"EODHD API request failed with {status_code} {_http_status_phrase(status_code)}."
+
+    payload: dict[str, Any] = {
+        "error": error,
+        "status_code": status_code,
+    }
+
+    if error_code:
+        payload["error_code"] = error_code
+    if upstream_message:
+        payload["upstream_message"] = upstream_message
+    if response_text:
+        payload["text"] = response_text
+    if extra_fields:
+        payload.update(extra_fields)
+
+    return payload
 
 
 def _resolve_eodhd_token_from_request() -> str | None:
@@ -167,8 +244,26 @@ async def make_request(
             # Handle rate limiting from the API
             if response.status_code == 429:
                 retry_after = int(response.headers.get("Retry-After", 60))
+                redacted_url = _redact_url(str(response.request.url))
+
+                if attempt >= retries:
+                    logger.error("Rate limited by API after final attempt for %s %s", m, redacted_url)
+                    return _build_http_error(
+                        response,
+                        base_message="EODHD API rate limit exceeded (429 Too Many Requests).",
+                        extra_fields={
+                            "retry_after": retry_after,
+                            "upstream_message": f"Retry after {retry_after} seconds.",
+                        },
+                    )
+
                 logger.warning(
-                    "Rate limited by API; waiting %ds (attempt %d/%d)", retry_after, attempt + 1, retries + 1
+                    "Rate limited by API for %s %s; waiting %ds (attempt %d/%d)",
+                    m,
+                    redacted_url,
+                    retry_after,
+                    attempt + 1,
+                    retries + 1,
                 )
                 await asyncio.sleep(retry_after)
                 continue  # doesn't count as a failed attempt
@@ -186,9 +281,7 @@ async def make_request(
                 return response.json()
             except ValueError:
                 ct = response.headers.get("content-type", "")
-                text = response.text
-                if text and len(text) > 2000:
-                    text = text[:2000] + "…"
+                text = _truncate_text(response.text)
                 return {
                     "error": "Response is not valid JSON.",
                     "status_code": response.status_code,
@@ -203,14 +296,20 @@ async def make_request(
         except httpx.HTTPStatusError as e:
             last_error = e
             status = e.response.status_code
+            error_payload = _build_http_error(e.response)
+            redacted_url = _redact_url(str(e.request.url))
+            error_code = error_payload.get("error_code")
+            upstream_message = error_payload.get("upstream_message")
 
             # 4xx (except 429 which is handled above) are not retryable
             if 400 <= status < 500:
-                logger.error("Client error %d: %s", status, e)
-                text = e.response.text
-                if text and len(text) > 2000:
-                    text = text[:2000] + "…"
-                return {"error": str(e), "status_code": status, "text": text}
+                log_parts = [f"Client error {status} for {m} {redacted_url}"]
+                if error_code:
+                    log_parts.append(f"code={error_code}")
+                if upstream_message:
+                    log_parts.append(f"detail={upstream_message}")
+                logger.error(" | ".join(log_parts))
+                return error_payload
 
             logger.warning("Server error %d (attempt %d/%d)", status, attempt + 1, retries + 1)
 
