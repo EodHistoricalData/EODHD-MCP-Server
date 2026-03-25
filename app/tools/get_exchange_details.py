@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_url, coerce_date_param, sanitize_exchange, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -65,8 +65,7 @@ def register(mcp: FastMCP):
             "XETRA holidays in Q1 2026" → get_exchange_details(exchange_code="XETRA", start_date="2026-01-01", end_date="2026-03-31")
         """
         # --- Validate inputs ---
-        if not exchange_code or not isinstance(exchange_code, str):
-            raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")
+        exchange_code = sanitize_exchange(exchange_code)
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

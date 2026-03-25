@@ -11,6 +11,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.config import get_api_key
 from app.response_formatter import ResourceResponse, format_json_response
 
 # WebSocket runtime
@@ -129,8 +130,8 @@ def register(mcp: FastMCP):
         sym_str = _symbols_to_str(symbols)
         sym_list = [s for s in sym_str.split(",") if s]
 
-        # Build WS URL with token
-        token = api_token
+        # Build WS URL with token (resolve from env if not provided)
+        token = api_token or get_api_key() or ""
         uri = f"{WS_BASE}/{endpoint}?api_token={token}"
 
         started_at = int(time.time() * 1000)

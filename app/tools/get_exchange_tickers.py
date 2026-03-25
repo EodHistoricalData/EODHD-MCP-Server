@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_exchange
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -52,8 +52,7 @@ def register(mcp: FastMCP):
             "Show me delisted US stocks" → get_exchange_tickers(exchange_code="US", delisted=True)
             "ETFs trading on XETRA" → get_exchange_tickers(exchange_code="XETRA", type="etf")
         """
-        if not exchange_code or not isinstance(exchange_code, str):
-            raise ToolError("Parameter 'exchange_code' is required (e.g., 'US', 'LSE').")
+        exchange_code = sanitize_exchange(exchange_code)
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

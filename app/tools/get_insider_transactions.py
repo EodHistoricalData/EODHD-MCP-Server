@@ -8,7 +8,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_date_param, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
+from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
@@ -91,13 +91,6 @@ def register(mcp: FastMCP):
 
         # --- Request ---
         data = await make_request(url)
-        raise_on_api_error(data)
 
         # --- Normalize / return ---
-        try:
-            return format_json_response(data)
-        except ToolError:
-            raise
-        except Exception as e:
-            logger.debug("API response parse error", exc_info=True)
-            raise ToolError("Unexpected response format from API.") from e
+        return format_json_response(data)

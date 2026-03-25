@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_exchange
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
@@ -77,12 +77,7 @@ def register(mcp: FastMCP):
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
-        if not exchange or not isinstance(exchange, str):
-            raise ToolError(
-                "Parameter 'exchange' is required and must be a non-empty string (e.g., 'NASDAQ', 'NYSE', 'US')."
-            )
-
-        exchange = exchange.strip().upper()
+        exchange = sanitize_exchange(exchange, param_name="exchange").upper()
 
         allowed_fmt = {"json", "csv"}
         fmt = (fmt or "json").lower()

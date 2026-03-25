@@ -1,7 +1,6 @@
 # app/tools/get_sentiment_data.py
 
 import logging
-from collections.abc import Iterable
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -12,11 +11,6 @@ from app.input_formatter import build_url, coerce_date_param, validate_date_rang
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
-
-
-def _normalize_symbols(symbols: Iterable[str]) -> str:
-    # Turn a sequence like ["AAPL.US","BTC-USD.CC"] into "AAPL.US,BTC-USD.CC"
-    return ",".join(s.strip() for s in symbols if s and str(s).strip())
 
 
 def register(mcp: FastMCP):
