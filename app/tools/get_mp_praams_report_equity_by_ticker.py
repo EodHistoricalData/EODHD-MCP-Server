@@ -7,19 +7,17 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
 
 
 async def _run_praams_report_equity_by_ticker(
     ticker: str, email: str, is_full: bool | None, api_token: str | None
 ) -> ResourceResponse:
-    if not ticker or not isinstance(ticker, str):
-        raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL', 'TSLA').")
+    ticker = sanitize_ticker(ticker).upper()
     if not email or not isinstance(email, str):
         raise ToolError("Parameter 'email' is required for report notifications.")
 
-    ticker = ticker.strip().upper()
     email = email.strip()
 
     url = build_url(

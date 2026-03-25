@@ -7,10 +7,21 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
+
+
+def _normalize_symbols(symbols: str) -> str:
+    if not isinstance(symbols, str):
+        raise ToolError("Parameter 'symbols' is required (comma-separated string).")
+
+    parts = [part.strip() for part in symbols.split(",")]
+    cleaned = [sanitize_ticker(part, param_name="symbols") for part in parts if part]
+    if not cleaned:
+        raise ToolError("Parameter 'symbols' is required (comma-separated string).")
+    return ",".join(cleaned)
 
 
 def register(mcp: FastMCP):
@@ -56,8 +67,7 @@ def register(mcp: FastMCP):
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # Validate required
-        if not symbols or not isinstance(symbols, str):
-            raise ToolError("Parameter 'symbols' is required (comma-separated string).")
+        symbols = _normalize_symbols(symbols)
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported for this endpoint.")

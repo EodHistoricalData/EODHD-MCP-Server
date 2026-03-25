@@ -416,6 +416,32 @@ VALIDATION_CASES = [
         {"ticker": "AAPL.US", "additional_symbols": [f"T{i}.US" for i in range(21)]},
         "(?i)additional|symbols|maximum|20|too many",
     ),
+    # URL-breaking ticker / symbol validation
+    ("get_news_word_weights", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
+    ("get_sentiment_data", {"symbols": "AAPL.US,MSFT/US"}, "(?i)symbols|break the request url"),
+    ("get_insider_transactions", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
+    ("get_company_news", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
+    ("get_historical_market_cap", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
+    (
+        "get_live_price_data",
+        {"ticker": "AAPL.US", "additional_symbols": ["MSFT/US"]},
+        "(?i)additional_symbols|break the request url",
+    ),
+    ("get_upcoming_dividends", {"symbol": "AAPL/US", "date_eq": "2026-03-15"}, "(?i)symbol|break the request url"),
+    ("get_upcoming_earnings", {"symbols": ["AAPL.US", "MSFT/US"]}, "(?i)symbols|break the request url"),
+    ("get_earnings_trends", {"symbols": ["AAPL.US", "MSFT/US"]}, "(?i)symbols|break the request url"),
+    (
+        "get_us_tick_data",
+        {"ticker": "AAPL/US", "from_timestamp": 1, "to_timestamp": 2},
+        "(?i)ticker|break the request url",
+    ),
+    ("get_mp_tick_data", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
+    ("get_stock_market_logos", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
+    ("get_stocks_from_search", {"query": "apple", "exchange": "U/S"}, "(?i)exchange|break the request url"),
+    ("resolve_ticker", {"query": "apple", "preferred_exchange": "U/S"}, "(?i)preferred_exchange|break the request url"),
+    ("get_us_options_contracts", {"underlying_symbol": "AAPL/US"}, "(?i)underlying_symbol|break the request url"),
+    ("get_us_options_eod", {"contract": "AAPL/US"}, "(?i)contract|break the request url"),
+    ("get_mp_investverte_esg_view_company", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
     # WebSocket — invalid feed
     ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, "(?i)feed|must be|invalid|supported"),
     # Stock screener — limit range
@@ -443,6 +469,18 @@ async def test_validation_rejects_bad_input(mcp, tool_name, bad_args, error_matc
 
 
 @pytest.mark.asyncio
+@pytest.mark.asyncio
+async def test_mp_investverte_esg_view_sector_encodes_path_segments(mcp):
+    _text, mock = await _call(
+        mcp,
+        "get_mp_investverte_esg_view_sector",
+        {"symbol": "Aerospace & Defense"},
+        "get_mp_investverte_esg_view_sector",
+    )
+    url = str(mock.call_args_list[0].args[0])
+    assert "/mp/investverte/sector/Aerospace%20%26%20Defense" in url
+
+
 async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     mock_ws = AsyncMock()
     mock_ws.recv = AsyncMock(side_effect=TimeoutError)

@@ -9,7 +9,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_query_param, build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -108,6 +108,16 @@ def register(mcp: FastMCP):
         tradetime_from = coerce_date_param(tradetime_from, "tradetime_from")
         tradetime_to = coerce_date_param(tradetime_to, "tradetime_to")
         validate_date_range(tradetime_from, tradetime_to, "tradetime_from", "tradetime_to")
+
+        if isinstance(underlying_symbol, str) and not underlying_symbol.strip():
+            underlying_symbol = None
+        elif underlying_symbol is not None:
+            underlying_symbol = sanitize_ticker(underlying_symbol, param_name="underlying_symbol")
+
+        if isinstance(contract, str) and not contract.strip():
+            contract = None
+        elif contract is not None:
+            contract = sanitize_ticker(contract, param_name="contract")
 
         # build_url handles non-bracket params; bracket-keyed params appended via build_query_param
         # (urlencode would percent-encode [ and ] in keys, breaking filter[*] and page[*])

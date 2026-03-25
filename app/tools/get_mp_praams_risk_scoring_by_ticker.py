@@ -7,28 +7,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
 
-def _canon_ticker(v: str) -> str | None:
-    """
-    Very light validation/normalization for Praams ticker path param.
-
-    Docs show usage like:
-      /api/mp/praams/analyse/equity/ticker/AAPL
-
-    We:
-      - Require a non-empty string
-      - Strip surrounding whitespace
-      - Preserve original casing (tickers can be case-sensitive / contain dots, etc.).
-    """
-    if not isinstance(v, str):
-        return None
-    s = v.strip()
-    return s or None
+def _canon_ticker(v: str) -> str:
+    return sanitize_ticker(v)
 
 
 async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> list:
@@ -43,8 +29,6 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
     """
     # Validate/normalize ticker
     ct = _canon_ticker(ticker)
-    if ct is None:
-        raise ToolError("Invalid 'ticker'. It must be a non-empty string (e.g., 'AAPL').")
 
     # Build URL
     # Example: /api/mp/praams/analyse/equity/ticker/AAPL?api_token=...  (JSON only)

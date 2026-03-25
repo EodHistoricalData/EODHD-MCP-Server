@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -69,6 +69,11 @@ def register(mcp: FastMCP):
 
         if not isinstance(limit, int) or not (1 <= limit <= 1000):
             raise ToolError("'limit' must be an integer between 1 and 1000.")
+
+        if isinstance(symbol, str) and not symbol.strip():
+            symbol = None
+        elif symbol is not None:
+            symbol = sanitize_ticker(symbol, param_name="symbol")
 
         start_date = coerce_date_param(start_date, "start_date")
         end_date = coerce_date_param(end_date, "end_date")

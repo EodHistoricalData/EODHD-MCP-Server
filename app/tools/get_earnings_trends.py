@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -17,12 +17,14 @@ def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
     if symbols is None:
         return None
     if isinstance(symbols, str):
-        s = symbols.strip()
-        return s if s else None
-    if isinstance(symbols, list):
-        flat = [str(x).strip() for x in symbols if str(x).strip()]
-        return ",".join(flat) if flat else None
-    return None
+        parts = [part.strip() for part in symbols.split(",")]
+    elif isinstance(symbols, list):
+        parts = [str(x).strip() for x in symbols if x is not None]
+    else:
+        return None
+
+    cleaned = [sanitize_ticker(part, param_name="symbols") for part in parts if part]
+    return ",".join(cleaned) if cleaned else None
 
 
 def register(mcp: FastMCP):

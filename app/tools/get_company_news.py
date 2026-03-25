@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
@@ -80,6 +80,11 @@ def register(mcp: FastMCP):
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate required conditions ---
+        if isinstance(ticker, str) and not ticker.strip():
+            ticker = None
+        elif ticker is not None:
+            ticker = sanitize_ticker(ticker)
+
         if not ticker and not tag:
             raise ToolError("Provide at least one of 'ticker' (s) or 'tag' (t).")
 

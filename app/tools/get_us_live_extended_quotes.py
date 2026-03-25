@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url
+from app.input_formatter import build_query_param, build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
@@ -42,6 +42,7 @@ def _normalize_symbols(symbols: str | Iterable[str] | None) -> list[str]:
     for p in parts:
         if not p:
             continue
+        p = sanitize_ticker(p, param_name="symbols")
         if p not in seen:
             out.append(p)
             seen.add(p)

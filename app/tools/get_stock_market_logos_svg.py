@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_text_response, raise_on_api_error
 
 
@@ -44,10 +44,7 @@ def register(mcp: FastMCP):
             "Apple SVG logo" → get_stock_market_logos_svg(symbol="AAPL.US")
             "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
         """
-        if not symbol or not isinstance(symbol, str):
-            raise ToolError("Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'RY.TO').")
-
-        symbol = symbol.strip().upper()
+        symbol = sanitize_ticker(symbol, param_name="symbol").upper()
 
         url = build_url(f"logo-svg/{quote_plus(symbol)}", {"api_token": api_token})
 
