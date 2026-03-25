@@ -125,6 +125,24 @@ class TestMain:
         assert call_kwargs["transport"] == "streamable-http"
         assert call_kwargs["port"] == 8000
 
+    @patch("server.FastMCP")
+    @patch("server.register_all_tools")
+    @patch("server.register_all_resources")
+    @patch("server.register_all_prompts")
+    @patch("server.load_dotenv")
+    def test_cleanup_uses_asyncio_run(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
+        mock_mcp = self._mock_mcp()
+        mock_fastmcp.return_value = mock_mcp
+
+        with patch("app.api_client.close_client") as mock_close, patch("asyncio.run") as mock_asyncio_run:
+            result = main(["--stdio"])
+
+        assert result == 0
+        mock_close.assert_called_once_with()
+        mock_asyncio_run.assert_called_once()
+        close_coro = mock_asyncio_run.call_args.args[0]
+        close_coro.close()
+
     @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")

@@ -159,9 +159,9 @@ def main(argv: list[str] | None = None) -> int:
         from app.api_client import close_client
 
         try:
-            asyncio.get_event_loop().run_until_complete(close_client())
+            asyncio.run(close_client())
         except Exception:
-            pass
+            logger.exception("Failed to close shared HTTP client.")
 
 
 if __name__ == "__main__":
