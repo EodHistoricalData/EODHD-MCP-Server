@@ -9,7 +9,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -181,6 +181,7 @@ def register(mcp: FastMCP):
         )
 
         data = await make_request(url)
+        raise_on_api_error(data)
 
         if not isinstance(data, list) or len(data) == 0:
             raise ToolError("No price data available for the given ticker and date range.")

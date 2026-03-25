@@ -44,6 +44,55 @@ def _resource_uri(path: str) -> AnyUrl:
     return AnyUrl(f"eodhd://api/{path.lstrip('/')}")
 
 
+def _pick_error_text(data: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = data.get(key)
+        if isinstance(value, str):
+            value = value.strip()
+            if value:
+                return value
+    return None
+
+
+def _extract_error_context(data: dict[str, Any]) -> tuple[str | None, str | None]:
+    error_code = _pick_error_text(data, "error_code", "code", "errorCode")
+    detail = _pick_error_text(
+        data,
+        "upstream_message",
+        "errorMessage",
+        "message",
+        "detail",
+        "description",
+        "error_description",
+    )
+
+    response_text = data.get("text")
+    if isinstance(response_text, str):
+        try:
+            parsed = json.loads(response_text)
+        except ValueError:
+            parsed = None
+
+        if isinstance(parsed, dict):
+            error_code = error_code or _pick_error_text(parsed, "code", "error_code", "errorCode")
+            detail = detail or _pick_error_text(
+                parsed,
+                "errorMessage",
+                "message",
+                "detail",
+                "description",
+                "error_description",
+            )
+            if detail is None:
+                nested_error = parsed.get("error")
+                if isinstance(nested_error, str):
+                    nested_error = nested_error.strip()
+                    if nested_error:
+                        detail = nested_error
+
+    return error_code, detail
+
+
 def raise_on_api_error(data: Any) -> None:
     """Raise ToolError when make_request() returned a structured API error."""
     if not isinstance(data, dict):
@@ -58,6 +107,14 @@ def raise_on_api_error(data: Any) -> None:
     status_code = data.get("status_code")
     if status_code is not None:
         message_parts.append(f"status_code={status_code}")
+
+    error_code, detail = _extract_error_context(data)
+    if error_code:
+        message_parts.append(f"code={error_code}")
+
+    if detail and detail != str(error):
+        message_parts.append(detail)
+        raise ToolError(" | ".join(message_parts))
 
     response_text = data.get("text")
     if response_text:
