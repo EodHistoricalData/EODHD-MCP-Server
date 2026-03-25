@@ -57,6 +57,7 @@ def _get_rate_limit_lock() -> asyncio.Lock:
         _rate_limit_lock_loop = loop
     return _rate_limit_lock
 
+
 # Retry configuration
 MAX_RETRIES = 3
 RETRY_DELAY_BASE = 1.0  # seconds
