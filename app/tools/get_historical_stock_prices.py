@@ -8,7 +8,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +98,7 @@ def register(mcp: FastMCP):
 
         # --- Execute request ---
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- Transport/API errors ---
 

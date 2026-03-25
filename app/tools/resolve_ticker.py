@@ -9,7 +9,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url
-from app.response_formatter import ResourceResponse, format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +76,13 @@ def register(mcp: FastMCP):
         )
 
         data = await make_request(url)
+        raise_on_api_error(data)
 
-        if not isinstance(data, list) or len(data) == 0:
+        if data is None:
+            raise ToolError("No response from API.")
+        if not isinstance(data, list):
+            raise ToolError("Unexpected response format from API.")
+        if len(data) == 0:
             return format_json_response({"resolved": None, "message": f"No results found for '{query}'."})
 
         best = data[0]

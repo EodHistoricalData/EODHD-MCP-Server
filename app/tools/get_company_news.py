@@ -1,6 +1,7 @@
 # app/tools/get_company_news.py
 
 import logging
+import re
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -8,11 +9,24 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, coerce_date_param, validate_date_range
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
 ALLOWED_FMT = {"json", "xml"}
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def _sanitize_articles(data: list) -> list:
+    """Strip HTML tags from title/content fields before returning news content."""
+    for article in data:
+        if not isinstance(article, dict):
+            continue
+        for field in ("title", "content"):
+            value = article.get(field)
+            if isinstance(value, str):
+                article[field] = _HTML_TAG_RE.sub("", value)
+    return data
 
 
 def register(mcp: FastMCP):
@@ -98,6 +112,7 @@ def register(mcp: FastMCP):
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "xml" else "json")
+        raise_on_api_error(data)
 
         # --- Normalize / return ---
 
@@ -105,5 +120,8 @@ def register(mcp: FastMCP):
             if not isinstance(data, str):
                 raise ToolError("Unexpected XML response format from API.")
             return format_text_response(data, "application/xml", resource_path="news/feed.xml")
+
+        if isinstance(data, list):
+            data = _sanitize_articles(data)
 
         return format_json_response(data)

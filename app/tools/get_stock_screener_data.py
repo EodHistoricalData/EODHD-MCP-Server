@@ -142,6 +142,8 @@ def register(mcp: FastMCP):
 
         try:
             return format_json_response(data)
+        except ToolError:
+            raise
         except Exception as e:
             logger.debug("API response parse error", exc_info=True)
             raise ToolError("Unexpected JSON response format from API.") from e

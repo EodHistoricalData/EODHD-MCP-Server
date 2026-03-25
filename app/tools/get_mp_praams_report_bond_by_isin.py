@@ -8,7 +8,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url
-from app.response_formatter import ResourceResponse, format_binary_response
+from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
 
 
 def _canon_isin(v: str) -> str | None:
@@ -42,6 +42,7 @@ async def _run_praams_report_bond_by_isin(
     )
 
     data = await make_request(url, response_mode="bytes")
+    raise_on_api_error(data)
 
     if not isinstance(data, bytes) or not data:
         raise ToolError("Unexpected response format from API.")

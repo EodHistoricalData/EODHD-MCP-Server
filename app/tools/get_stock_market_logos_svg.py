@@ -8,7 +8,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url
-from app.response_formatter import ResourceResponse, format_text_response
+from app.response_formatter import ResourceResponse, format_text_response, raise_on_api_error
 
 
 def register(mcp: FastMCP):
@@ -52,6 +52,7 @@ def register(mcp: FastMCP):
         url = build_url(f"logo-svg/{quote_plus(symbol)}", {"api_token": api_token})
 
         data = await make_request(url, response_mode="text")
+        raise_on_api_error(data)
 
         if not isinstance(data, str) or not data:
             raise ToolError("Unexpected response format from API.")

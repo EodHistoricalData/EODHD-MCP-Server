@@ -83,6 +83,8 @@ async def _run_largest_volatility(id: str, fmt: str, api_token: str | None) -> R
     # Normalize and return
     try:
         return format_json_response(data)
+    except ToolError:
+        raise
     except Exception as e:
         logger.debug("API response parse error", exc_info=True)
         raise ToolError("Unexpected JSON response format from API.") from e

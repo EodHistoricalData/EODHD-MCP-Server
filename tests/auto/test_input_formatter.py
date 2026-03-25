@@ -1,5 +1,5 @@
 # tests/auto/test_input_formatter.py
-"""Tests for app.formatter — sanitize_ticker, sanitize_exchange, date functions.
+"""Tests for app.input_formatter — sanitize_ticker, sanitize_exchange, date functions.
 
 Covers:
   - Security: injection, path traversal, whitespace bypass (BUG-1)

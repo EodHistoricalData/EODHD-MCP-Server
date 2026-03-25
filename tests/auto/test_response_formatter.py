@@ -13,6 +13,7 @@ Covers:
 import base64
 import json
 
+import pytest
 from app.response_formatter import (
     _resource_uri,
     _sanitize_data,
@@ -20,7 +21,9 @@ from app.response_formatter import (
     format_binary_response,
     format_json_response,
     format_text_response,
+    raise_on_api_error,
 )
+from fastmcp.exceptions import ToolError
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 
 # ---------------------------------------------------------------------------
@@ -271,3 +274,20 @@ class TestFormatJsonResponse:
         result = format_json_response({})
         parsed = json.loads(result[0].resource.text)
         assert parsed == {}
+
+    def test_error_dict_raises_tool_error(self):
+        with pytest.raises(ToolError, match="Forbidden"):
+            format_json_response({"error": "Forbidden", "status_code": 403})
+
+
+class TestRaiseOnApiError:
+    def test_non_error_dict_noop(self):
+        raise_on_api_error({"ok": True})
+
+    def test_error_dict_raises(self):
+        with pytest.raises(ToolError, match="Forbidden"):
+            raise_on_api_error({"error": "Forbidden"})
+
+    def test_error_dict_includes_status_and_detail(self):
+        with pytest.raises(ToolError, match="403"):
+            raise_on_api_error({"error": "Forbidden", "status_code": 403, "text": "invalid API key"})
