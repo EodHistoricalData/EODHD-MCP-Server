@@ -44,6 +44,30 @@ def _resource_uri(path: str) -> AnyUrl:
     return AnyUrl(f"eodhd://api/{path.lstrip('/')}")
 
 
+def raise_on_api_error(data: Any) -> None:
+    """Raise ToolError when make_request() returned a structured API error."""
+    if not isinstance(data, dict):
+        return
+
+    error = data.get("error")
+    if not error:
+        return
+
+    message_parts = [str(error)]
+
+    status_code = data.get("status_code")
+    if status_code is not None:
+        message_parts.append(f"status_code={status_code}")
+
+    response_text = data.get("text")
+    if response_text:
+        detail = str(response_text).strip()
+        if detail and detail != str(error):
+            message_parts.append(detail)
+
+    raise ToolError(" | ".join(message_parts))
+
+
 def format_text_response(text: str, mime_type: str, *, resource_path: str = "response") -> ResourceResponse:
     """Return textual API data as an EmbeddedResource with its MIME type."""
     return [
@@ -74,6 +98,7 @@ def format_binary_response(data: bytes, mime_type: str, *, resource_path: str = 
 
 def format_json_response(data: Any, *, resource_path: str = "response") -> JsonResponse:
     """Return JSON-like API data as application/json."""
+    raise_on_api_error(data)
     if data is None:
         raise ToolError("No response from API.")
     sanitized = _sanitize_data(data)

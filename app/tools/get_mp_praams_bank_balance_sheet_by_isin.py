@@ -64,6 +64,8 @@ async def _run_praams_balance_sheet_by_isin(
     # We just pretty-print whatever comes back.
     try:
         return format_json_response(data)
+    except ToolError:
+        raise
     except Exception as e:
         logger.debug("API response parse error", exc_info=True)
         raise ToolError("Unexpected JSON response format from API.") from e

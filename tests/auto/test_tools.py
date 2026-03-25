@@ -59,6 +59,8 @@ def _default_mock_return(mock_module: str) -> object:
         return b"\x89PNG fake image data"
     if mock_module in _TEXT_TOOLS:
         return "<svg>manual</svg>"
+    if mock_module == "resolve_ticker":
+        return [{"Code": "AAPL", "Exchange": "US", "Name": "Apple Inc.", "ISIN": "US0378331005", "Type": "stock"}]
     return API_SUCCESS
 
 
@@ -622,48 +624,20 @@ async def test_null_response_raises(mcp, tool_name, args, mock_module):
             await _invoke_tool(mcp, tool_name, args)
 
 
-# Tools that still raise ToolError on error dicts (explicit check or type mismatch)
-# Tools that raise ToolError on error dicts (explicit check or type mismatch)
-_ERROR_RAISES_TOOLS = {
-    "get_historical_stock_prices",
-    "get_insider_transactions",
-    "get_stock_market_logos",
-    "get_stock_market_logos_svg",
-}
-# Tools that handle error dicts gracefully without passing the "error" key through
-_ERROR_GRACEFUL_TOOLS = {
-    "resolve_ticker",  # returns {"resolved": None, "message": "..."} for non-list data
-}
-
-
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "tool_name,args,mock_module",
     ERROR_RESPONSE_TOOLS,
     ids=[c[0] for c in ERROR_RESPONSE_TOOLS],
 )
-async def test_error_response_passthrough(mcp, tool_name, args, mock_module):
-    """Tool either raises ToolError, returns graceful fallback, or passes error dict through."""
+async def test_error_response_raises(mcp, tool_name, args, mock_module):
+    """Tool raises ToolError when API returns an error dict."""
     target = _mock_path(mock_module)
-    if tool_name in _ERROR_RAISES_TOOLS:
-        with pytest.raises(ToolError), patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            await _invoke_tool(mcp, tool_name, args)
-    elif tool_name in _ERROR_GRACEFUL_TOOLS:
-        with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            result = await _invoke_tool(mcp, tool_name, args)
-        content = result[0]
-        resource = content.resource if hasattr(content, "resource") else content
-        text = getattr(resource, "text", None) or ""
-        parsed = json.loads(text)
-        assert parsed.get("resolved") is None
-    else:
-        with patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}):
-            result = await _invoke_tool(mcp, tool_name, args)
-        content = result[0]
-        resource = content.resource if hasattr(content, "resource") else content
-        text = getattr(resource, "text", None) or ""
-        parsed = json.loads(text)
-        assert parsed.get("error") == "Forbidden"
+    with (
+        pytest.raises(ToolError, match="Forbidden"),
+        patch(target, new_callable=AsyncMock, return_value={"error": "Forbidden"}),
+    ):
+        await _invoke_tool(mcp, tool_name, args)
 
 
 # ---------------------------------------------------------------------------
@@ -788,12 +762,12 @@ class TestSanitizeData:
 
 class TestNewsArticleSanitization:
     @pytest.mark.asyncio
-    async def test_raw_content_returned(self, mcp):
-        """Tool returns raw API data without HTML stripping or truncation."""
+    async def test_html_is_stripped_without_truncation(self, mcp):
+        """Tool strips HTML from title/content while preserving full text length."""
         articles = [
             {
                 "title": "<b>Breaking</b> News",
-                "content": "<p>Some content</p>",
+                "content": "<p>" + ("A" * 6000) + "</p>",
                 "link": "https://example.com",
             }
         ]
@@ -806,5 +780,5 @@ class TestNewsArticleSanitization:
         )
         parsed = json.loads(text)
         article = parsed[0]
-        assert article["title"] == "<b>Breaking</b> News"
-        assert article["content"] == "<p>Some content</p>"
+        assert article["title"] == "Breaking News"
+        assert article["content"] == "A" * 6000
