@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -54,15 +54,14 @@ def register(mcp: FastMCP):
 
 
         """
-        if not (symbol and symbol.strip()):
-            raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")
+        symbol = sanitize_ticker(symbol, param_name="symbol")
 
         fmt = (fmt or "json").lower()
         if fmt != "json":
             raise ToolError("Only JSON is supported for this endpoint.")
 
         # Build URL - symbol is in the path
-        path_symbol = quote_plus(symbol.strip())
+        path_symbol = quote_plus(symbol)
         url = build_url(f"mp/unicornbay/spglobal/comp/{path_symbol}", {"fmt": "json", "api_token": api_token})
 
         data = await make_request(url)

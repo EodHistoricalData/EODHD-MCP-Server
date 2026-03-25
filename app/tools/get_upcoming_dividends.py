@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_query_param, build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -66,6 +66,11 @@ def register(mcp: FastMCP):
 
         if symbol is None and date_eq is None:
             raise ToolError("You must provide at least one of 'symbol' or 'date_eq'.")
+
+        if isinstance(symbol, str) and not symbol.strip():
+            symbol = None
+        elif symbol is not None:
+            symbol = sanitize_ticker(symbol, param_name="symbol")
 
         if page_limit is not None:
             if not isinstance(page_limit, int) or not (1 <= page_limit <= 1000):

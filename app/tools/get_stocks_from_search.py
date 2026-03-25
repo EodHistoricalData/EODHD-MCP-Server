@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_exchange
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -82,6 +82,11 @@ def register(mcp: FastMCP):
             raise ToolError("'limit' must be an integer between 1 and 500.")
         if type is not None and type not in ALLOWED_TYPES:
             raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
+
+        if isinstance(exchange, str) and not exchange.strip():
+            exchange = None
+        elif exchange is not None:
+            exchange = sanitize_exchange(exchange, param_name="exchange")
 
         # --- Build URL ---
         # Endpoint shape: /api/search/{query_string}?fmt=json&limit=...&bonds_only=1&exchange=...&type=...

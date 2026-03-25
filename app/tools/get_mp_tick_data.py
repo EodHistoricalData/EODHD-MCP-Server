@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_timestamp_param, validate_timestamp_range
+from app.input_formatter import build_url, coerce_timestamp_param, sanitize_ticker, validate_timestamp_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -61,10 +61,8 @@ def register(mcp: FastMCP):
 
 
         """
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g. 'AAPL').")
+        ticker = sanitize_ticker(ticker)
 
-        ticker = ticker.strip()
         if len(ticker) > 30:
             raise ToolError("Parameter 'ticker' must be at most 30 characters.")
 

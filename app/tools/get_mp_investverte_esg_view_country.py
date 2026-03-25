@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_exchange
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -64,8 +64,7 @@ def register(mcp: FastMCP):
 
 
         """
-        if not symbol or not isinstance(symbol, str):
-            raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")
+        symbol = sanitize_exchange(symbol, param_name="symbol")
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

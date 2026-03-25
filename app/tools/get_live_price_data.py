@@ -26,7 +26,7 @@ def _normalize_symbols(symbols: Iterable[str] | None) -> list[str]:
             continue
         s = str(s).strip()
         if s:
-            out.append(s)
+            out.append(sanitize_ticker(s, param_name="additional_symbols"))
     return out
 
 

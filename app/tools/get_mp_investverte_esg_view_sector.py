@@ -2,6 +2,7 @@
 
 
 import logging
+from urllib.parse import quote
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
@@ -64,11 +65,16 @@ def register(mcp: FastMCP):
         if not symbol or not isinstance(symbol, str):
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")
 
+        symbol = symbol.strip()
+        if not symbol:
+            raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")
+
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
         # Base URL for Investverte sector view endpoint
-        url = build_url(f"mp/investverte/sector/{symbol}", {"fmt": fmt, "api_token": api_token})
+        path_symbol = quote(symbol, safe="")
+        url = build_url(f"mp/investverte/sector/{path_symbol}", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
 

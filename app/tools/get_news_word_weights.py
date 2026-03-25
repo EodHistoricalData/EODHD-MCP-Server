@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, coerce_date_param, validate_date_range
+from app.input_formatter import build_query_param, build_url, coerce_date_param, sanitize_ticker, validate_date_range
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -55,8 +55,7 @@ def register(mcp: FastMCP):
             The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported for this endpoint.")

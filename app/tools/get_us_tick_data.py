@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, coerce_timestamp_param, validate_timestamp_range
+from app.input_formatter import build_url, coerce_timestamp_param, sanitize_ticker, validate_timestamp_range
 from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
@@ -67,8 +67,7 @@ def register(mcp: FastMCP):
             EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate inputs ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL' or 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")

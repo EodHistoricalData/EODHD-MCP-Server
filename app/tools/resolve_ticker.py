@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_exchange
 from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
@@ -58,6 +58,11 @@ def register(mcp: FastMCP):
         """
         if not query or not isinstance(query, str):
             raise ToolError("Parameter 'query' is required and must be a non-empty string.")
+
+        if isinstance(preferred_exchange, str) and not preferred_exchange.strip():
+            preferred_exchange = None
+        elif preferred_exchange is not None:
+            preferred_exchange = sanitize_exchange(preferred_exchange, param_name="preferred_exchange")
 
         allowed = {"stock", "etf", "fund", "bond", "index", "crypto"}
         if asset_type and asset_type not in allowed:

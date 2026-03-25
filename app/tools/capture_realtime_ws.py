@@ -12,6 +12,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.config import get_api_key
+from app.input_formatter import sanitize_ticker
 from app.response_formatter import ResourceResponse, format_json_response
 
 # WebSocket runtime
@@ -34,8 +35,12 @@ FEED_ENDPOINTS = {
 
 def _symbols_to_str(symbols: str | list[str]) -> str:
     if isinstance(symbols, str):
-        return symbols.replace(" ", "")
-    return ",".join(s.strip() for s in symbols if s and str(s).strip())
+        parts = [part.strip() for part in symbols.split(",")]
+    else:
+        parts = [str(symbol).strip() for symbol in symbols if symbol is not None]
+
+    cleaned = [sanitize_ticker(part, param_name="symbols") for part in parts if part]
+    return ",".join(cleaned)
 
 
 def _format_connection_error(exc: Exception, uri: str, timeout_seconds: float) -> str:
@@ -129,6 +134,8 @@ def register(mcp: FastMCP):
         endpoint = FEED_ENDPOINTS[feed]
         sym_str = _symbols_to_str(symbols)
         sym_list = [s for s in sym_str.split(",") if s]
+        if not sym_list:
+            raise ToolError("Parameter 'symbols' is required (e.g., 'AAPL,MSFT' or ['AAPL','MSFT']).")
 
         # Build WS URL with token (resolve from env if not provided)
         token = api_token or get_api_key() or ""
