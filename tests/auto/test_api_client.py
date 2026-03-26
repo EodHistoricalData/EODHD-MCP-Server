@@ -13,7 +13,9 @@ import respx
 from app.api_client import (
     RETRY_DELAY_MAX,
     _backoff,
+    _clear_connection_states,
     _ensure_api_token,
+    _parse_retry_after,
     _redact_url,
     _resolve_eodhd_token_from_request,
     close_client,
@@ -171,6 +173,44 @@ class TestBackoff:
 
 
 # ---------------------------------------------------------------------------
+# _parse_retry_after (RFC 7231 §7.1.3)
+# ---------------------------------------------------------------------------
+
+
+class TestParseRetryAfter:
+    def test_integer_seconds(self):
+        assert _parse_retry_after("5") == 5
+
+    def test_none_returns_default(self):
+        assert _parse_retry_after(None) == 60
+
+    def test_empty_returns_default(self):
+        assert _parse_retry_after("") == 60
+
+    def test_http_date(self):
+        """RFC 7231 HTTP-date format should be parsed into a delay."""
+        import email.utils
+        from datetime import datetime, timezone, timedelta
+
+        future = datetime.now(timezone.utc) + timedelta(seconds=30)
+        http_date = email.utils.format_datetime(future)
+        result = _parse_retry_after(http_date)
+        assert 25 <= result <= 35  # allow clock skew
+
+    def test_garbage_returns_default(self):
+        assert _parse_retry_after("not-a-number-or-date") == 60
+
+    def test_negative_clamped_to_zero(self):
+        assert _parse_retry_after("-10") == 0
+
+    def test_huge_value_capped_at_3600(self):
+        assert _parse_retry_after("999999") == 3600
+
+    def test_zero(self):
+        assert _parse_retry_after("0") == 0
+
+
+# ---------------------------------------------------------------------------
 # set_rate_limit
 # ---------------------------------------------------------------------------
 
@@ -180,16 +220,24 @@ class TestSetRateLimit:
         set_rate_limit(0.5)
         import app.api_client as ac
 
-        assert ac._rate_limit_delay == 0.5
-        # restore default
-        set_rate_limit(0.1)
+        assert ac._rate_limiter.delay == 0.5
+        assert ac._rate_limiter.enabled is True
+        # restore default (disabled)
+        set_rate_limit(0.0)
 
     def test_negative_clamped_to_zero(self):
         set_rate_limit(-1.0)
         import app.api_client as ac
 
-        assert ac._rate_limit_delay == 0.0
-        set_rate_limit(0.1)
+        assert ac._rate_limiter.delay == 0.0
+        assert ac._rate_limiter.enabled is False
+
+    def test_disabled_by_default(self):
+        import app.api_client as ac
+
+        # Default singleton should be disabled unless env var is set
+        assert ac._rate_limiter.delay == 0.0
+        assert ac._rate_limiter.enabled is False
 
 
 # ---------------------------------------------------------------------------
@@ -237,8 +285,7 @@ class TestMakeRequest:
         mock_client.aclose = AsyncMock()
 
         monkeypatch.setattr(ac, "_http_client", None)
-        ac._last_request_time = 0.0
-        set_rate_limit(0.0)
+        _clear_connection_states()
 
         try:
             with patch("app.api_client.httpx.AsyncClient", return_value=mock_client) as mock_ctor:
@@ -247,8 +294,7 @@ class TestMakeRequest:
             mock_ctor.assert_called_once()
             assert ac._http_client is mock_client
         finally:
-            set_rate_limit(0.1)
-            ac._last_request_time = 0.0
+            _clear_connection_states()
             await close_client()
 
 
@@ -306,11 +352,14 @@ class TestMakeRequest:
         assert route.call_count == 1
 
     @pytest.mark.asyncio
-    async def test_concurrent_requests_are_rate_limited(self):
-        import app.api_client as ac
-
+    async def test_concurrent_requests_same_token_are_rate_limited(self):
         call_times: list[float] = []
         mock_client = MagicMock()
+        urls = [
+            "https://eodhd.com/api/eod/AAPL.US?api_token=shared-key",
+            "https://eodhd.com/api/eod/MSFT.US?api_token=shared-key",
+            "https://eodhd.com/api/eod/GOOGL.US?api_token=shared-key",
+        ]
 
         async def fake_get(url, headers=None, timeout=None):
             call_times.append(time.monotonic())
@@ -318,28 +367,47 @@ class TestMakeRequest:
 
         mock_client.get = AsyncMock(side_effect=fake_get)
 
-        ac._last_request_time = 0.0
-        ac._rate_limit_lock = None
-        ac._rate_limit_lock_loop = None
-        set_rate_limit(0.05)
+        _clear_connection_states()
+        set_rate_limit(0.05)  # enable rate limiting for this test
 
         try:
             with patch("app.api_client._http_client", mock_client):
-                results = await asyncio.gather(
-                    make_request("https://eodhd.com/api/eod/AAPL.US"),
-                    make_request("https://eodhd.com/api/eod/MSFT.US"),
-                    make_request("https://eodhd.com/api/eod/GOOGL.US"),
-                )
+                results = await asyncio.gather(*(make_request(url) for url in urls))
         finally:
-            set_rate_limit(0.1)
-            ac._last_request_time = 0.0
-            ac._rate_limit_lock = None
-            ac._rate_limit_lock_loop = None
+            set_rate_limit(0.0)  # restore default (disabled)
+            _clear_connection_states()
 
         assert results == [{"ok": True}, {"ok": True}, {"ok": True}]
         assert len(call_times) == 3
         gaps = [later - earlier for earlier, later in pairwise(call_times)]
         assert all(gap >= 0.045 for gap in gaps)
+
+    @pytest.mark.asyncio
+    async def test_concurrent_requests_different_tokens_do_not_share_rate_limit(self):
+        call_times: dict[str, float] = {}
+        mock_client = MagicMock()
+        url_a = "https://eodhd.com/api/eod/AAPL.US?api_token=token-a"
+        url_b = "https://eodhd.com/api/eod/MSFT.US?api_token=token-b"
+
+        async def fake_get(url, headers=None, timeout=None):
+            call_times[url] = time.monotonic()
+            return Response(200, json={"ok": True}, request=httpx.Request("GET", url))
+
+        mock_client.get = AsyncMock(side_effect=fake_get)
+
+        _clear_connection_states()
+        set_rate_limit(0.05)  # enable rate limiting for this test
+
+        try:
+            with patch("app.api_client._http_client", mock_client):
+                results = await asyncio.gather(make_request(url_a), make_request(url_b))
+        finally:
+            set_rate_limit(0.0)  # restore default (disabled)
+            _clear_connection_states()
+
+        assert results == [{"ok": True}, {"ok": True}]
+        assert len(call_times) == 2
+        assert abs(call_times[url_a] - call_times[url_b]) < 0.04
 
     @pytest.mark.asyncio
     async def test_unsupported_method(self):

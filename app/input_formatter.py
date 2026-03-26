@@ -66,7 +66,7 @@ def build_query_bool(key: str, val: bool | None) -> str:
 
 def sanitize_ticker(ticker: str, param_name: str = "ticker") -> str:
     """Strip whitespace and reject only characters that break the URL."""
-    if not ticker or not isinstance(ticker, str):
+    if not isinstance(ticker, str) or not ticker.strip():
         raise ToolError(f"Parameter '{param_name}' is required and must be a non-empty string.")
     ticker = ticker.strip()
     if _URL_UNSAFE_RE.search(ticker):
@@ -79,7 +79,7 @@ def sanitize_ticker(ticker: str, param_name: str = "ticker") -> str:
 
 def sanitize_exchange(code: str, param_name: str = "exchange_code") -> str:
     """Strip whitespace and reject only characters that break the URL."""
-    if not code or not isinstance(code, str):
+    if not isinstance(code, str) or not code.strip():
         raise ToolError(f"Parameter '{param_name}' is required and must be a non-empty string.")
     code = code.strip()
     if _URL_UNSAFE_RE.search(code):
