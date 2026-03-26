@@ -69,8 +69,8 @@ def test_log_level_flag():
 
 # ---------------------------------------------------------------------------
 # main() — transport dispatch (TST-9)
-# close_client is imported inside finally block, so we patch at
-# app.api_client.close_client instead of server.close_client
+# HTTP client cleanup is handled by the lifespan context manager passed to
+# FastMCP, so close_client runs inside the server's own event loop.
 # ---------------------------------------------------------------------------
 
 
@@ -81,26 +81,24 @@ class TestMain:
         mock.run = MagicMock()
         return mock
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_stdio_transport(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close):
+    def test_stdio_transport(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
         mock_mcp = self._mock_mcp()
         mock_fastmcp.return_value = mock_mcp
         result = main(["--stdio"])
         assert result == 0
         mock_mcp.run.assert_called_once_with(transport="stdio")
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_sse_transport(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close):
+    def test_sse_transport(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
         mock_mcp = self._mock_mcp()
         mock_fastmcp.return_value = mock_mcp
         result = main(["--sse"])
@@ -109,13 +107,12 @@ class TestMain:
         call_kwargs = mock_mcp.run.call_args[1]
         assert call_kwargs["transport"] == "sse"
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_default_http_transport(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close):
+    def test_default_http_transport(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
         mock_mcp = self._mock_mcp()
         mock_fastmcp.return_value = mock_mcp
         result = main([])
@@ -130,26 +127,27 @@ class TestMain:
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_cleanup_uses_asyncio_run(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
+    def test_lifespan_passed_to_fastmcp(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
+        """FastMCP is constructed with a lifespan that closes the HTTP client."""
         mock_mcp = self._mock_mcp()
         mock_fastmcp.return_value = mock_mcp
 
-        with patch("app.api_client.close_client") as mock_close, patch("asyncio.run") as mock_asyncio_run:
-            result = main(["--stdio"])
+        result = main(["--stdio"])
 
         assert result == 0
-        mock_close.assert_called_once_with()
-        mock_asyncio_run.assert_called_once()
-        close_coro = mock_asyncio_run.call_args.args[0]
-        close_coro.close()
+        # Verify lifespan was passed to the FastMCP constructor
+        call_kwargs = mock_fastmcp.call_args
+        assert call_kwargs is not None
+        assert "lifespan" in call_kwargs.kwargs or len(call_kwargs.args) > 1
+        lifespan = call_kwargs.kwargs.get("lifespan") or call_kwargs.args[1]
+        assert callable(lifespan)
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_apikey_injects_env(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close, monkeypatch):
+    def test_apikey_injects_env(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, monkeypatch):
         mock_mcp = self._mock_mcp()
         mock_fastmcp.return_value = mock_mcp
         monkeypatch.delenv("EODHD_API_KEY", raising=False)
@@ -164,39 +162,36 @@ class TestMain:
         # restore
         monkeypatch.setenv("EODHD_API_KEY", "test_key_for_ci")
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_keyboard_interrupt_returns_0(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close):
+    def test_keyboard_interrupt_returns_0(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
         mock_mcp = self._mock_mcp()
         mock_mcp.run.side_effect = KeyboardInterrupt
         mock_fastmcp.return_value = mock_mcp
         result = main(["--stdio"])
         assert result == 0
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_exception_returns_1(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close):
+    def test_exception_returns_1(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
         mock_mcp = self._mock_mcp()
         mock_mcp.run.side_effect = RuntimeError("boom")
         mock_fastmcp.return_value = mock_mcp
         result = main(["--stdio"])
         assert result == 1
 
-    @patch("app.api_client.close_client")
     @patch("server.FastMCP")
     @patch("server.register_all_tools")
     @patch("server.register_all_resources")
     @patch("server.register_all_prompts")
     @patch("server.load_dotenv")
-    def test_custom_port_and_path(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp, _close):
+    def test_custom_port_and_path(self, _dotenv, _prompts, _resources, _tools, mock_fastmcp):
         mock_mcp = self._mock_mcp()
         mock_fastmcp.return_value = mock_mcp
         result = main(["--port", "9000", "--path", "/api"])

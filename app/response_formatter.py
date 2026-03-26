@@ -114,13 +114,13 @@ def raise_on_api_error(data: Any) -> None:
 
     if detail and detail != str(error):
         message_parts.append(detail)
-        raise ToolError(" | ".join(message_parts))
 
-    response_text = data.get("text")
-    if response_text:
-        detail = str(response_text).strip()
-        if detail and detail != str(error):
-            message_parts.append(detail)
+    if not detail:
+        response_text = data.get("text")
+        if response_text:
+            fallback = str(response_text).strip()
+            if fallback and fallback != str(error):
+                message_parts.append(fallback)
 
     raise ToolError(" | ".join(message_parts))
 

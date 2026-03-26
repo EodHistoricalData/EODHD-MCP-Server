@@ -1,20 +1,51 @@
 # app/api_client.py
 import asyncio
+import email.utils
 import logging
 import re
 import time
 from http import HTTPStatus
 from typing import Any, Literal
+from urllib.parse import parse_qs, urlsplit
 
 import httpx
 from fastmcp.server.dependencies import get_http_request
 
-from .config import EODHD_RETRY_ENABLED, get_api_key
+from .config import EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key
 
 logger = logging.getLogger("eodhd-mcp.api_client")
 
 # Shared HTTP client — created lazily inside a running event loop
 _http_client: httpx.AsyncClient | None = None
+_http_client_lock: asyncio.Lock | None = None
+
+
+def _get_client_lock() -> asyncio.Lock:
+    """Return (and lazily create) the asyncio.Lock for client init.
+
+    asyncio.Lock must be created inside a running event loop, so we create it
+    on first access and recreate if the loop changes (e.g. between tests).
+    """
+    global _http_client_lock
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop — return a fresh lock (caller is likely in tests)
+        _http_client_lock = asyncio.Lock()
+        return _http_client_lock
+
+    # Recreate if the lock was created on a different loop
+    if _http_client_lock is None:
+        _http_client_lock = asyncio.Lock()
+    else:
+        try:
+            # If the lock's loop doesn't match, replace it
+            lock_loop = getattr(_http_client_lock, "_loop", None)
+            if lock_loop is not None and lock_loop is not loop:
+                _http_client_lock = asyncio.Lock()
+        except Exception:
+            _http_client_lock = asyncio.Lock()
+    return _http_client_lock
 
 
 def _create_http_client() -> httpx.AsyncClient:
@@ -23,45 +54,186 @@ def _create_http_client() -> httpx.AsyncClient:
 
 
 async def _get_http_client() -> httpx.AsyncClient:
-    """Return the shared HTTP client, creating it on first use."""
+    """Return the shared HTTP client, creating it on first use.
+
+    Safe to call concurrently from many coroutines — an asyncio.Lock
+    ensures only one client is ever created.
+    """
     global _http_client
-    if _http_client is None:
-        _http_client = _create_http_client()
-    return _http_client
+    # Fast path: client already exists
+    if _http_client is not None:
+        return _http_client
+
+    async with _get_client_lock():
+        # Re-check after acquiring the lock (another coroutine may have created it)
+        if _http_client is None:
+            _http_client = _create_http_client()
+        return _http_client
 
 
 async def close_client() -> None:
     """Shut down the shared HTTP client (call on server exit)."""
     global _http_client
-    if _http_client is None:
-        return
+    async with _get_client_lock():
+        if _http_client is None:
+            return
 
-    client = _http_client
-    _http_client = None
+        client = _http_client
+        _http_client = None
     await client.aclose()
-
-
-# Rate limiting
-_last_request_time: float = 0.0
-_rate_limit_delay: float = 0.1  # 100 ms between requests
-_rate_limit_lock: asyncio.Lock | None = None
-_rate_limit_lock_loop: asyncio.AbstractEventLoop | None = None
-
-
-def _get_rate_limit_lock() -> asyncio.Lock:
-    """Return the rate-limit lock for the current event loop."""
-    global _rate_limit_lock, _rate_limit_lock_loop
-    loop = asyncio.get_running_loop()
-    if _rate_limit_lock is None or _rate_limit_lock_loop is not loop:
-        _rate_limit_lock = asyncio.Lock()
-        _rate_limit_lock_loop = loop
-    return _rate_limit_lock
 
 
 # Retry configuration
 MAX_RETRIES = 3
 RETRY_DELAY_BASE = 1.0  # seconds
 RETRY_DELAY_MAX = 10.0  # seconds cap
+
+
+# ---------------------------------------------------------------------------
+# Per-connection rate-limiting
+# ---------------------------------------------------------------------------
+
+
+class _ConnectionState:
+    """Pacing state for a single API-token bucket.
+
+    Each instance owns its own asyncio.Lock so concurrent requests sharing the
+    same token are serialised, while requests on different tokens run freely.
+    """
+
+    __slots__ = ("_lock", "backoff_until", "last_request_time")
+
+    def __init__(self) -> None:
+        self.last_request_time: float = 0.0
+        self.backoff_until: float = 0.0
+        self._lock: asyncio.Lock = asyncio.Lock()
+
+    @property
+    def lock(self) -> asyncio.Lock:
+        return self._lock
+
+
+class RateLimiter:
+    """Encapsulates per-connection pacing state and the base delay.
+
+    Disabled by default (delay=0.0).  When disabled, ``rate_limit()`` and
+    ``set_backoff()`` are true no-ops — no locks acquired, no state allocated.
+
+    Enable by setting ``EODHD_RATE_LIMIT_DELAY`` env var to a positive float
+    (e.g. ``0.1`` for 100 ms) or by calling ``set_rate_limit(seconds)``.
+    """
+
+    def __init__(self, delay: float = 0.0) -> None:
+        self._delay: float = max(0.0, delay)
+        self._states: dict[str, _ConnectionState] = {}
+        self._states_lock: asyncio.Lock = asyncio.Lock()
+
+    # -- public helpers -----------------------------------------------------
+
+    @property
+    def enabled(self) -> bool:
+        return self._delay > 0.0
+
+    @property
+    def delay(self) -> float:
+        return self._delay
+
+    @delay.setter
+    def delay(self, value: float) -> None:
+        self._delay = max(0.0, value)
+        logger.info("Rate limit delay set to %.3fs (enabled=%s)", self._delay, self.enabled)
+
+    async def get_state(self, connection_key: str) -> _ConnectionState:
+        """Return the ``_ConnectionState`` for *connection_key*, creating on first use."""
+        state = self._states.get(connection_key)
+        if state is not None:
+            return state
+
+        async with self._states_lock:
+            # Double-check after acquiring the lock
+            state = self._states.get(connection_key)
+            if state is None:
+                state = _ConnectionState()
+                self._states[connection_key] = state
+            return state
+
+    async def rate_limit(self, connection_key: str) -> None:
+        """Enforce per-connection pacing and any scheduled retry backoff.
+
+        When rate limiting is disabled (delay == 0) and no backoff is pending
+        for this connection, this is a true no-op — no lock, no state created.
+        Backoff (from upstream 429s / retries) is always honoured regardless.
+        """
+        if not self.enabled:
+            # Even when disabled, honour pending backoff if state exists.
+            state = self._states.get(connection_key)
+            if state is None or state.backoff_until <= 0.0:
+                return
+
+        state = await self.get_state(connection_key)
+        async with state.lock:
+            now = time.monotonic()
+            ready_at = max(state.backoff_until, state.last_request_time + self._delay)
+            if now < ready_at:
+                await asyncio.sleep(ready_at - now)
+            now = time.monotonic()
+            state.last_request_time = now
+            if state.backoff_until <= now:
+                state.backoff_until = 0.0
+
+    async def set_backoff(self, connection_key: str, delay: float) -> None:
+        """Schedule backoff for one connection without affecting others.
+
+        Always honoured (even when rate limiting is disabled) because backoff
+        is driven by upstream 429 / retry logic, not by the pacing delay.
+        """
+        if delay <= 0:
+            return
+
+        state = await self.get_state(connection_key)
+        async with state.lock:
+            state.backoff_until = max(state.backoff_until, time.monotonic() + delay)
+
+    def clear(self) -> None:
+        """Drop all per-connection state.  Intended for tests."""
+        self._states.clear()
+
+
+# Module-wide singleton — disabled by default, reads env for opt-in delay.
+_rate_limiter = RateLimiter(delay=EODHD_RATE_LIMIT_DELAY)
+
+_RETRY_AFTER_DEFAULT = 60  # seconds — fallback when header is missing or unparseable
+
+
+def _parse_retry_after(header_value: str | None) -> int:
+    """Parse a ``Retry-After`` header per RFC 7231 §7.1.3.
+
+    The header may be either:
+    - **delay-seconds**: a non-negative integer (e.g. ``"120"``), or
+    - **HTTP-date**: e.g. ``"Thu, 01 Dec 2025 16:00:00 GMT"``
+
+    Returns the delay in seconds (minimum 0, capped at 1 hour).
+    Falls back to ``_RETRY_AFTER_DEFAULT`` on missing or unparseable values.
+    """
+    if not header_value:
+        return _RETRY_AFTER_DEFAULT
+
+    # Try delay-seconds first (most common)
+    try:
+        return max(0, min(int(header_value), 3600))
+    except (ValueError, TypeError):
+        pass
+
+    # Try HTTP-date (RFC 2822 / RFC 7231)
+    try:
+        parsed = email.utils.parsedate_to_datetime(header_value)
+        delay = int(parsed.timestamp() - time.time())
+        return max(0, min(delay, 3600))
+    except Exception:
+        pass
+
+    return _RETRY_AFTER_DEFAULT
+
 
 # Pattern to redact api_token from URLs before logging
 _TOKEN_RE = re.compile(r"api_token=[^&]+")
@@ -191,15 +363,18 @@ def _ensure_api_token(url: str) -> str:
     return url + (f"&api_token={token}" if "?" in url else f"?api_token={token}")
 
 
-async def _rate_limit() -> None:
-    """Enforce a minimum gap between outgoing requests."""
-    global _last_request_time
-    async with _get_rate_limit_lock():
-        now = time.monotonic()
-        elapsed = now - _last_request_time
-        if elapsed < _rate_limit_delay:
-            await asyncio.sleep(_rate_limit_delay - elapsed)
-        _last_request_time = time.monotonic()
+def _get_connection_key(url: str) -> str:
+    """Resolve the request pacing bucket from the effective api_token."""
+    query = parse_qs(urlsplit(url).query)
+    token = query.get("api_token", [None])[0]
+    if isinstance(token, str) and token:
+        return token
+    return "__default__"
+
+
+def _clear_connection_states() -> None:
+    """Reset request pacing state. Intended for tests."""
+    _rate_limiter.clear()
 
 
 def _backoff(attempt: int) -> float:
@@ -209,9 +384,7 @@ def _backoff(attempt: int) -> float:
 
 def set_rate_limit(delay: float) -> None:
     """Override the minimum delay between requests (seconds)."""
-    global _rate_limit_delay
-    _rate_limit_delay = max(0.0, delay)
-    logger.info("Rate limit delay set to %.3fs", _rate_limit_delay)
+    _rate_limiter.delay = delay
 
 
 async def make_request(
@@ -239,6 +412,7 @@ async def make_request(
     - Returns {"error": "..."} on failure.
     """
     url = _ensure_api_token(url)
+    connection_key = _get_connection_key(url)
     m = (method or "GET").upper()
 
     if m not in ("GET", "POST", "PUT", "DELETE"):
@@ -262,7 +436,7 @@ async def make_request(
 
     for attempt in range(retries + 1):
         try:
-            await _rate_limit()
+            await _rate_limiter.rate_limit(connection_key)
 
             logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, _redact_url(url)[:120])
 
@@ -277,7 +451,7 @@ async def make_request(
 
             # Handle rate limiting from the API
             if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
+                retry_after = _parse_retry_after(response.headers.get("Retry-After"))
                 redacted_url = _redact_url(str(response.request.url))
 
                 if attempt >= retries:
@@ -299,8 +473,8 @@ async def make_request(
                     attempt + 1,
                     retries + 1,
                 )
-                await asyncio.sleep(retry_after)
-                continue  # doesn't count as a failed attempt
+                await _rate_limiter.set_backoff(connection_key, retry_after)
+                continue  # does not count as a failed attempt
 
             response.raise_for_status()
 
@@ -358,8 +532,8 @@ async def make_request(
         # Wait before next attempt
         if attempt < retries:
             delay = _backoff(attempt)
-            logger.info("Retrying in %.1fs…", delay)
-            await asyncio.sleep(delay)
+            logger.info("Retrying in %.1fs...", delay)
+            await _rate_limiter.set_backoff(connection_key, delay)
 
     error_msg = str(last_error) if last_error else "Unknown error after retries"
     logger.error("All %d retries exhausted: %s", retries, error_msg)

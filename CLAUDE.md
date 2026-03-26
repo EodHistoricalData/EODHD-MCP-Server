@@ -62,10 +62,25 @@ server.py             - entry point, transport selection, argparse
 
 ## HTTP Client
 - Shared `httpx.AsyncClient`
-- 100ms global rate limit delay by default
+- Per-connection rate limiting disabled by default; enable with `EODHD_RATE_LIMIT_DELAY=0.1` (seconds)
 - Retries disabled by default unless `EODHD_RETRY_ENABLED=true`
 - Auth resolution order: URL `api_token` > HTTP request auth/header/query params > env var
 - API token values are redacted in logs
+
+### Error handling — by design `make_request()` returns dicts, not exceptions
+`make_request()` returns `{"error": ...}` dicts on failure **by design**. This is
+intentional and must not be "fixed" to raise exceptions. Rationale:
+
+- EODHD API errors (404 "Ticker Not Found", 403 plan limits, etc.) are **upstream
+  data responses**, not MCP server errors. The calling AI agent needs the full
+  context (status code, error message, upstream details) to make decisions — e.g.
+  correct a ticker, try a different endpoint, or inform the user.
+- Raising exceptions would lose this context and incorrectly treat normal API
+  responses as server failures.
+- The safety net is `format_json_response()` → `raise_on_api_error()` in
+  `response_formatter.py`, which converts error dicts into `ToolError` when the
+  response is being returned to the agent. Tools that need to inspect the error
+  before deciding (e.g. to try a fallback) can do so before calling the formatter.
 
 ## Testing
 - `pytest` with `asyncio_mode="auto"`
@@ -84,6 +99,7 @@ Three jobs: lint, test, security.
 - Direct HTTP calls outside `api_client.py`
 - Cross-tool imports
 - Hardcoded API keys
+- Changing `make_request()` to raise exceptions instead of returning error dicts (see "Error handling" above)
 
 ## Bridge AI
 Multi-AI orchestrator with 16 providers and 128 skills.

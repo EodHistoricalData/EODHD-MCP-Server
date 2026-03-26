@@ -3,7 +3,10 @@ import argparse
 import logging
 import os
 import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
+from app.api_client import close_client
 from app.prompts import register_all as register_all_prompts
 from app.resources import register_all as register_all_resources
 from app.tools import register_all as register_all_tools
@@ -91,7 +94,18 @@ def main(argv: list[str] | None = None) -> int:
             "No EODHD_API_KEY set. Set EODHD_API_KEY env var or pass --apikey to use your key.",
         )
 
-    mcp: FastMCP = FastMCP("eodhd-datasets")
+    @asynccontextmanager
+    async def _lifespan(_mcp: FastMCP) -> AsyncIterator[None]:
+        """Startup / shutdown hook running inside the server's event loop."""
+        yield
+        # ── shutdown ──
+        logger.info("Closing shared HTTP client…")
+        try:
+            await close_client()
+        except Exception:
+            logger.exception("Failed to close shared HTTP client.")
+
+    mcp: FastMCP = FastMCP("eodhd-datasets", lifespan=_lifespan)
     register_all_tools(mcp)
     register_all_resources(mcp)
     register_all_prompts(mcp)
@@ -152,16 +166,6 @@ def main(argv: list[str] | None = None) -> int:
     except Exception:
         logger.exception("Fatal error while running MCP server.")
         return 1
-    finally:
-        # Best-effort: close the shared HTTP client
-        import asyncio
-
-        from app.api_client import close_client
-
-        try:
-            asyncio.run(close_client())
-        except Exception:
-            logger.exception("Failed to close shared HTTP client.")
 
 
 if __name__ == "__main__":

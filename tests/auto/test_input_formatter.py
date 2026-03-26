@@ -76,9 +76,8 @@ def test_sanitize_ticker_rejects(value):
         sanitize_ticker(value)
 
 
-@pytest.mark.xfail(reason="BUG-1: whitespace-only ticker passes guard before strip(), returns empty string")
 def test_sanitize_ticker_whitespace_only_bug():
-    """Whitespace-only input should raise ToolError but currently returns ''."""
+    """Whitespace-only input should raise ToolError."""
     with pytest.raises(ToolError):
         sanitize_ticker("   ")
 
@@ -116,7 +115,6 @@ def test_sanitize_exchange_rejects(value):
         sanitize_exchange(value)
 
 
-@pytest.mark.xfail(reason="BUG-1: whitespace-only exchange passes guard before strip()")
 def test_sanitize_exchange_whitespace_only_bug():
     with pytest.raises(ToolError):
         sanitize_exchange("   ")
