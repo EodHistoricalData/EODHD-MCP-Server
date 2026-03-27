@@ -504,7 +504,7 @@ async def test_capture_realtime_ws_uses_connect_timeout_for_open_timeout(mcp):
     assert "wss://ws.eodhistoricaldata.com/ws/crypto?api_token=" in url
     assert call_kwargs.kwargs["open_timeout"] == 7.5
     assert call_kwargs.kwargs["close_timeout"] == 5
-    assert call_kwargs.kwargs["max_queue"] is None
+    assert call_kwargs.kwargs["max_queue"] == 1024
     mock_ws.send.assert_awaited()
     mock_ws.close.assert_awaited_once()
     # _call_tool returns list[EmbeddedResource] directly
