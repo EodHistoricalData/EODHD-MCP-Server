@@ -25,6 +25,15 @@ logger = logging.getLogger(__name__)
 
 WS_BASE = "wss://ws.eodhistoricaldata.com/ws"
 
+# Safety cap: default max captured data size (50 MB).  Prevents unbounded memory
+# growth when high-throughput feeds (e.g. US trades) run for long durations.
+DEFAULT_MAX_DATA_BYTES = 50 * 1024 * 1024
+
+# Internal websockets receive-queue depth.  ``None`` (the previous value) allowed
+# the library to buffer an unlimited number of frames in memory.  1024 frames is
+# generous for any realistic capture window while still bounding memory.
+DEFAULT_MAX_QUEUE = 1024
+
 FEED_ENDPOINTS = {
     "us_trades": "us",  # trades (price, conditions, etc.)
     "us_quotes": "us-quote",  # quotes (bid/ask)
@@ -75,6 +84,7 @@ def register(mcp: FastMCP):
         ping_interval: float = 20.0,
         ping_timeout: float = 20.0,
         connect_timeout: float = 15.0,
+        max_data_bytes: int = DEFAULT_MAX_DATA_BYTES,
     ) -> ResourceResponse:
         """
 
@@ -114,6 +124,8 @@ def register(mcp: FastMCP):
             ping_interval (float): WebSocket ping interval in seconds.
             ping_timeout (float): WebSocket ping timeout in seconds.
             connect_timeout (float): Overall connection timeout in seconds.
+            max_data_bytes (int): Maximum total captured data size in bytes (default 50 MB).
+                Capture stops early if this limit is reached to prevent unbounded memory use.
 
         Demo:
             To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
@@ -131,6 +143,9 @@ def register(mcp: FastMCP):
         if not isinstance(duration_seconds, int) or not (1 <= duration_seconds <= 600):
             raise ToolError("'duration_seconds' must be an integer between 1 and 600.")
 
+        if not isinstance(max_data_bytes, int) or max_data_bytes < 1:
+            raise ToolError("'max_data_bytes' must be a positive integer.")
+
         endpoint = FEED_ENDPOINTS[feed]
         sym_str = _symbols_to_str(symbols)
         sym_list = [s for s in sym_str.split(",") if s]
@@ -144,18 +159,28 @@ def register(mcp: FastMCP):
         started_at = int(time.time() * 1000)
         messages: list[dict] = []
 
+        data_bytes_used = 0
+        truncated = False
+
         async def _recv_loop(ws, stop_time):
-            nonlocal messages
+            nonlocal messages, data_bytes_used, truncated
             # Subscribe
             sub = {"action": "subscribe", "symbols": sym_str}
             await ws.send(json.dumps(sub))
 
-            # Receive until time or count
+            # Receive until time, count, or byte limit
             while True:
                 now = time.time()
                 if now >= stop_time:
                     break
                 if max_messages is not None and len(messages) >= max_messages:
+                    break
+                if data_bytes_used >= max_data_bytes:
+                    truncated = True
+                    logger.warning(
+                        "WebSocket capture stopped: max_data_bytes limit reached (%s bytes)",
+                        max_data_bytes,
+                    )
                     break
                 timeout_left = max(0.05, min(1.0, stop_time - now))
                 try:
@@ -164,6 +189,8 @@ def register(mcp: FastMCP):
                     continue  # loop to check time again
                 except Exception:
                     break
+                msg_size = len(msg) if isinstance(msg, (str, bytes)) else 0
+                data_bytes_used += msg_size
                 try:
                     messages.append(json.loads(msg))
                 except Exception:
@@ -176,7 +203,7 @@ def register(mcp: FastMCP):
                 ping_interval=ping_interval,
                 ping_timeout=ping_timeout,
                 close_timeout=5,
-                max_queue=None,  # do not artificially limit
+                max_queue=DEFAULT_MAX_QUEUE,
             )
         except asyncio.CancelledError:
             raise
@@ -202,6 +229,8 @@ def register(mcp: FastMCP):
             "started_at": started_at,
             "ended_at": ended_at,
             "message_count": len(messages),
+            "data_bytes": data_bytes_used,
+            "truncated": truncated,
             "messages": messages,
         }
         return format_json_response(result)
