@@ -23,6 +23,8 @@ MAIN_TOOLS: list[str] = [
     "get_exchange_details",
     "get_symbol_change_history",
     "get_historical_market_cap",
+    "get_historical_dividends",
+    "get_historical_splits",
     "get_insider_transactions",
     "capture_realtime_ws",
     "get_us_tick_data",

@@ -141,6 +141,8 @@ URL_CASES = [
         "get_historical_market_cap",
         ["/historical-market-cap/AAPL.US"],
     ),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", ["/div/AAPL.US", "fmt=json"]),
+    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", ["/splits/AAPL.US", "fmt=json"]),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", ["/insider-transactions"]),
     # Technical
     (
@@ -379,6 +381,8 @@ VALIDATION_CASES = [
     ("get_live_price_data", {"ticker": ""}, "required"),
     ("get_fundamentals_data", {"ticker": ""}, "required"),
     ("get_historical_market_cap", {"ticker": ""}, "required"),
+    ("get_historical_dividends", {"ticker": ""}, "required"),
+    ("get_historical_splits", {"ticker": ""}, "required"),
     ("get_technical_indicators", {"ticker": "", "function": "sma"}, "required"),
     # Exchange validation
     ("get_exchange_tickers", {"exchange_code": ""}, "required"),
@@ -422,6 +426,8 @@ VALIDATION_CASES = [
     ("get_insider_transactions", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
     ("get_company_news", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
     ("get_historical_market_cap", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
+    ("get_historical_dividends", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
+    ("get_historical_splits", {"ticker": "AAPL/US"}, "(?i)ticker|break the request url"),
     (
         "get_live_price_data",
         {"ticker": "AAPL.US", "additional_symbols": ["MSFT/US"]},
@@ -578,6 +584,8 @@ ERROR_RESPONSE_TOOLS = [
     ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends"),
     ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details"),
     ("get_historical_market_cap", {"ticker": "AAPL.US"}, "get_historical_market_cap"),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends"),
+    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits"),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions"),
     ("get_technical_indicators", {"ticker": "AAPL.US", "function": "sma"}, "get_technical_indicators"),
     ("get_news_word_weights", {"ticker": "AAPL.US"}, "get_news_word_weights"),
@@ -696,6 +704,8 @@ SUCCESS_TOOLS = [
     ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details", {"Name": "US"}),
     ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends", [{"symbol": "AAPL"}]),
     ("get_upcoming_splits", {}, "get_upcoming_splits", [{"code": "AAPL"}]),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", [{"date": "2025-05-12"}]),
+    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", [{"date": "2020-08-31"}]),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", [{"shares": 1000}]),
     ("get_symbol_change_history", {}, "get_symbol_change_history", [{"old_code": "FB"}]),
     ("get_cboe_indices_list", {}, "get_cboe_indices_list", [{"code": "BDE30P"}]),
