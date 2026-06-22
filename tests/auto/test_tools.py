@@ -179,50 +179,6 @@ URL_CASES = [
     ("get_ust_yield_rates", {}, "get_ust_yield_rates", ["/ust/yield-rates"]),
     # Intraday
     ("get_intraday_historical_data", {"ticker": "AAPL.US"}, "get_intraday_historical_data", ["/intraday/AAPL.US"]),
-    # Marketplace — illio (market insights use param "id", not "index")
-    (
-        "get_mp_illio_market_insights_best_worst",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_best_worst",
-        ["/mp/illio/chapters/best-and-worst/"],
-    ),
-    (
-        "get_mp_illio_market_insights_performance",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_performance",
-        ["/mp/illio/chapters/performance/"],
-    ),
-    (
-        "get_mp_illio_market_insights_risk_return",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_risk_return",
-        ["/mp/illio/chapters/risk/"],
-    ),
-    (
-        "get_mp_illio_market_insights_volatility",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_volatility",
-        ["/mp/illio/chapters/volatility/"],
-    ),
-    (
-        "get_mp_illio_market_insights_beta_bands",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_beta_bands",
-        ["/mp/illio/chapters/beta-bands/"],
-    ),
-    (
-        "get_mp_illio_market_insights_largest_volatility",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_largest_volatility",
-        ["/mp/illio/chapters/volume/"],
-    ),
-    (
-        "mp_illio_performance_insights",
-        {"id": "SnP500"},
-        "get_mp_illio_performance_insights",
-        ["/mp/illio/categories/performance/"],
-    ),
-    ("mp_illio_risk_insights", {"id": "SnP500"}, "get_mp_illio_risk_insights", ["/mp/illio/categories/risk/"]),
     # Marketplace — indices
     ("mp_index_components", {"symbol": "GSPC.INDX"}, "get_mp_index_components", ["/mp/unicornbay/spglobal/comp/"]),
     ("mp_indices_list", {}, "get_mp_indices_list", ["/mp/unicornbay/spglobal/list"]),
@@ -626,18 +582,6 @@ ERROR_RESPONSE_TOOLS = [
     ),
     ("mp_index_components", {"symbol": "GSPC.INDX"}, "get_mp_index_components"),
     # Note: options tools (get_mp_us_options_*) don't check for error dicts — excluded
-    (
-        "get_mp_illio_market_insights_best_worst",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_best_worst",
-    ),
-    (
-        "get_mp_illio_market_insights_performance",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_performance",
-    ),
-    ("mp_illio_performance_insights", {"id": "SnP500"}, "get_mp_illio_performance_insights"),
-    ("mp_illio_risk_insights", {"id": "SnP500"}, "get_mp_illio_risk_insights"),
     (
         "get_mp_praams_bank_balance_sheet_by_isin",
         {"isin": "US0378331005"},

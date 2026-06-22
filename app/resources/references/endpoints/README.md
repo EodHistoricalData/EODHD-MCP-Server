@@ -25,14 +25,6 @@ This folder contains one stub file per endpoint.
 | 10 | Fundamentals Data |
 | 11 | Historical Market Cap |
 | 12 | Historical Stock Prices |
-| 13 | Illio Market Insights Best Worst |
-| 14 | Illio Market Insights Beta Bands |
-| 15 | Illio Market Insights Largest Volatility |
-| 16 | Illio Market Insights Performance |
-| 17 | Illio Market Insights Risk Return |
-| 18 | Illio Market Insights Volatility |
-| 19 | Illio Performance Insights |
-| 20 | Illio Risk Insights |
 | 21 | Index Components |
 | 22 | Indices List |
 | 23 | Insider Transactions |
@@ -110,14 +102,6 @@ This folder contains one stub file per endpoint.
 - Live Price Data API (live-price-data.md)
 - Macro Indicator API (macro-indicator.md)
 - Marketplace Tick Data API (marketplace-tick-data.md)
-- Illio Market Insights Best Worst API (illio-market-insights-best-worst.md)
-- Illio Market Insights Beta Bands API (illio-market-insights-beta-bands.md)
-- Illio Market Insights Largest Volatility API (illio-market-insights-largest-volatility.md)
-- Illio Market Insights Performance API (illio-market-insights-performance.md)
-- Illio Market Insights Risk Return API (illio-market-insights-risk-return.md)
-- Illio Market Insights Volatility API (illio-market-insights-volatility.md)
-- Illio Performance Insights API (illio-performance-insights.md)
-- Illio Risk Insights API (illio-risk-insights.md)
 - Index Components API (index-components.md)
 - Indices List API (indices-list.md)
 - Investverte ESG List Companies API (investverte-esg-list-companies.md)

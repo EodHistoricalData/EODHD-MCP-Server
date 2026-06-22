@@ -49,14 +49,6 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 10 | Fundamentals Data |
 | 11 | Historical Market Cap |
 | 12 | Historical Stock Prices |
-| 13 | Illio Market Insights Best Worst |
-| 14 | Illio Market Insights Beta Bands |
-| 15 | Illio Market Insights Largest Volatility |
-| 16 | Illio Market Insights Performance |
-| 17 | Illio Market Insights Risk Return |
-| 18 | Illio Market Insights Volatility |
-| 19 | Illio Performance Insights |
-| 20 | Illio Risk Insights |
 | 21 | Index Components |
 | 22 | Indices List |
 | 23 | Insider Transactions |

@@ -13,7 +13,7 @@
 
 Model Context Protocol (MCP) server for [EOD Historical Data](https://eodhd.com/) APIs.
 
-The current server exposes **75 read-only MCP tools** across three transports:
+The current server exposes **69 read-only MCP tools** across three transports:
 
 - `streamable-http` via `server.py` on `/mcp` by default
 - `sse`
@@ -38,7 +38,6 @@ It also ships bundled MCP prompts and documentation resources.
 ### Marketplace and partner datasets
 
 - US options: contracts, EOD, and underlyings
-- illio: performance, risk, and market insights
 - Praams: risk scoring, bonds, bank statements, reports, screeners
 - Investverte ESG: companies, countries, and sectors
 - TradingHours market lookup, market details, and status
