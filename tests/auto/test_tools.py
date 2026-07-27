@@ -312,6 +312,173 @@ URL_CASES = [
         "get_mp_tradinghours_market_status",
         ["/mp/tradinghours/markets/status"],
     ),
+    # Credit & Sovereign Risk — bracketed filter[...] keys
+    (
+        "get_credit_sovereign_risk_premium",
+        {"country": "USA", "region": "North America", "as_of": "2025-01-01", "limit": 50, "offset": 20},
+        "get_credit_sovereign_risk_premium",
+        [
+            "/credit-risk/sovereign/risk-premium",
+            "filter[country]=USA",
+            "filter[region]=North+America",
+            "filter[as_of]=2025-01-01",
+            "page[limit]=50",
+            "page[offset]=20",
+        ],
+    ),
+    (
+        "get_credit_sovereign_credit_ratings",
+        {"country": "DEU", "as_of": "2025-01-01"},
+        "get_credit_sovereign_credit_ratings",
+        ["/credit-risk/sovereign/credit-ratings", "filter[country]=DEU", "filter[as_of]=2025-01-01"],
+    ),
+    (
+        "get_credit_sovereign_cds_spreads",
+        {"country": "ITA"},
+        "get_credit_sovereign_cds_spreads",
+        ["/credit-risk/sovereign/cds-spreads", "filter[country]=ITA"],
+    ),
+    (
+        "get_credit_sovereign_default_spreads",
+        {"rating": "Baa2"},
+        "get_credit_sovereign_default_spreads",
+        ["/credit-risk/sovereign/default-spreads", "filter[rating]=Baa2"],
+    ),
+    (
+        "get_credit_corporate_cmdi",
+        {"date_from": "2025-01-01", "date_to": "2025-12-31"},
+        "get_credit_corporate_cmdi",
+        ["/credit-risk/corporate/cmdi", "filter[from]=2025-01-01", "filter[to]=2025-12-31"],
+    ),
+    (
+        "get_credit_corporate_hqm_yields",
+        {"tenor": 10, "type": "spot"},
+        "get_credit_corporate_hqm_yields",
+        ["/credit-risk/corporate/hqm-yields", "filter[tenor]=10", "filter[type]=spot"],
+    ),
+    (
+        "get_credit_cds_market_aggregates",
+        {"metric": "gross_notional", "dimension": "grade", "value": "IG", "region": "Europe"},
+        "get_credit_cds_market_aggregates",
+        [
+            "/credit-risk/cds-market/aggregates",
+            "filter[metric]=gross_notional",
+            "filter[dimension]=grade",
+            "filter[value]=IG",
+            "filter[region]=Europe",
+        ],
+    ),
+    # Sanctions — BARE keys (NOT filter[...]); pagination still uses page[...]
+    (
+        "get_sanctions_entities",
+        {"source": "ofac", "type": "individual", "program": "UKRAINE-EO13662", "country": "Russia", "active": True},
+        "get_sanctions_entities",
+        [
+            "/sanctions/entities",
+            "source=ofac",
+            "type=individual",
+            "program=UKRAINE-EO13662",
+            "country=Russia",
+            "active=true",
+        ],
+    ),
+    (
+        "get_sanctions_vessels",
+        {"source": "ofac", "imo": "9160670", "flag": "Panama", "vessel_type": "Crude Oil Tanker"},
+        "get_sanctions_vessels",
+        ["/sanctions/vessels", "source=ofac", "imo=9160670", "flag=Panama", "vessel_type=Crude+Oil+Tanker"],
+    ),
+    (
+        "get_sanctions_programs",
+        {},
+        "get_sanctions_programs",
+        ["/sanctions/programs"],
+    ),
+    (
+        "get_sanctions_sources",
+        {},
+        "get_sanctions_sources",
+        ["/sanctions/sources"],
+    ),
+    # Interest Rates — bracketed filter[...] keys
+    (
+        "get_rates_reference_rates",
+        {"code": "SOFR", "currency": "USD", "date_from": "2025-01-01", "date_to": "2025-06-30"},
+        "get_rates_reference_rates",
+        [
+            "/rates/reference-rates",
+            "filter[code]=SOFR",
+            "filter[currency]=USD",
+            "filter[from]=2025-01-01",
+            "filter[to]=2025-06-30",
+        ],
+    ),
+    (  # comma-separated currency accepted (upstream CsvIn)
+        "get_rates_reference_rates",
+        {"currency": "usd,eur"},
+        "get_rates_reference_rates",
+        ["/rates/reference-rates", "filter[currency]=USD%2CEUR"],
+    ),
+    (
+        "get_rates_policy_rates",
+        {"country": "US", "central_bank": "FED"},
+        "get_rates_policy_rates",
+        ["/rates/policy-rates", "filter[country]=US", "filter[central_bank]=FED"],
+    ),
+    (  # comma-separated tenor/type accepted (upstream CsvIn)
+        "get_credit_corporate_hqm_yields",
+        {"tenor": "5,10", "type": "spot,par"},
+        "get_credit_corporate_hqm_yields",
+        ["/credit-risk/corporate/hqm-yields", "filter[tenor]=5%2C10", "filter[type]=spot%2Cpar"],
+    ),
+    (
+        "get_rates_funding_stress",
+        {"code": "EFFR_SOFR", "date_from": "2025-01-01"},
+        "get_rates_funding_stress",
+        ["/spreads/funding-stress", "filter[code]=EFFR_SOFR", "filter[from]=2025-01-01"],
+    ),
+    (  # flexible date input is coerced to YYYY-MM-DD before it reaches the API
+        "get_credit_corporate_cmdi",
+        {"date_from": "2025/01/02", "date_to": "Mar 4, 2025"},
+        "get_credit_corporate_cmdi",
+        ["/credit-risk/corporate/cmdi", "filter[from]=2025-01-02", "filter[to]=2025-03-04"],
+    ),
+    (  # as_of is coerced the same way
+        "get_credit_sovereign_cds_spreads",
+        {"as_of": "30/06/2025"},
+        "get_credit_sovereign_cds_spreads",
+        ["/credit-risk/sovereign/cds-spreads", "filter[as_of]=2025-06-30"],
+    ),
+    (  # code CSVs are trimmed and upper-cased (upstream validates element-wise)
+        "get_rates_policy_rates",
+        {"code": "fed_target_lower, ecb_dfr", "central_bank": "fed", "country": "us"},
+        "get_rates_policy_rates",
+        [
+            "/rates/policy-rates",
+            "filter[code]=FED_TARGET_LOWER%2CECB_DFR",
+            "filter[central_bank]=FED",
+            "filter[country]=US",
+        ],
+    ),
+    (
+        "get_rates_funding_stress",
+        {"code": "effr_sofr, obfr_effr"},
+        "get_rates_funding_stress",
+        ["/spreads/funding-stress", "filter[code]=EFFR_SOFR%2COBFR_EFFR"],
+    ),
+    (
+        "get_rates_reference_rates",
+        {"code": "sofrindex"},
+        "get_rates_reference_rates",
+        ["/rates/reference-rates", "filter[code]=SOFRINDEX"],
+    ),
+]
+
+# Endpoints whose proxy controllers forward no pagination params at all.
+NON_PAGINATED_CASES = [
+    ("get_rates_funding_stress", {"code": "EFFR_SOFR"}, "get_rates_funding_stress"),
+    ("get_sanctions_programs", {}, "get_sanctions_programs"),
+    ("get_sanctions_sources", {}, "get_sanctions_sources"),
 ]
 
 
@@ -324,6 +491,17 @@ async def test_url_construction(mcp, tool_name, args, mock_module, url_fragments
     url = str(mock.call_args_list[0].args[0])
     for frag in url_fragments:
         assert frag in url, f"Expected '{frag}' in URL: {url}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name,args,mock_module", NON_PAGINATED_CASES, ids=[c[0] for c in NON_PAGINATED_CASES])
+async def test_no_pagination_params(mcp, tool_name, args, mock_module):
+    """Endpoints without upstream pagination must not send page[...] params."""
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
+    url = str(mock.call_args_list[0].args[0])
+    assert "page[limit]" not in url, f"Unexpected page[limit] in URL: {url}"
+    assert "page[offset]" not in url, f"Unexpected page[offset] in URL: {url}"
+    assert "fmt=" not in url, f"Unexpected fmt in URL: {url}"
 
 
 # ---------------------------------------------------------------------------
@@ -416,6 +594,43 @@ VALIDATION_CASES = [
         "get_cboe_index_data",
         {"index_code": "", "feed_type": "x", "date": "2017-01-01"},
         "(?i)index_code|required|empty",
+    ),
+    # Credit & Sovereign Risk — limit / offset / enum / date validation
+    ("get_credit_sovereign_risk_premium", {"limit": 0}, "(?i)limit|positive"),
+    ("get_credit_sovereign_risk_premium", {"limit": "abc"}, "(?i)limit|positive"),
+    ("get_credit_sovereign_risk_premium", {"as_of": "not-a-date"}, "(?i)as_of|date"),
+    ("get_credit_sovereign_risk_premium", {"limit": 101}, "(?i)limit|100"),
+    ("get_credit_sovereign_risk_premium", {"offset": -1}, "(?i)offset|non-negative"),
+    ("get_credit_corporate_hqm_yields", {"tenor": 4}, "(?i)tenor|one of"),
+    ("get_credit_corporate_hqm_yields", {"type": "invalid"}, "(?i)type|one of"),
+    ("get_credit_cds_market_aggregates", {"metric": "invalid"}, "(?i)metric|one of"),
+    ("get_credit_cds_market_aggregates", {"dimension": "invalid"}, "(?i)dimension|one of"),
+    # Sanctions — enum / query-length / limit validation
+    ("get_sanctions_entities", {"type": "invalid"}, "(?i)type|one of"),
+    ("get_sanctions_entities", {"q": "a"}, "(?i)'q'|characters"),
+    ("get_sanctions_entities", {"limit": 101}, "(?i)limit|100"),
+    ("get_sanctions_vessels", {"q": "a"}, "(?i)'q'|characters"),
+    ("get_rates_reference_rates", {"currency": "USD,JPY"}, "(?i)currency|one of"),
+    ("get_credit_corporate_hqm_yields", {"tenor": "5,4"}, "(?i)tenor|one of"),
+    # Interest Rates — enum / limit / date validation
+    ("get_rates_reference_rates", {"currency": "JPY"}, "(?i)currency|one of"),
+    ("get_rates_reference_rates", {"limit": 101}, "(?i)limit|100"),
+    ("get_rates_policy_rates", {"offset": -1}, "(?i)offset|non-negative"),
+    ("get_rates_reference_rates", {"date_from": "not-a-date"}, "(?i)date_from|date"),
+    (
+        "get_rates_reference_rates",
+        {"date_from": "2025-12-31", "date_to": "2025-01-01"},
+        "(?i)date_from.*date_to|cannot be after",
+    ),
+    (
+        "get_credit_corporate_cmdi",
+        {"date_from": "2025-12-31", "date_to": "2025-01-01"},
+        "(?i)date_from.*date_to|cannot be after",
+    ),
+    (
+        "get_rates_funding_stress",
+        {"date_from": "2025-12-31", "date_to": "2025-01-01"},
+        "(?i)date_from.*date_to|cannot be after",
     ),
 ]
 
@@ -594,6 +809,23 @@ ERROR_RESPONSE_TOOLS = [
         {"isin": "US0378331005"},
         "get_mp_praams_bank_income_statement_by_isin",
     ),
+    # Credit & Sovereign Risk
+    ("get_credit_sovereign_risk_premium", {"country": "USA"}, "get_credit_sovereign_risk_premium"),
+    ("get_credit_sovereign_credit_ratings", {"country": "DEU"}, "get_credit_sovereign_credit_ratings"),
+    ("get_credit_sovereign_cds_spreads", {"country": "ITA"}, "get_credit_sovereign_cds_spreads"),
+    ("get_credit_sovereign_default_spreads", {"rating": "Baa2"}, "get_credit_sovereign_default_spreads"),
+    ("get_credit_corporate_cmdi", {}, "get_credit_corporate_cmdi"),
+    ("get_credit_corporate_hqm_yields", {"tenor": 10, "type": "spot"}, "get_credit_corporate_hqm_yields"),
+    ("get_credit_cds_market_aggregates", {"metric": "gross_notional"}, "get_credit_cds_market_aggregates"),
+    # Sanctions
+    ("get_sanctions_entities", {"source": "ofac"}, "get_sanctions_entities"),
+    ("get_sanctions_vessels", {"source": "ofac"}, "get_sanctions_vessels"),
+    ("get_sanctions_programs", {}, "get_sanctions_programs"),
+    ("get_sanctions_sources", {}, "get_sanctions_sources"),
+    # Interest Rates
+    ("get_rates_reference_rates", {"code": "SOFR"}, "get_rates_reference_rates"),
+    ("get_rates_policy_rates", {"central_bank": "FED"}, "get_rates_policy_rates"),
+    ("get_rates_funding_stress", {"code": "EFFR_SOFR"}, "get_rates_funding_stress"),
 ]
 
 

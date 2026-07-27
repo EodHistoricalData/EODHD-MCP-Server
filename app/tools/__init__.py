@@ -50,6 +50,23 @@ MAIN_TOOLS: list[str] = [
     "retrieve_description_by_id",
     "get_support_resistance_levels",
     "resolve_ticker",
+    # Credit & Sovereign Risk
+    "get_credit_sovereign_risk_premium",
+    "get_credit_sovereign_credit_ratings",
+    "get_credit_sovereign_cds_spreads",
+    "get_credit_sovereign_default_spreads",
+    "get_credit_corporate_cmdi",
+    "get_credit_corporate_hqm_yields",
+    "get_credit_cds_market_aggregates",
+    # Sanctions / OFAC
+    "get_sanctions_entities",
+    "get_sanctions_vessels",
+    "get_sanctions_programs",
+    "get_sanctions_sources",
+    # Interest Rates
+    "get_rates_reference_rates",
+    "get_rates_policy_rates",
+    "get_rates_funding_stress",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [

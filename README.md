@@ -13,7 +13,7 @@
 
 Model Context Protocol (MCP) server for [EOD Historical Data](https://eodhd.com/) APIs.
 
-The current server exposes **69 read-only MCP tools** across three transports:
+The current server exposes **83 read-only MCP tools** across three transports:
 
 - `streamable-http` via `server.py` on `/mcp` by default
 - `sse`
@@ -34,6 +34,9 @@ It also ships bundled MCP prompts and documentation resources.
 - Macro indicators, economic events, exchanges, and listings
 - CBOE index tools
 - Treasury bill, yield, real yield, and long-term rates
+- Credit & sovereign risk: risk premiums, credit ratings, CDS/default spreads, corporate CMDI/HQM yields, CDS-market aggregates
+- Sanctions / OFAC: entities, vessels, programs, sources
+- Interest rates: reference rates (SOFR etc.), central-bank policy rates, funding-stress spreads
 
 ### Marketplace and partner datasets
 

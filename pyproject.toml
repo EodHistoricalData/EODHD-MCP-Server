@@ -98,6 +98,8 @@ max-complexity = 12
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "T20", "PLR2004", "ARG001", "ARG005", "S104", "E402"]
+# tool signatures mirror API params → many positional args; same rationale as PLR0913
+"app/tools/*.py" = ["PLR0917"]
 
 
 [tool.ruff.format]
