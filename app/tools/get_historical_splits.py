@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Historical Stock Splits", readOnlyHint=True))
     async def get_historical_splits(
         ticker: str,  # SYMBOL.EXCHANGE_ID, e.g. "AAPL.US"
         start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)

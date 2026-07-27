@@ -52,7 +52,7 @@ async def _run_praams_report_bond_by_isin(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Bond Report (by ISIN)", readOnlyHint=True))
     async def get_mp_praams_report_bond_by_isin(
         isin: str,  # e.g. "US7593518852"
         email: str,  # email for notifications

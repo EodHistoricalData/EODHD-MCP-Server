@@ -74,7 +74,7 @@ def _format_connection_error(exc: Exception, uri: str, timeout_seconds: float) -
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Capture Real-Time WebSocket Data", readOnlyHint=True))
     async def capture_realtime_ws(
         feed: str,
         symbols: str | list[str],

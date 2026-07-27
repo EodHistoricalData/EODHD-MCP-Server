@@ -7,7 +7,7 @@ from app.tools import ALL_TOOLS, MAIN_TOOLS, MARKETPLACE_TOOLS, THIRD_PARTY_TOOL
 
 def test_all_tools_list_not_empty():
     """ALL_TOOLS has a reasonable number of tools (dynamic, not hardcoded)."""
-    assert len(ALL_TOOLS) >= 70  # guard against accidental mass deletion
+    assert len(ALL_TOOLS) >= 65  # guard against accidental mass deletion
 
 
 def test_no_duplicate_tools():

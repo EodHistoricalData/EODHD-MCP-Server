@@ -49,7 +49,7 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Risk Scoring (by Ticker)", readOnlyHint=True))
     async def get_mp_praams_risk_scoring_by_ticker(
         ticker: str,  # e.g. 'AAPL' (demo supports AAPL, TSLA, AMZN)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

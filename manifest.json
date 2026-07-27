@@ -2,12 +2,18 @@
   "manifest_version": "0.2",
   "name": "eodhd-mcp",
   "version": "2.3.2",
-  "description": "A simple MCP server for EODHD APIs",
+  "description": "MCP server for EODHD financial data APIs — 150k+ tickers across 70+ exchanges: real-time and historical prices, fundamentals, options, technical indicators, news and sentiment, macro indicators, ESG, and more.",
   "author": {
     "name": "EODHD",
     "email": "support@eodhistoricaldata.com",
     "url": "https://github.com/EodHistoricalData/EODHD-MCP-Server"
   },
+  "homepage": "https://eodhd.com",
+  "documentation": "https://eodhd.com/financial-apis/mcp-server-for-financial-data-by-eodhd",
+  "support": "mailto:support@eodhistoricaldata.com",
+  "privacy_policies": [
+    "https://eodhd.com/financial-apis/privacy-policy"
+  ],
   "server": {
     "type": "python",
     "entry_point": "entrypoints/server_stdio.py",

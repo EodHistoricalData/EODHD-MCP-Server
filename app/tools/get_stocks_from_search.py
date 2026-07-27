@@ -17,7 +17,7 @@ ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Symbol Search", readOnlyHint=True))
     async def get_stocks_from_search(
         query: str,
         limit: int = 15,  # per docs: default 15, max 500

@@ -30,7 +30,7 @@ def _q_fields_eod(fields: str | Sequence[str] | None) -> str:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Options EOD Prices", readOnlyHint=True))
     async def get_us_options_eod(
         underlying_symbol: str | None = None,  # filter[underlying_symbol]
         contract: str | None = None,  # filter[contract]

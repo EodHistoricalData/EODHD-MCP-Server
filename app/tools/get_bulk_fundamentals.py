@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Bulk Fundamentals", readOnlyHint=True))
     async def get_bulk_fundamentals(
         exchange: str,  # e.g. "NASDAQ", "NYSE", "US", "LSE"
         symbols: str | None = None,  # comma-separated list, e.g. "AAPL,MSFT,GOOG"

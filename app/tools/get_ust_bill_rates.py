@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Treasury Bill Rates", readOnlyHint=True))
     async def get_ust_bill_rates(
         year: int | str | None = None,  # filter[year], e.g. 2024
         limit: int | str | None = None,  # page[limit]

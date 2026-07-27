@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Index Components", readOnlyHint=True))
     async def mp_index_components(
         symbol: str,  # e.g., "GSPC.INDX" from mp_indices_list
         fmt: str = "json",  # JSON only (per docs)

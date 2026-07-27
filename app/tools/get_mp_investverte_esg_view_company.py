@@ -17,7 +17,7 @@ ALLOWED_FREQUENCIES = {"FY", "Q1", "Q2", "Q3", "Q4"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Company Detail", readOnlyHint=True))
     async def get_mp_investverte_esg_view_company(
         symbol: str,  # e.g., "AAPL" or "000039.SZ"
         year: int | str | None = None,  # e.g., 2021

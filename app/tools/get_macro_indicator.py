@@ -61,7 +61,7 @@ ALLOWED_INDICATORS = {
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Macroeconomic Indicators", readOnlyHint=True))
     async def get_macro_indicator(
         country: str,  # ISO-3, e.g., USA, FRA, DEU
         indicator: str | None = None,  # default: gdp_current_usd

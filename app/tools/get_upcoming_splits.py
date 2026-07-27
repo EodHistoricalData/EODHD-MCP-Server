@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Upcoming Splits", readOnlyHint=True))
     async def get_upcoming_splits(
         from_date: str | None = None,  # YYYY-MM-DD → maps to 'from'
         to_date: str | None = None,  # YYYY-MM-DD → maps to 'to'

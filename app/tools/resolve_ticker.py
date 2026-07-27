@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Resolve Ticker", readOnlyHint=True))
     async def resolve_ticker(
         query: str,
         preferred_exchange: str | None = None,

@@ -72,7 +72,7 @@ async def _run_praams_balance_sheet_by_isin(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Bank Balance Sheet (by ISIN)", readOnlyHint=True))
     async def get_mp_praams_bank_balance_sheet_by_isin(
         isin: str,  # e.g. 'US46625H1005', 'US0605051046'
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

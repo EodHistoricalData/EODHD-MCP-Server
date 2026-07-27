@@ -16,7 +16,7 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 |------|----------|----------|-------------|
 | 0 | Global README | — | This help page |
 | 1 | Subscription Plans | 1–7 | EODHD subscription tiers and features |
-| 2 | Endpoint Documentation | 1–72 | Per-endpoint API reference |
+| 2 | Endpoint Documentation | 1–64 | Per-endpoint API reference |
 | 3 | General Reference | 1–28 | Authentication, formats, guides, FAQ |
 
 ## Quick Reference
@@ -33,7 +33,7 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 6 | All-In-One Extended Fundamentals |
 | 7 | Calendar Feed |
 
-### Type 2 — Endpoint Documentation (ids 1–72)
+### Type 2 — Endpoint Documentation (ids 1–64)
 
 | ID | Page |
 |----|------|
@@ -49,66 +49,58 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 10 | Fundamentals Data |
 | 11 | Historical Market Cap |
 | 12 | Historical Stock Prices |
-| 13 | Illio Market Insights Best Worst |
-| 14 | Illio Market Insights Beta Bands |
-| 15 | Illio Market Insights Largest Volatility |
-| 16 | Illio Market Insights Performance |
-| 17 | Illio Market Insights Risk Return |
-| 18 | Illio Market Insights Volatility |
-| 19 | Illio Performance Insights |
-| 20 | Illio Risk Insights |
-| 21 | Index Components |
-| 22 | Indices List |
-| 23 | Insider Transactions |
-| 24 | Intraday Historical Data |
-| 25 | Investverte ESG List Companies |
-| 26 | Investverte ESG List Countries |
-| 27 | Investverte ESG List Sectors |
-| 28 | Investverte ESG View Company |
-| 29 | Investverte ESG View Country |
-| 30 | Investverte ESG View Sector |
-| 31 | Live Price Data |
-| 32 | Macro Indicator |
-| 33 | Marketplace Tick Data |
-| 34 | News Word Weights |
-| 35 | PRAAMS Bank Balance Sheet By ISIN |
-| 36 | PRAAMS Bank Balance Sheet By Ticker |
-| 37 | PRAAMS Bank Income Statement By ISIN |
-| 38 | PRAAMS Bank Income Statement By Ticker |
-| 39 | PRAAMS Bond Analyze By ISIN |
-| 40 | PRAAMS Report Bond By ISIN |
-| 41 | PRAAMS Report Equity By ISIN |
-| 42 | PRAAMS Report Equity By Ticker |
-| 43 | PRAAMS Risk Scoring By ISIN |
-| 44 | PRAAMS Risk Scoring By Ticker |
-| 45 | PRAAMS Smart Investment Screener Bond |
-| 46 | PRAAMS Smart Investment Screener Equity |
-| 47 | Sentiment Data |
-| 48 | Stock Market Logos |
-| 49 | Stock Market Logos SVG |
-| 50 | Stock Screener Data |
-| 51 | Stocks From Search |
-| 52 | Symbol Change History |
-| 53 | Technical Indicators |
-| 54 | TradingHours List Markets |
-| 55 | TradingHours Lookup Markets |
-| 56 | TradingHours Market Details |
-| 57 | TradingHours Market Status |
-| 58 | Upcoming Dividends |
-| 59 | Upcoming Earnings |
-| 60 | Upcoming IPOs |
-| 61 | Upcoming Splits |
-| 62 | US Live Extended Quotes |
-| 63 | US Options Contracts |
-| 64 | US Options EOD |
-| 65 | US Options Underlyings |
-| 66 | US Tick Data |
-| 67 | UST Bill Rates |
-| 68 | UST Long-Term Rates |
-| 69 | UST Real Yield Rates |
-| 70 | UST Yield Rates |
-| 71 | User Details |
-| 72 | WebSockets Realtime |
+| 13 | Index Components |
+| 14 | Indices List |
+| 15 | Insider Transactions |
+| 16 | Intraday Historical Data |
+| 17 | Investverte ESG List Companies |
+| 18 | Investverte ESG List Countries |
+| 19 | Investverte ESG List Sectors |
+| 20 | Investverte ESG View Company |
+| 21 | Investverte ESG View Country |
+| 22 | Investverte ESG View Sector |
+| 23 | Live Price Data |
+| 24 | Macro Indicator |
+| 25 | Marketplace Tick Data |
+| 26 | News Word Weights |
+| 27 | PRAAMS Bank Balance Sheet By ISIN |
+| 28 | PRAAMS Bank Balance Sheet By Ticker |
+| 29 | PRAAMS Bank Income Statement By ISIN |
+| 30 | PRAAMS Bank Income Statement By Ticker |
+| 31 | PRAAMS Bond Analyze By ISIN |
+| 32 | PRAAMS Report Bond By ISIN |
+| 33 | PRAAMS Report Equity By ISIN |
+| 34 | PRAAMS Report Equity By Ticker |
+| 35 | PRAAMS Risk Scoring By ISIN |
+| 36 | PRAAMS Risk Scoring By Ticker |
+| 37 | PRAAMS Smart Investment Screener Bond |
+| 38 | PRAAMS Smart Investment Screener Equity |
+| 39 | Sentiment Data |
+| 40 | Stock Market Logos |
+| 41 | Stock Market Logos SVG |
+| 42 | Stock Screener Data |
+| 43 | Stocks From Search |
+| 44 | Symbol Change History |
+| 45 | Technical Indicators |
+| 46 | TradingHours List Markets |
+| 47 | TradingHours Lookup Markets |
+| 48 | TradingHours Market Details |
+| 49 | TradingHours Market Status |
+| 50 | Upcoming Dividends |
+| 51 | Upcoming Earnings |
+| 52 | Upcoming IPOs |
+| 53 | Upcoming Splits |
+| 54 | US Live Extended Quotes |
+| 55 | US Options Contracts |
+| 56 | US Options EOD |
+| 57 | US Options Underlyings |
+| 58 | US Tick Data |
+| 59 | UST Bill Rates |
+| 60 | UST Long-Term Rates |
+| 61 | UST Real Yield Rates |
+| 62 | UST Yield Rates |
+| 63 | User Details |
+| 64 | WebSockets Realtime |
 
 ### Type 3 — General Reference (ids 1–28)
 

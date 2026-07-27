@@ -54,7 +54,7 @@ async def _run_praams_balance_sheet_by_ticker(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Bank Balance Sheet (by Ticker)", readOnlyHint=True))
     async def get_mp_praams_bank_balance_sheet_by_ticker(
         ticker: str,  # e.g. 'JPM', 'BAC', 'WFC'
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

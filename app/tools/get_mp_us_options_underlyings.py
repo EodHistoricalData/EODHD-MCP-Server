@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Options Underlyings", readOnlyHint=True))
     async def get_us_options_underlyings(
         page_offset: int | None = None,  # optional pagination (if supported server-side)
         page_limit: int | None = None,  # optional pagination (if supported server-side)

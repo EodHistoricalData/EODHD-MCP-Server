@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Exchange Details", readOnlyHint=True))
     async def get_exchange_details(
         exchange_code: str,  # e.g., "US", "LSE", "XETRA"
         start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)

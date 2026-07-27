@@ -1,5 +1,5 @@
 # tests/auto/test_tools.py
-"""Parametrized auto for all 74 tool files.
+"""Parametrized auto for all tool files.
 
 Covers:
   1. URL construction — mock make_request, verify URL path + query params
@@ -124,6 +124,8 @@ URL_CASES = [
     # Search / symbol tools
     ("get_stocks_from_search", {"query": "apple"}, "get_stocks_from_search", ["/search/apple"]),
     ("get_symbol_change_history", {}, "get_symbol_change_history", ["/symbol-change-history"]),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", ["/div/AAPL.US", "fmt=json"]),
+    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", ["/splits/AAPL.US", "fmt=json"]),
     ("resolve_ticker", {"query": "apple"}, "resolve_ticker", ["/search/apple", "fmt=json"]),
     # Calendar endpoints
     ("get_upcoming_earnings", {}, "get_upcoming_earnings", ["/calendar/earnings"]),
@@ -141,8 +143,6 @@ URL_CASES = [
         "get_historical_market_cap",
         ["/historical-market-cap/AAPL.US"],
     ),
-    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", ["/div/AAPL.US", "fmt=json"]),
-    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", ["/splits/AAPL.US", "fmt=json"]),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", ["/insider-transactions"]),
     # Technical
     (
@@ -179,50 +179,6 @@ URL_CASES = [
     ("get_ust_yield_rates", {}, "get_ust_yield_rates", ["/ust/yield-rates"]),
     # Intraday
     ("get_intraday_historical_data", {"ticker": "AAPL.US"}, "get_intraday_historical_data", ["/intraday/AAPL.US"]),
-    # Marketplace — illio (market insights use param "id", not "index")
-    (
-        "get_mp_illio_market_insights_best_worst",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_best_worst",
-        ["/mp/illio/chapters/best-and-worst/"],
-    ),
-    (
-        "get_mp_illio_market_insights_performance",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_performance",
-        ["/mp/illio/chapters/performance/"],
-    ),
-    (
-        "get_mp_illio_market_insights_risk_return",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_risk_return",
-        ["/mp/illio/chapters/risk/"],
-    ),
-    (
-        "get_mp_illio_market_insights_volatility",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_volatility",
-        ["/mp/illio/chapters/volatility/"],
-    ),
-    (
-        "get_mp_illio_market_insights_beta_bands",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_beta_bands",
-        ["/mp/illio/chapters/beta-bands/"],
-    ),
-    (
-        "get_mp_illio_market_insights_largest_volatility",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_largest_volatility",
-        ["/mp/illio/chapters/volume/"],
-    ),
-    (
-        "mp_illio_performance_insights",
-        {"id": "SnP500"},
-        "get_mp_illio_performance_insights",
-        ["/mp/illio/categories/performance/"],
-    ),
-    ("mp_illio_risk_insights", {"id": "SnP500"}, "get_mp_illio_risk_insights", ["/mp/illio/categories/risk/"]),
     # Marketplace — indices
     ("mp_index_components", {"symbol": "GSPC.INDX"}, "get_mp_index_components", ["/mp/unicornbay/spglobal/comp/"]),
     ("mp_indices_list", {}, "get_mp_indices_list", ["/mp/unicornbay/spglobal/list"]),
@@ -390,6 +346,8 @@ VALIDATION_CASES = [
     # Format validation
     ("get_exchanges_list", {"fmt": "xml"}, "json"),
     ("get_historical_stock_prices", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)format|json|csv"),
+    ("get_historical_dividends", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)json"),
+    ("get_historical_splits", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)json"),
     # Period/order validation
     ("get_historical_stock_prices", {"ticker": "AAPL.US", "period": "x"}, "(?i)period|must be"),
     ("get_historical_stock_prices", {"ticker": "AAPL.US", "order": "x"}, "(?i)order|must be"),
@@ -627,18 +585,6 @@ ERROR_RESPONSE_TOOLS = [
     ("mp_index_components", {"symbol": "GSPC.INDX"}, "get_mp_index_components"),
     # Note: options tools (get_mp_us_options_*) don't check for error dicts — excluded
     (
-        "get_mp_illio_market_insights_best_worst",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_best_worst",
-    ),
-    (
-        "get_mp_illio_market_insights_performance",
-        {"id": "SnP500"},
-        "get_mp_illio_market_insights_performance",
-    ),
-    ("mp_illio_performance_insights", {"id": "SnP500"}, "get_mp_illio_performance_insights"),
-    ("mp_illio_risk_insights", {"id": "SnP500"}, "get_mp_illio_risk_insights"),
-    (
         "get_mp_praams_bank_balance_sheet_by_isin",
         {"isin": "US0378331005"},
         "get_mp_praams_bank_balance_sheet_by_isin",
@@ -704,7 +650,7 @@ SUCCESS_TOOLS = [
     ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details", {"Name": "US"}),
     ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends", [{"symbol": "AAPL"}]),
     ("get_upcoming_splits", {}, "get_upcoming_splits", [{"code": "AAPL"}]),
-    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", [{"date": "2025-05-12"}]),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", [{"date": "2025-02-07"}]),
     ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", [{"date": "2020-08-31"}]),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", [{"shares": 1000}]),
     ("get_symbol_change_history", {}, "get_symbol_change_history", [{"old_code": "FB"}]),
