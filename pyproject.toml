@@ -40,6 +40,9 @@ build-backend = "hatchling.build"
 target-version = "py310"
 line-length = 120
 src = ["app", "tests"]
+# ruff is a Python tool; don't lint/format the hand-written Markdown reference docs
+# (newer ruff reformats fenced code samples inside them — not desired).
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = [
@@ -67,6 +70,7 @@ ignore = [
     "N803",    # API param names use camelCase (e.g. splitadjusted_only) — matches EODHD docs
     "A002",    # tools shadow builtins (filter, format, type) to match API param names
     "PLR0913", # tools have many params to match API spec — unavoidable
+    "PLR0917", # too-many-positional-args — same root cause as PLR0913 (API-shaped signatures)
     "PLR2004", # magic values are API constants (status codes, limits)
     "C901",    # complex functions tracked in code review report — refactor separately
     "PLR0912", # too-many-branches — same as C901, tracked for refactoring
