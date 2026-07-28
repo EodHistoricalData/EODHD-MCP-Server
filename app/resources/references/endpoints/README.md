@@ -5,7 +5,7 @@ This folder contains one stub file per endpoint.
 ## Using `retrieve_description_by_id` for Endpoints
 
 - **Type**: `2` (Endpoints)
-- **ID range**: `1` to `82`
+- **ID range**: `1` to `83`
 - **Get this README**: `type=2, id=0`
 - **Get global README**: `type=0`
 
@@ -17,84 +17,85 @@ This folder contains one stub file per endpoint.
 | 2 | CBOE Index Data |
 | 3 | CBOE Indices List |
 | 4 | Company News |
-| 5 | Credit CDS Market Aggregates |
-| 6 | Credit Corporate CMDI |
-| 7 | Credit Corporate HQM Yields |
-| 8 | Credit Sovereign CDS Spreads |
-| 9 | Credit Sovereign Credit Ratings |
-| 10 | Credit Sovereign Default Spreads |
-| 11 | Credit Sovereign Risk Premium |
-| 12 | Earnings Trends |
-| 13 | Economic Events |
-| 14 | Exchange Details |
-| 15 | Exchange Tickers |
-| 16 | Exchanges List |
-| 17 | Fundamentals Data |
-| 18 | Historical Market Cap |
-| 19 | Historical Stock Prices |
-| 20 | Index Components |
-| 21 | Indices List |
-| 22 | Insider Transactions |
-| 23 | Intraday Historical Data |
-| 24 | Investverte ESG List Companies |
-| 25 | Investverte ESG List Countries |
-| 26 | Investverte ESG List Sectors |
-| 27 | Investverte ESG View Company |
-| 28 | Investverte ESG View Country |
-| 29 | Investverte ESG View Sector |
-| 30 | Live Price Data |
-| 31 | Macro Indicator |
-| 32 | Marketplace Tick Data |
-| 33 | News Word Weights |
-| 34 | PRAAMS Bank Balance Sheet By ISIN |
-| 35 | PRAAMS Bank Balance Sheet By Ticker |
-| 36 | PRAAMS Bank Income Statement By ISIN |
-| 37 | PRAAMS Bank Income Statement By Ticker |
-| 38 | PRAAMS Bond Analyze By ISIN |
-| 39 | PRAAMS Report Bond By ISIN |
-| 40 | PRAAMS Report Equity By ISIN |
-| 41 | PRAAMS Report Equity By Ticker |
-| 42 | PRAAMS Risk Scoring By ISIN |
-| 43 | PRAAMS Risk Scoring By Ticker |
-| 44 | PRAAMS Smart Investment Screener Bond |
-| 45 | PRAAMS Smart Investment Screener Equity |
-| 46 | Rates Funding Stress |
-| 47 | Rates Policy Rates |
-| 48 | Rates Reference Rates |
-| 49 | Real Estate Countries |
-| 50 | Real Estate Detailed Prices |
-| 51 | Real Estate Detailed Series |
-| 52 | Real Estate Selected Prices |
-| 53 | Sanctions Entities |
-| 54 | Sanctions Programs |
-| 55 | Sanctions Sources |
-| 56 | Sanctions Vessels |
-| 57 | Sentiment Data |
-| 58 | Stock Market Logos |
-| 59 | Stock Market Logos SVG |
-| 60 | Stock Screener Data |
-| 61 | Stocks From Search |
-| 62 | Symbol Change History |
-| 63 | Technical Indicators |
-| 64 | TradingHours List Markets |
-| 65 | TradingHours Lookup Markets |
-| 66 | TradingHours Market Details |
-| 67 | TradingHours Market Status |
-| 68 | Upcoming Dividends |
-| 69 | Upcoming Earnings |
-| 70 | Upcoming IPOs |
-| 71 | Upcoming Splits |
-| 72 | US Live Extended Quotes |
-| 73 | US Options Contracts |
-| 74 | US Options EOD |
-| 75 | US Options Underlyings |
-| 76 | US Tick Data |
-| 77 | User Details |
-| 78 | UST Bill Rates |
-| 79 | UST Long-Term Rates |
-| 80 | UST Real Yield Rates |
-| 81 | UST Yield Rates |
-| 82 | WebSockets Realtime |
+| 5 | Congressional Trades |
+| 6 | Credit CDS Market Aggregates |
+| 7 | Credit Corporate CMDI |
+| 8 | Credit Corporate HQM Yields |
+| 9 | Credit Sovereign CDS Spreads |
+| 10 | Credit Sovereign Credit Ratings |
+| 11 | Credit Sovereign Default Spreads |
+| 12 | Credit Sovereign Risk Premium |
+| 13 | Earnings Trends |
+| 14 | Economic Events |
+| 15 | Exchange Details |
+| 16 | Exchange Tickers |
+| 17 | Exchanges List |
+| 18 | Fundamentals Data |
+| 19 | Historical Market Cap |
+| 20 | Historical Stock Prices |
+| 21 | Index Components |
+| 22 | Indices List |
+| 23 | Insider Transactions |
+| 24 | Intraday Historical Data |
+| 25 | Investverte ESG List Companies |
+| 26 | Investverte ESG List Countries |
+| 27 | Investverte ESG List Sectors |
+| 28 | Investverte ESG View Company |
+| 29 | Investverte ESG View Country |
+| 30 | Investverte ESG View Sector |
+| 31 | Live Price Data |
+| 32 | Macro Indicator |
+| 33 | Marketplace Tick Data |
+| 34 | News Word Weights |
+| 35 | PRAAMS Bank Balance Sheet By ISIN |
+| 36 | PRAAMS Bank Balance Sheet By Ticker |
+| 37 | PRAAMS Bank Income Statement By ISIN |
+| 38 | PRAAMS Bank Income Statement By Ticker |
+| 39 | PRAAMS Bond Analyze By ISIN |
+| 40 | PRAAMS Report Bond By ISIN |
+| 41 | PRAAMS Report Equity By ISIN |
+| 42 | PRAAMS Report Equity By Ticker |
+| 43 | PRAAMS Risk Scoring By ISIN |
+| 44 | PRAAMS Risk Scoring By Ticker |
+| 45 | PRAAMS Smart Investment Screener Bond |
+| 46 | PRAAMS Smart Investment Screener Equity |
+| 47 | Rates Funding Stress |
+| 48 | Rates Policy Rates |
+| 49 | Rates Reference Rates |
+| 50 | Real Estate Countries |
+| 51 | Real Estate Detailed Prices |
+| 52 | Real Estate Detailed Series |
+| 53 | Real Estate Selected Prices |
+| 54 | Sanctions Entities |
+| 55 | Sanctions Programs |
+| 56 | Sanctions Sources |
+| 57 | Sanctions Vessels |
+| 58 | Sentiment Data |
+| 59 | Stock Market Logos |
+| 60 | Stock Market Logos SVG |
+| 61 | Stock Screener Data |
+| 62 | Stocks From Search |
+| 63 | Symbol Change History |
+| 64 | Technical Indicators |
+| 65 | TradingHours List Markets |
+| 66 | TradingHours Lookup Markets |
+| 67 | TradingHours Market Details |
+| 68 | TradingHours Market Status |
+| 69 | Upcoming Dividends |
+| 70 | Upcoming Earnings |
+| 71 | Upcoming IPOs |
+| 72 | Upcoming Splits |
+| 73 | US Live Extended Quotes |
+| 74 | US Options Contracts |
+| 75 | US Options EOD |
+| 76 | US Options Underlyings |
+| 77 | US Tick Data |
+| 78 | User Details |
+| 79 | UST Bill Rates |
+| 80 | UST Long-Term Rates |
+| 81 | UST Real Yield Rates |
+| 82 | UST Yield Rates |
+| 83 | WebSockets Realtime |
 
 ## Endpoints
 
@@ -116,6 +117,7 @@ This folder contains one stub file per endpoint.
 - Historical Market Cap API (historical-market-cap.md)
 - Historical Stock Prices API (historical-stock-prices.md)
 - Insider Transactions API (insider-transactions.md)
+- Congressional Trades API (congressional-trades.md)
 - Intraday Historical Data API (intraday-historical-data.md)
 - Live Price Data API (live-price-data.md)
 - Macro Indicator API (macro-indicator.md)
