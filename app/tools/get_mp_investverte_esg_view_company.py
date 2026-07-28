@@ -8,7 +8,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -64,7 +64,7 @@ def register(mcp: FastMCP):
 
 
         """
-        symbol = sanitize_ticker(symbol, param_name="symbol")
+        symbol = strip_exchange_suffix(sanitize_ticker(symbol, param_name="symbol"))
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")

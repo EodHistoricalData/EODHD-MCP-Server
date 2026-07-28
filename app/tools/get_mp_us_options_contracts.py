@@ -9,7 +9,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.input_formatter import (
+    build_query_param,
+    build_url,
+    coerce_date_param,
+    sanitize_ticker,
+    strip_exchange_suffix,
+    validate_date_range,
+)
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -132,7 +139,9 @@ def register(mcp: FastMCP):
         if isinstance(underlying_symbol, str) and not underlying_symbol.strip():
             underlying_symbol = None
         elif underlying_symbol is not None:
-            underlying_symbol = sanitize_ticker(underlying_symbol, param_name="underlying_symbol")
+            underlying_symbol = strip_exchange_suffix(
+                sanitize_ticker(underlying_symbol, param_name="underlying_symbol")
+            )
 
         if isinstance(contract, str) and not contract.strip():
             contract = None
