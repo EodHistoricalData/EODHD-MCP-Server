@@ -15,7 +15,6 @@ from app.input_formatter import (
     coerce_date_param,
     coerce_page_params,
     sanitize_ticker,
-    strip_exchange_suffix,
     validate_date_range,
 )
 from app.response_formatter import ResourceResponse, format_json_response
@@ -26,9 +25,16 @@ _CHAMBERS = ("senate", "house")
 _TRANSACTION_TYPES = ("purchase", "sale", "exchange")
 _BIOGUIDE_RE = re.compile(r"^[A-Z]\d{6}$")
 
-# The upstream feed keys assets on the bare ticker, so a SYMBOL.EXCHANGE filter matches
-# nothing and returns an empty page instead of an error.
 MAX_PAGE_LIMIT = 100
+
+# The feed stores assets the way the filing lists them: "AAPL", and class shares as "BRK.B".
+# A platform-style "AAPL.US" filter therefore matches nothing and returns an empty page
+# instead of an error, so only the EODHD exchange suffix is removed — never a class-share dot.
+_US_SUFFIX_RE = re.compile(r"\.US$", re.IGNORECASE)
+
+
+def _strip_us_suffix(symbol: str) -> str:
+    return _US_SUFFIX_RE.sub("", symbol)
 
 
 def register(mcp: FastMCP):
@@ -48,17 +54,21 @@ def register(mcp: FastMCP):
     ) -> ResourceResponse:
         """
 
-        Fetch US Congress stock-trade disclosures filed under the STOCK Act. Use when the user asks
+        Fetch US Congress securities transaction disclosures filed under the STOCK Act (stocks,
+        options, funds and bonds). Use when the user asks
         about congressional trading, which stocks a senator or representative bought or sold, politician
         trades, or Senate/House financial disclosures.
 
         Covers both chambers in one feed, sourced from the official Senate EFD and House Clerk portals.
+        Beta API, ordered by transaction_date descending; sources are polled several times a day, so
+        a trade shows up only once its filing is published.
         Filter by ticker, chamber, member (Bioguide ID), transaction type, and transaction or disclosure
         date range. Requires the All-in-One plan. Costs 10 API calls per request.
 
         Args:
-            symbol (str, optional): Ticker symbol, e.g. "AAPL". A SYMBOL.EXCHANGE form such as
-                "AAPL.US" is accepted and normalised — the feed keys on the bare ticker.
+            symbol (str, optional): Ticker as the filing lists it, e.g. "AAPL" or "BRK.B" for a
+                class share. A trailing ".US" is accepted and stripped ("AAPL.US" → "AAPL");
+                class-share dots are preserved.
             chamber (str, optional): "senate" or "house".
             bioguide_id (str, optional): Member Bioguide ID — one letter plus six digits,
                 e.g. "S000250" (case-insensitive).
@@ -87,12 +97,12 @@ def register(mcp: FastMCP):
             - Filters are flat query keys; only pagination uses page[limit] / page[offset].
 
         Examples:
-            "Recent congressional trades" → get_congressional_trades()
+            "Recent congressional trades" → get_congressional_trades()  # newest transaction_date first
             "Senate purchases and sales in 2026" → get_congressional_trades(chamber="senate", transaction_type="purchase,sale", transaction_date_from="2026-01-01")
             "Which trades did member S000250 make in Apple" → get_congressional_trades(bioguide_id="S000250", symbol="AAPL")
         """
         if symbol is not None:
-            symbol = strip_exchange_suffix(sanitize_ticker(symbol, param_name="symbol"))
+            symbol = _strip_us_suffix(sanitize_ticker(symbol, param_name="symbol"))
 
         if bioguide_id is not None:
             bioguide_id = str(bioguide_id).strip().upper()

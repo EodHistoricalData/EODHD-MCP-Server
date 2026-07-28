@@ -160,7 +160,8 @@ URL_CASES = [
             "transaction_date_from": "2026-01-01",
             "transaction_date_to": "2026-06-30",
             "disclosure_date_from": "2026-01-15",
-            "limit": 10,
+            "disclosure_date_to": "2026-12-31",
+            "limit": 100,
             "offset": 20,
         },
         "get_congressional_trades",
@@ -169,12 +170,26 @@ URL_CASES = [
             "symbol=AAPL&",
             "chamber=senate",
             "bioguide_id=S000250",
+            "transaction_type=purchase%2Csale",
             "transaction_date_from=2026-01-01",
             "transaction_date_to=2026-06-30",
             "disclosure_date_from=2026-01-15",
-            "page[limit]=10",
+            "disclosure_date_to=2026-12-31",
+            "page[limit]=100",
             "page[offset]=20",
         ],
+    ),
+    (
+        "get_congressional_trades",
+        {"symbol": "BRK.B", "limit": 5},
+        "get_congressional_trades",
+        ["/congressional-trades", "symbol=BRK.B", "page[limit]=5"],
+    ),
+    (
+        "get_congressional_trades",
+        {"symbol": "BRK.B.US", "limit": 5},
+        "get_congressional_trades",
+        ["/congressional-trades", "symbol=BRK.B&", "page[limit]=5"],
     ),
     # Technical
     (
@@ -1052,6 +1067,7 @@ ERROR_RESPONSE_TOOLS = [
     ("get_rates_reference_rates", {"code": "SOFR"}, "get_rates_reference_rates"),
     ("get_rates_policy_rates", {"central_bank": "FED"}, "get_rates_policy_rates"),
     ("get_rates_funding_stress", {"code": "EFFR_SOFR"}, "get_rates_funding_stress"),
+    ("get_congressional_trades", {"symbol": "AAPL"}, "get_congressional_trades"),
 ]
 
 

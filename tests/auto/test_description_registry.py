@@ -49,6 +49,7 @@ STABLE_ANCHORS = {
     (2, 52): "sanctions-vessels.md",
     (2, 78): "websockets-realtime.md",
     (2, 79): "real-estate-countries.md",
+    (2, 83): "congressional-trades.md",
     (1, 1): "free.md",
     (3, 1): "api-authentication-demo-access.md",
 }
