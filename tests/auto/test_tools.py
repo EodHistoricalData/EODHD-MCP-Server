@@ -184,6 +184,47 @@ URL_CASES = [
     ("get_ust_real_yield_rates", {}, "get_ust_real_yield_rates", ["/ust/real-yield-rates"]),
     ("get_ust_yield_rates", {}, "get_ust_yield_rates", ["/ust/yield-rates"]),
     # Real Estate (BIS property prices)
+    (
+        "get_real_estate_detailed_prices",
+        {
+            "code": "us",
+            "area": "0",
+            "property_type": "2",
+            "vintage": "1",
+            "freq": "Q",
+            "from_period": "2020-Q1",
+            "to_period": "2024-Q4",
+            "sort": "-period",
+            "limit": 10,
+            "offset": 20,
+        },
+        "get_real_estate_detailed_prices",
+        [
+            "/real-estate/US/detailed",
+            "sort=-period",
+            "filter[area]=0",
+            "filter[property_type]=2",
+            "filter[vintage]=1",
+            "filter[freq]=Q",
+            "filter[from]=2020-Q1",
+            "filter[to]=2024-Q4",
+            "page[limit]=10",
+            "page[offset]=20",
+        ],
+    ),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "4T", "type": "real", "metric": "yoy", "from_period": "2020-q1", "sort": "value", "limit": 5},
+        "get_real_estate_selected_prices",
+        [
+            "/real-estate/4T",
+            "sort=value",
+            "filter[type]=real",
+            "filter[metric]=yoy",
+            "filter[from]=2020-Q1",
+            "page[limit]=5",
+        ],
+    ),
     ("get_real_estate_countries", {}, "get_real_estate_countries", ["/real-estate/countries", "fmt=json"]),
     (
         "get_real_estate_selected_prices",
@@ -697,6 +738,27 @@ VALIDATION_CASES = [
     ("get_real_estate_countries", {"limit": 501}, "(?i)limit|between|must be"),
     ("get_real_estate_countries", {"offset": -1}, "(?i)offset|non-negative|must be"),
     ("get_real_estate_selected_prices", {"code": "US/X"}, "(?i)code|break the request url"),
+    ("get_real_estate_detailed_prices", {"code": "US/X"}, "(?i)code|alphanumeric|break the request url"),
+    ("get_real_estate_detailed_series", {"code": "US/X"}, "(?i)code|alphanumeric|break the request url"),
+    ("get_real_estate_selected_prices", {"code": "TOOLONGCODE"}, "(?i)code|alphanumeric"),
+    ("get_real_estate_selected_prices", {"code": "US", "from_period": "2020-01-01"}, "(?i)from_period|quarter|YYYY"),
+    ("get_real_estate_selected_prices", {"code": "US", "to_period": "2020Q1"}, "(?i)to_period|quarter|YYYY"),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "US", "from_period": "2024-Q4", "to_period": "2020-Q1"},
+        "(?i)later than|from_period",
+    ),
+    ("get_real_estate_selected_prices", {"code": "US", "sort": "bogus"}, "(?i)sort|invalid"),
+    ("get_real_estate_detailed_prices", {"code": "US", "sort": "bogus"}, "(?i)sort|invalid"),
+    ("get_real_estate_detailed_prices", {"code": "US", "fmt": "xml"}, "(?i)fmt|json|csv"),
+    ("get_real_estate_selected_prices", {"code": "US", "fmt": "xml"}, "(?i)fmt|json|csv"),
+    ("get_real_estate_detailed_prices", {"code": "US", "area": "TOOLONG"}, "(?i)area|at most"),
+    ("get_real_estate_detailed_prices", {"code": "US", "property_type": "ABC"}, "(?i)property_type|at most"),
+    ("get_real_estate_detailed_prices", {"code": "US", "vintage": "AB"}, "(?i)vintage|at most"),
+    ("get_real_estate_detailed_prices", {"code": "US", "limit": 251}, "(?i)limit|250"),
+    ("get_real_estate_countries", {"limit": 0}, "(?i)limit|positive"),
+    ("get_real_estate_countries", {"limit": "many"}, "(?i)limit|positive|integer"),
+    ("get_real_estate_countries", {"offset": "far"}, "(?i)offset|non-negative|integer"),
     # WebSocket — invalid feed
     ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, "(?i)feed|must be|invalid|supported"),
     # Stock screener — limit range
@@ -993,6 +1055,18 @@ SUCCESS_TOOLS = [
     ("get_user_details", {}, "get_user_details", {"name": "manual"}),
     ("get_upcoming_earnings", {}, "get_upcoming_earnings", {"earnings": []}),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator", [{"value": 1.5}]),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "US"},
+        "get_real_estate_selected_prices",
+        {"data": [{"period": "2020-Q1", "value": 100.0}], "meta": {"total": 1}},
+    ),
+    (
+        "get_real_estate_detailed_prices",
+        {"code": "US"},
+        "get_real_estate_detailed_prices",
+        {"data": [{"period": "2020-Q1", "value": 100.0, "covered_area": "0"}], "meta": {"total": 1}},
+    ),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data", {"AAPL.US": []}),
     ("stock_screener", {}, "get_stock_screener_data", [{"ticker": "AAPL"}]),
     # Expanded success-path coverage
@@ -1192,3 +1266,49 @@ async def test_symbol_form_fallback_not_used_when_bare_symbol_works(mcp, tool_na
     _text, mock = await _call(mcp, tool_name, args, mock_module)
 
     assert mock.call_count == 1
+
+
+# Real Estate tools serve CSV as text; the JSON branch must not swallow it and vice versa.
+CSV_CASES = [
+    ("get_real_estate_countries", {"fmt": "csv"}, "get_real_estate_countries"),
+    ("get_real_estate_selected_prices", {"code": "US", "fmt": "csv"}, "get_real_estate_selected_prices"),
+    ("get_real_estate_detailed_prices", {"code": "US", "fmt": "csv"}, "get_real_estate_detailed_prices"),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name,args,mock_module", CSV_CASES, ids=[c[0] for c in CSV_CASES])
+async def test_csv_mode_returns_text_unchanged(mcp, tool_name, args, mock_module):
+    csv_body = "code,name\nUS,United States\n"
+    text, mock = await _call(mcp, tool_name, args, mock_module, mock_return=csv_body)
+
+    assert text == csv_body
+    url = str(mock.call_args_list[0].args[0])
+    assert "fmt=csv" in url
+    assert mock.call_args_list[0].kwargs.get("response_mode") == "text"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name,args,mock_module", CSV_CASES, ids=[c[0] for c in CSV_CASES])
+async def test_csv_mode_rejects_json_payload(mcp, tool_name, args, mock_module):
+    """A dict where CSV text was requested is a contract break, not something to pass through."""
+    with pytest.raises(ToolError, match=r"(?i)csv"):
+        await _call(mcp, tool_name, args, mock_module, mock_return={"data": []})
+
+
+@pytest.mark.asyncio
+async def test_csv_limit_is_higher_than_json_limit_for_detailed_prices(mcp):
+    """The JSON cap exists for response size; CSV keeps the upstream maximum."""
+    _text, mock = await _call(
+        mcp,
+        "get_real_estate_detailed_prices",
+        {"code": "US", "fmt": "csv", "limit": 500},
+        "get_real_estate_detailed_prices",
+        mock_return="period,value\n2020-Q1,100\n",
+    )
+    assert "page[limit]=500" in str(mock.call_args_list[0].args[0])
+
+    with pytest.raises(ToolError, match=r"(?i)limit"):
+        await _call(
+            mcp, "get_real_estate_detailed_prices", {"code": "US", "limit": 500}, "get_real_estate_detailed_prices"
+        )
