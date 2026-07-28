@@ -19,8 +19,6 @@ Provides Daily Treasury Bill Rates (T-Bills): discount and coupon rates, average
 |-----------|----------|------|-------------|
 | api_token | Yes | string | Your API key |
 | filter[year] | No | integer | Filter by year (1900 – current year + 1). If not mentioned – current year |
-| page[limit] | No | integer | Number of records per page |
-| page[offset] | No | integer | Offset for pagination |
 
 ## Response (shape)
 
@@ -65,7 +63,7 @@ Provides Daily Treasury Bill Rates (T-Bills): discount and coupon rates, average
 |-------|------|-------------|
 | meta | object | Metadata including total record count |
 | data | array | Array of bill rate records |
-| links | object | Pagination links (next page URL or null) |
+| links | object | Always `next: null` — the full dataset for the year is returned; the endpoint does not paginate |
 
 **Data item fields:**
 
@@ -84,13 +82,13 @@ Provides Daily Treasury Bill Rates (T-Bills): discount and coupon rates, average
 
 ```bash
 # Bill rates for 2012
-curl "https://eodhd.com/api/ust/bill-rates?api_token=YOUR_TOKEN&filter[year]=2012&page[limit]=100&page[offset]=0"
+curl "https://eodhd.com/api/ust/bill-rates?api_token=YOUR_TOKEN&filter[year]=2012"
 
 # Bill rates for current year
 curl "https://eodhd.com/api/ust/bill-rates?api_token=YOUR_TOKEN"
 
 # Using the helper client
-python eodhd_client.py --endpoint ust/bill-rates --filter-year 2012 --limit 100
+python eodhd_client.py --endpoint ust/bill-rates --filter-year 2012
 ```
 
 ## Notes
@@ -98,7 +96,7 @@ python eodhd_client.py --endpoint ust/bill-rates --filter-year 2012 --limit 100
 - Returns data grouped by date and tenor
 - Common tenors include 4WK, 8WK, 13WK, 17WK, 26WK, and 52WK
 - If `filter[year]` is omitted, defaults to the current year
-- Pagination is supported via `page[limit]` and `page[offset]`
+- The full dataset for the selected year is always returned; there is no pagination or date-range filtering (`page[limit]`, `page[offset]`, `from`, `to` are not supported)
 - API call consumption: 1 call per request
 - Part of the US Treasury (UST) Interest Rates API (beta)
 

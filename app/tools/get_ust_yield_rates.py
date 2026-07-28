@@ -18,8 +18,6 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(title="US Treasury Par Yield Rates", readOnlyHint=True))
     async def get_ust_yield_rates(
         year: int | str | None = None,  # filter[year], e.g. 2024
-        limit: int | str | None = None,  # page[limit]
-        offset: int | str | None = None,  # page[offset]
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:
         """
@@ -35,37 +33,28 @@ def register(mcp: FastMCP):
 
         Args:
             year (int, optional): Filter by year (1900+). Defaults to current year.
-            limit (int, optional): Records per page.
-            offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override.
 
 
         Returns:
-            Array of daily yield rate objects, each with:
-            - date (str): observation date (YYYY-MM-DD)
-            - 1MO (float): 1-month yield
-            - 2MO (float): 2-month yield
-            - 3MO (float): 3-month yield
-            - 4MO (float): 4-month yield
-            - 6MO (float): 6-month yield
-            - 1YR (float): 1-year yield
-            - 2YR (float): 2-year yield
-            - 3YR (float): 3-year yield
-            - 5YR (float): 5-year yield
-            - 7YR (float): 7-year yield
-            - 10YR (float): 10-year yield
-            - 20YR (float): 20-year yield
-            - 30YR (float): 30-year yield
+            An envelope object with:
+            - meta (object): { "total": int } — total number of records returned.
+            - data (array): daily yield rate objects, each with:
+                - date (str): observation date (YYYY-MM-DD)
+                - tenor (str): maturity (e.g. 1M, 1.5M, 2M, 3M, 4M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y)
+                - rate (float): par yield for the given tenor
+            - links (object): { "next": null } — always null; the full dataset for the year is
+              returned and the endpoint does not paginate.
 
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
             - Full yield curve across multiple maturities.
+            - No pagination or date-range filtering: filter[year] is the only supported filter.
 
         Examples:
             "US Treasury yield curve for 2026" → get_ust_yield_rates(year=2026)
             "Current yield rates" → get_ust_yield_rates()
-            "2025 yield rates, page 2" → get_ust_yield_rates(year=2025, offset=100, limit=100)
         """
         y: int | None = None
         if year is not None:
@@ -76,31 +65,11 @@ def register(mcp: FastMCP):
             if y < 1900:
                 raise ToolError("Parameter 'year' must be >= 1900.")
 
-        lim: int | None = None
-        if limit is not None:
-            try:
-                lim = int(limit)
-            except (ValueError, TypeError):
-                raise ToolError("Parameter 'limit' must be a positive integer.")
-            if lim <= 0:
-                raise ToolError("Parameter 'limit' must be a positive integer.")
-
-        off: int | None = None
-        if offset is not None:
-            try:
-                off = int(offset)
-            except (ValueError, TypeError):
-                raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            if off < 0:
-                raise ToolError("Parameter 'offset' must be a non-negative integer.")
-
         url = build_url(
             "ust/yield-rates",
             {"api_token": api_token},
         )
         url += build_query_param("filter[year]", y)
-        url += build_query_param("page[limit]", lim)
-        url += build_query_param("page[offset]", off)
 
         data = await make_request(url)
 

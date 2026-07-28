@@ -68,7 +68,7 @@ Provides Daily Treasury Par Real Yield Curve Rates (real yield curve by tenor). 
 |-------|------|-------------|
 | meta | object | Metadata including total record count |
 | data | array | Array of real yield rate records |
-| links | object | Pagination links (next page URL or null) |
+| links | object | Always `next: null` — the full dataset for the year is returned; the endpoint does not paginate |
 
 **Data item fields:**
 
@@ -97,6 +97,7 @@ python eodhd_client.py --endpoint ust/real-yield-rates --filter-year 2024
 - Real yields reflect inflation-adjusted returns (derived from TIPS)
 - Comparing nominal yields (from yield-rates endpoint) with real yields gives implied inflation expectations (breakeven inflation)
 - If `filter[year]` is omitted, defaults to the current year
+- The full dataset for the selected year is always returned; there is no pagination or date-range filtering (`page[limit]`, `page[offset]`, `from`, `to` are not supported)
 - API call consumption: 1 call per request
 - Part of the US Treasury (UST) Interest Rates API (beta)
 

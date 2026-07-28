@@ -78,7 +78,7 @@ Provides Daily Treasury Par Yield Curve Rates (nominal yield curve by tenor). Re
 |-------|------|-------------|
 | meta | object | Metadata including total record count |
 | data | array | Array of yield rate records |
-| links | object | Pagination links (next page URL or null) |
+| links | object | Always `next: null` — the full dataset for the year is returned; the endpoint does not paginate |
 
 **Data item fields:**
 
@@ -106,6 +106,7 @@ python eodhd_client.py --endpoint ust/yield-rates --filter-year 2023
 - Returns multiple tenors per observation date, covering the full yield curve
 - Available tenors include: 1M, 1.5M, 2M, 3M, 4M, 6M, 1Y, 2Y, 3Y, 5Y, 7Y, 10Y, 20Y, 30Y
 - If `filter[year]` is omitted, defaults to the current year
+- The full dataset for the selected year is always returned; there is no pagination or date-range filtering (`page[limit]`, `page[offset]`, `from`, `to` are not supported)
 - Useful for constructing yield curves, calculating spreads (e.g., 2Y-10Y spread), and term structure analysis
 - API call consumption: 1 call per request
 - Part of the US Treasury (UST) Interest Rates API (beta)
