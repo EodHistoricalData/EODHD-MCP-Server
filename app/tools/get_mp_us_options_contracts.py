@@ -123,6 +123,11 @@ def register(mcp: FastMCP):
             raise ToolError("'page_offset' must be an integer between 0 and 10000.")
         if not isinstance(page_limit, int) or not (1 <= page_limit <= 1000):
             raise ToolError("'page_limit' must be an integer between 1 and 1000.")
+        if not str(contract or "").strip() and not str(underlying_symbol or "").strip():
+            raise ToolError(
+                "Provide 'contract' or 'underlying_symbol' — the API rejects a request with neither "
+                "(HTTP 422: filter.contract is required when filter.underlying_symbol is absent)."
+            )
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 

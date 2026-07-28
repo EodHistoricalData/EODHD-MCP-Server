@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url
+from app.input_formatter import build_url, sanitize_email
 from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
 
 
@@ -27,10 +27,7 @@ async def _run_praams_report_equity_by_isin(
     ci = _canon_isin(isin)
     if ci is None:
         raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g. 'US0378331005').")
-    if not email or not isinstance(email, str):
-        raise ToolError("Parameter 'email' is required for report notifications.")
-
-    email = email.strip()
+    email = sanitize_email(email)
 
     url = build_url(
         f"mp/praams/reports/equity/isin/{quote_plus(ci)}",
@@ -52,7 +49,9 @@ async def _run_praams_report_equity_by_isin(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Praams: Equity Report (by ISIN)", readOnlyHint=True))
+    @mcp.tool(
+        annotations=ToolAnnotations(title="Praams: Equity Report (by ISIN)", readOnlyHint=False, idempotentHint=False)
+    )
     async def get_mp_praams_report_equity_by_isin(
         isin: str,  # e.g. "US0378331005" (Apple)
         email: str,  # email for notifications
