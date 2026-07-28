@@ -16,7 +16,7 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 |------|----------|----------|-------------|
 | 0 | Global README | — | This help page |
 | 1 | Subscription Plans | 1–7 | EODHD subscription tiers and features |
-| 2 | Endpoint Documentation | 1–78 | Per-endpoint API reference |
+| 2 | Endpoint Documentation | 1–82 | Per-endpoint API reference |
 | 3 | General Reference | 1–28 | Authentication, formats, guides, FAQ |
 
 ## Quick Reference
@@ -33,7 +33,7 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 6 | All-In-One Extended Fundamentals |
 | 7 | Calendar Feed |
 
-### Type 2 — Endpoint Documentation (ids 1–78)
+### Type 2 — Endpoint Documentation (ids 1–82)
 
 | ID | Page |
 |----|------|
@@ -85,36 +85,40 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 46 | Rates Funding Stress |
 | 47 | Rates Policy Rates |
 | 48 | Rates Reference Rates |
-| 49 | Sanctions Entities |
-| 50 | Sanctions Programs |
-| 51 | Sanctions Sources |
-| 52 | Sanctions Vessels |
-| 53 | Sentiment Data |
-| 54 | Stock Market Logos |
-| 55 | Stock Market Logos SVG |
-| 56 | Stock Screener Data |
-| 57 | Stocks From Search |
-| 58 | Symbol Change History |
-| 59 | Technical Indicators |
-| 60 | TradingHours List Markets |
-| 61 | TradingHours Lookup Markets |
-| 62 | TradingHours Market Details |
-| 63 | TradingHours Market Status |
-| 64 | Upcoming Dividends |
-| 65 | Upcoming Earnings |
-| 66 | Upcoming IPOs |
-| 67 | Upcoming Splits |
-| 68 | US Live Extended Quotes |
-| 69 | US Options Contracts |
-| 70 | US Options EOD |
-| 71 | US Options Underlyings |
-| 72 | US Tick Data |
-| 73 | User Details |
-| 74 | UST Bill Rates |
-| 75 | UST Long-Term Rates |
-| 76 | UST Real Yield Rates |
-| 77 | UST Yield Rates |
-| 78 | WebSockets Realtime |
+| 49 | Real Estate Countries |
+| 50 | Real Estate Detailed Prices |
+| 51 | Real Estate Detailed Series |
+| 52 | Real Estate Selected Prices |
+| 53 | Sanctions Entities |
+| 54 | Sanctions Programs |
+| 55 | Sanctions Sources |
+| 56 | Sanctions Vessels |
+| 57 | Sentiment Data |
+| 58 | Stock Market Logos |
+| 59 | Stock Market Logos SVG |
+| 60 | Stock Screener Data |
+| 61 | Stocks From Search |
+| 62 | Symbol Change History |
+| 63 | Technical Indicators |
+| 64 | TradingHours List Markets |
+| 65 | TradingHours Lookup Markets |
+| 66 | TradingHours Market Details |
+| 67 | TradingHours Market Status |
+| 68 | Upcoming Dividends |
+| 69 | Upcoming Earnings |
+| 70 | Upcoming IPOs |
+| 71 | Upcoming Splits |
+| 72 | US Live Extended Quotes |
+| 73 | US Options Contracts |
+| 74 | US Options EOD |
+| 75 | US Options Underlyings |
+| 76 | US Tick Data |
+| 77 | User Details |
+| 78 | UST Bill Rates |
+| 79 | UST Long-Term Rates |
+| 80 | UST Real Yield Rates |
+| 81 | UST Yield Rates |
+| 82 | WebSockets Realtime |
 
 ### Type 3 — General Reference (ids 1–28)
 

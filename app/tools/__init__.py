@@ -67,6 +67,11 @@ MAIN_TOOLS: list[str] = [
     "get_rates_reference_rates",
     "get_rates_policy_rates",
     "get_rates_funding_stress",
+    # Real Estate Data
+    "get_real_estate_countries",
+    "get_real_estate_selected_prices",
+    "get_real_estate_detailed_prices",
+    "get_real_estate_detailed_series",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [
