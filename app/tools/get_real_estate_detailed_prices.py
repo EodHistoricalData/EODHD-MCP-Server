@@ -7,7 +7,13 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, sanitize_exchange
+from app.input_formatter import (
+    build_query_param,
+    build_url,
+    coerce_page_params,
+    sanitize_country_code,
+    sanitize_dimension_code,
+)
 from app.response_formatter import (
     ResourceResponse,
     format_json_response,
@@ -20,6 +26,9 @@ logger = logging.getLogger(__name__)
 ALLOWED_FREQ = {"Q", "A", "M", "H"}
 ALLOWED_SORT = {"period", "-period", "value", "-value"}
 ALLOWED_FMT = {"json", "csv"}
+
+# Rows per JSON page — see the comment where it is applied.
+JSON_MAX_LIMIT = 250
 
 
 def register(mcp: FastMCP):
@@ -34,7 +43,7 @@ def register(mcp: FastMCP):
         to_period: str | None = None,  # filter[to]
         sort: str | None = None,  # period | -period | value | -value
         fmt: str = "json",  # json | csv
-        limit: int | str | None = None,  # page[limit], 1..500 (default 50)
+        limit: int | str | None = None,  # page[limit]: 1..250 for json, 1..500 for csv (default 50)
         offset: int | str | None = None,  # page[offset], >= 0 (default 0)
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:
@@ -60,7 +69,9 @@ def register(mcp: FastMCP):
             to_period (str, optional): End period (filter[to]).
             sort (str, optional): 'period', '-period', 'value', or '-value'.
             fmt (str): 'json' or 'csv'. Default 'json'.
-            limit (int, optional): Records per page (page[limit]), 1..500. Default 50.
+            limit (int, optional): Records per page (page[limit]). Up to 250 for fmt='json'
+                (a larger JSON page exceeds what an MCP client can accept) and up to 500
+                for fmt='csv'. Default 50. Use offset to walk further.
             offset (int, optional): Pagination offset (page[offset]), >= 0. Default 0.
             api_token (str, optional): Per-call token override. If not provided, env token is used.
 
@@ -92,8 +103,16 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        lim = _coerce_limit(limit)
-        off = _coerce_offset(offset)
+        if area is not None:
+            area = sanitize_dimension_code(area, "area", 2)
+        if property_type is not None:
+            property_type = sanitize_dimension_code(property_type, "property_type", 2)
+        if vintage is not None:
+            vintage = sanitize_dimension_code(vintage, "vintage", 1)
+
+        # A JSON page of 500 rows serialises to ~190k characters, past the ~150k a client
+        # can accept, so JSON is capped lower than the upstream maximum and CSV is not.
+        lim, off = coerce_page_params(limit, offset, max_limit=500 if fmt == "csv" else JSON_MAX_LIMIT)
 
         url = build_url(
             f"real-estate/{code}/detailed",
@@ -127,28 +146,4 @@ def register(mcp: FastMCP):
 
 def _normalize_country_code(code: str) -> str:
     """Sanitize and upper-case an ISO alpha-2 country code (case-insensitive)."""
-    return sanitize_exchange(code, "code").upper()
-
-
-def _coerce_limit(limit: int | str | None) -> int | None:
-    if limit is None:
-        return None
-    try:
-        lim = int(limit)
-    except (ValueError, TypeError):
-        raise ToolError("Parameter 'limit' must be an integer between 1 and 500.")
-    if not (1 <= lim <= 500):
-        raise ToolError("Parameter 'limit' must be between 1 and 500.")
-    return lim
-
-
-def _coerce_offset(offset: int | str | None) -> int | None:
-    if offset is None:
-        return None
-    try:
-        off = int(offset)
-    except (ValueError, TypeError):
-        raise ToolError("Parameter 'offset' must be a non-negative integer.")
-    if off < 0:
-        raise ToolError("Parameter 'offset' must be a non-negative integer.")
-    return off
+    return sanitize_country_code(code)

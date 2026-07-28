@@ -7,7 +7,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, sanitize_exchange
+from app.input_formatter import (
+    build_query_param,
+    build_url,
+    coerce_page_params,
+    coerce_quarter_param,
+    sanitize_country_code,
+    validate_quarter_range,
+)
 from app.response_formatter import (
     ResourceResponse,
     format_json_response,
@@ -88,8 +95,10 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        lim = _coerce_limit(limit)
-        off = _coerce_offset(offset)
+        from_period = coerce_quarter_param(from_period, "from_period")
+        to_period = coerce_quarter_param(to_period, "to_period")
+        validate_quarter_range(from_period, to_period)
+        lim, off = coerce_page_params(limit, offset, max_limit=500)
 
         url = build_url(
             f"real-estate/{code}",
@@ -121,28 +130,4 @@ def register(mcp: FastMCP):
 
 def _normalize_country_code(code: str) -> str:
     """Sanitize and upper-case an ISO alpha-2 country code (case-insensitive)."""
-    return sanitize_exchange(code, "code").upper()
-
-
-def _coerce_limit(limit: int | str | None) -> int | None:
-    if limit is None:
-        return None
-    try:
-        lim = int(limit)
-    except (ValueError, TypeError):
-        raise ToolError("Parameter 'limit' must be an integer between 1 and 500.")
-    if not (1 <= lim <= 500):
-        raise ToolError("Parameter 'limit' must be between 1 and 500.")
-    return lim
-
-
-def _coerce_offset(offset: int | str | None) -> int | None:
-    if offset is None:
-        return None
-    try:
-        off = int(offset)
-    except (ValueError, TypeError):
-        raise ToolError("Parameter 'offset' must be a non-negative integer.")
-    if off < 0:
-        raise ToolError("Parameter 'offset' must be a non-negative integer.")
-    return off
+    return sanitize_country_code(code)
