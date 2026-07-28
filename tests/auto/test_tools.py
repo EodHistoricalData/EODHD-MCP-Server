@@ -150,6 +150,32 @@ URL_CASES = [
         "get_congressional_trades",
         ["/congressional-trades", "chamber=senate"],
     ),
+    (
+        "get_congressional_trades",
+        {
+            "symbol": "AAPL.US",
+            "chamber": "senate",
+            "bioguide_id": "s000250",
+            "transaction_type": "purchase,sale",
+            "transaction_date_from": "2026-01-01",
+            "transaction_date_to": "2026-06-30",
+            "disclosure_date_from": "2026-01-15",
+            "limit": 10,
+            "offset": 20,
+        },
+        "get_congressional_trades",
+        [
+            "/congressional-trades",
+            "symbol=AAPL&",
+            "chamber=senate",
+            "bioguide_id=S000250",
+            "transaction_date_from=2026-01-01",
+            "transaction_date_to=2026-06-30",
+            "disclosure_date_from=2026-01-15",
+            "page[limit]=10",
+            "page[offset]=20",
+        ],
+    ),
     # Technical
     (
         "get_technical_indicators",
@@ -759,6 +785,27 @@ VALIDATION_CASES = [
     ("get_real_estate_countries", {"limit": 0}, "(?i)limit|positive"),
     ("get_real_estate_countries", {"limit": "many"}, "(?i)limit|positive|integer"),
     ("get_real_estate_countries", {"offset": "far"}, "(?i)offset|non-negative|integer"),
+    # Congressional trades — enums, ids, dates and pagination bounds
+    ("get_congressional_trades", {"chamber": "lords"}, "(?i)chamber|senate|house"),
+    ("get_congressional_trades", {"transaction_type": "gift"}, "(?i)transaction_type|purchase|sale|exchange"),
+    ("get_congressional_trades", {"transaction_type": "purchase,gift"}, "(?i)transaction_type|purchase|sale|exchange"),
+    ("get_congressional_trades", {"bioguide_id": "S00025"}, "(?i)bioguide_id|six digits"),
+    ("get_congressional_trades", {"bioguide_id": "0000250"}, "(?i)bioguide_id|six digits"),
+    ("get_congressional_trades", {"symbol": "AAPL&x=1"}, "(?i)symbol|break the request url"),
+    ("get_congressional_trades", {"transaction_date_from": "not-a-date"}, "(?i)transaction_date_from|date"),
+    (
+        "get_congressional_trades",
+        {"transaction_date_from": "2026-06-01", "transaction_date_to": "2026-01-01"},
+        "(?i)transaction_date|before|after|earlier|range",
+    ),
+    (
+        "get_congressional_trades",
+        {"disclosure_date_from": "2026-06-01", "disclosure_date_to": "2026-01-01"},
+        "(?i)disclosure_date|before|after|earlier|range",
+    ),
+    ("get_congressional_trades", {"limit": 101}, "(?i)limit|100"),
+    ("get_congressional_trades", {"limit": 0}, "(?i)limit|positive"),
+    ("get_congressional_trades", {"offset": -1}, "(?i)offset|non-negative"),
     # WebSocket — invalid feed
     ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, "(?i)feed|must be|invalid|supported"),
     # Stock screener — limit range
@@ -1055,6 +1102,12 @@ SUCCESS_TOOLS = [
     ("get_user_details", {}, "get_user_details", {"name": "manual"}),
     ("get_upcoming_earnings", {}, "get_upcoming_earnings", {"earnings": []}),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator", [{"value": 1.5}]),
+    (
+        "get_congressional_trades",
+        {"symbol": "AAPL"},
+        "get_congressional_trades",
+        {"data": [{"chamber": "senate", "asset": {"symbol": "AAPL"}}], "meta": {"total": 1}},
+    ),
     (
         "get_real_estate_selected_prices",
         {"code": "US"},
