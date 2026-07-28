@@ -9,7 +9,6 @@ Illio provider was removed, so these guards lock the invariants in place:
 """
 
 import pytest
-
 from app.tools.retrieve_description_by_id import _PAGE_REGISTRY, _RESOURCES_DIR
 
 
@@ -17,9 +16,7 @@ from app.tools.retrieve_description_by_id import _PAGE_REGISTRY, _RESOURCES_DIR
 def test_ids_contiguous_from_one(page_type):
     """Non-README ids must be 1..N with no gaps or duplicates."""
     ids = sorted(k for k in _PAGE_REGISTRY[page_type] if k != 0)
-    assert ids == list(range(1, len(ids) + 1)), (
-        f"type={page_type} ids are not contiguous 1..N: {ids}"
-    )
+    assert ids == list(range(1, len(ids) + 1)), f"type={page_type} ids are not contiguous 1..N: {ids}"
 
 
 @pytest.mark.parametrize("page_type", sorted(_PAGE_REGISTRY))

@@ -315,8 +315,18 @@ URL_CASES = [
     ),
     # Marketplace — tick data & options
     ("get_mp_tick_data", {"ticker": "AAPL.US"}, "get_mp_tick_data", ["/mp/unicornbay/tickdata/ticks", "s=AAPL.US"]),
-    ("get_us_options_contracts", {}, "get_mp_us_options_contracts", ["/mp/unicornbay/options/contracts"]),
-    ("get_us_options_eod", {}, "get_mp_us_options_eod", ["/mp/unicornbay/options/eod"]),
+    (
+        "get_us_options_contracts",
+        {"underlying_symbol": "AAPL"},
+        "get_mp_us_options_contracts",
+        ["/mp/unicornbay/options/contracts", "filter[underlying_symbol]=AAPL"],
+    ),
+    (
+        "get_us_options_eod",
+        {"underlying_symbol": "AAPL"},
+        "get_mp_us_options_eod",
+        ["/mp/unicornbay/options/eod", "filter[underlying_symbol]=AAPL"],
+    ),
     ("get_us_options_underlyings", {}, "get_mp_us_options_underlyings", ["/mp/unicornbay/options/underlying-symbols"]),
     # Marketplace — trading hours
     ("get_mp_tradinghours_list_markets", {}, "get_mp_tradinghours_list_markets", ["/mp/tradinghours/markets"]),
@@ -519,6 +529,69 @@ async def test_url_construction(mcp, tool_name, args, mock_module, url_fragments
         assert frag in url, f"Expected '{frag}' in URL: {url}"
 
 
+# Marketplace providers that key on the bare symbol: SYMBOL.EXCHANGE must be normalized
+# before it reaches the URL (the suffixed form 404s / 500s upstream).
+# (tool_name, args, mock_module, expected_url_fragment)
+SUFFIX_STRIPPING_CASES = [
+    (
+        "get_mp_praams_bank_balance_sheet_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_balance_sheet_by_ticker",
+        "/mp/praams/bank/balance_sheet/ticker/AAPL",
+    ),
+    (
+        "get_mp_praams_bank_income_statement_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_income_statement_by_ticker",
+        "/mp/praams/bank/income_statement/ticker/AAPL",
+    ),
+    (
+        "get_mp_praams_report_equity_by_ticker",
+        {"ticker": "AAPL.US", "email": "manual@manual.com"},
+        "get_mp_praams_report_equity_by_ticker",
+        "/mp/praams/reports/equity/ticker/AAPL",
+    ),
+    (
+        "get_mp_praams_risk_scoring_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_risk_scoring_by_ticker",
+        "/mp/praams/analyse/equity/ticker/AAPL",
+    ),
+    (
+        "get_us_options_eod",
+        {"underlying_symbol": "AAPL.US"},
+        "get_mp_us_options_eod",
+        "filter[underlying_symbol]=AAPL",
+    ),
+    (
+        "get_us_options_contracts",
+        {"underlying_symbol": "AAPL.US"},
+        "get_mp_us_options_contracts",
+        "filter[underlying_symbol]=AAPL",
+    ),
+    (
+        "get_mp_investverte_esg_view_company",
+        {"symbol": "AAPL.US"},
+        "get_mp_investverte_esg_view_company",
+        "/mp/investverte/esg/AAPL",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,args,mock_module,expected_fragment",
+    SUFFIX_STRIPPING_CASES,
+    ids=[c[0] for c in SUFFIX_STRIPPING_CASES],
+)
+async def test_exchange_suffix_stripped(mcp, tool_name, args, mock_module, expected_fragment):
+    """SYMBOL.EXCHANGE input is normalized to the bare symbol these providers require."""
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
+    url = str(mock.call_args_list[0].args[0])
+    assert expected_fragment in url, f"Expected '{expected_fragment}' in URL: {url}"
+    assert "AAPL.US" not in url, f"Exchange suffix leaked into URL: {url}"
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("tool_name,args,mock_module", NON_PAGINATED_CASES, ids=[c[0] for c in NON_PAGINATED_CASES])
 async def test_no_pagination_params(mcp, tool_name, args, mock_module):
@@ -609,6 +682,9 @@ VALIDATION_CASES = [
     ("resolve_ticker", {"query": "apple", "preferred_exchange": "U/S"}, "(?i)preferred_exchange|break the request url"),
     ("get_us_options_contracts", {"underlying_symbol": "AAPL/US"}, "(?i)underlying_symbol|break the request url"),
     ("get_us_options_eod", {"contract": "AAPL/US"}, "(?i)contract|break the request url"),
+    # Upstream needs at least one of contract / underlying_symbol; the tool says so up front.
+    ("get_us_options_eod", {}, "(?i)contract.*underlying_symbol|underlying_symbol.*contract"),
+    ("get_us_options_contracts", {}, "(?i)contract.*underlying_symbol|underlying_symbol.*contract"),
     ("get_mp_investverte_esg_view_company", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
     # Real Estate — code required, enum + fmt + pagination validation, URL-breaking code
     ("get_real_estate_selected_prices", {"code": ""}, "required"),
@@ -1056,3 +1132,63 @@ class TestNewsArticleSanitization:
         article = parsed[0]
         assert article["title"] == "Breaking News"
         assert article["content"] == "A" * 6000
+
+
+# Providers key most instruments on the bare symbol but a few on the suffixed form,
+# so the tool must retry with the caller's original symbol on a 4xx.
+SYMBOL_FALLBACK_CASES = [
+    (
+        "get_mp_investverte_esg_view_company",
+        {"symbol": "000039.SZ"},
+        "get_mp_investverte_esg_view_company",
+        "/mp/investverte/esg/000039",
+        "/mp/investverte/esg/000039.SZ",
+    ),
+    (
+        "get_mp_praams_risk_scoring_by_ticker",
+        {"ticker": "000039.SZ"},
+        "get_mp_praams_risk_scoring_by_ticker",
+        "/mp/praams/analyse/equity/ticker/000039",
+        "/mp/praams/analyse/equity/ticker/000039.SZ",
+    ),
+    (
+        "get_mp_praams_report_equity_by_ticker",
+        {"ticker": "000039.SZ", "email": "manual@manual.com"},
+        "get_mp_praams_report_equity_by_ticker",
+        "/mp/praams/reports/equity/ticker/000039",
+        "/mp/praams/reports/equity/ticker/000039.SZ",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,args,mock_module,bare_fragment,suffixed_fragment",
+    SYMBOL_FALLBACK_CASES,
+    ids=[c[0] for c in SYMBOL_FALLBACK_CASES],
+)
+async def test_symbol_form_fallback_on_client_error(
+    mcp, tool_name, args, mock_module, bare_fragment, suffixed_fragment
+):
+    """A 4xx for the bare symbol must be retried with the symbol exactly as supplied."""
+    mock = AsyncMock(side_effect=[{"error": "Not Found", "status_code": 404}, _default_mock_return(mock_module)])
+    with patch(_mock_path(mock_module), mock):
+        await _invoke_tool(mcp, tool_name, args)
+
+    urls = [str(call.args[0]) for call in mock.call_args_list]
+    assert len(urls) == 2, f"expected a retry, got {urls}"
+    assert bare_fragment in urls[0] and suffixed_fragment not in urls[0]
+    assert suffixed_fragment in urls[1]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,args,mock_module",
+    [(case[0], case[1], case[2]) for case in SYMBOL_FALLBACK_CASES],
+    ids=[c[0] for c in SYMBOL_FALLBACK_CASES],
+)
+async def test_symbol_form_fallback_not_used_when_bare_symbol_works(mcp, tool_name, args, mock_module):
+    """The retry must cost nothing when the bare symbol already resolves."""
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
+
+    assert mock.call_count == 1
