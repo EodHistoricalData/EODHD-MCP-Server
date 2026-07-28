@@ -136,6 +136,21 @@ def sanitize_ticker(ticker: str, param_name: str = "ticker") -> str:
     return ticker
 
 
+_EXCHANGE_SUFFIX_RE = re.compile(r"\.[A-Za-z]{1,6}$")
+
+
+def strip_exchange_suffix(ticker: str) -> str:
+    """Drop a trailing ``.EXCHANGE`` so ``AAPL.US`` becomes ``AAPL``.
+
+    The rest of the EODHD platform keys on ``SYMBOL.EXCHANGE``, but some
+    marketplace providers (Praams) key on the bare symbol and reject / 500 on
+    the suffixed form. Use this only for those providers' ``*_by_ticker`` tools
+    so the standard ``SYMBOL.EXCHANGE`` input still works. A bare symbol (no dot)
+    is returned unchanged.
+    """
+    return _EXCHANGE_SUFFIX_RE.sub("", ticker)
+
+
 def sanitize_exchange(code: str, param_name: str = "exchange_code") -> str:
     """Strip whitespace and reject only characters that break the URL."""
     if not isinstance(code, str) or not code.strip():

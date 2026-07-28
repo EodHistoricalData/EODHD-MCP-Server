@@ -7,14 +7,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
 
 def _canon_ticker(v: str) -> str:
-    return sanitize_ticker(v)
+    return strip_exchange_suffix(sanitize_ticker(v))
 
 
 async def _run_praams_bank_income_statement_by_ticker(
