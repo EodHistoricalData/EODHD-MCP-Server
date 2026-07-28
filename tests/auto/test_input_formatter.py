@@ -18,9 +18,11 @@ from app.input_formatter import (
     format_date_unix,
     format_date_ymd,
     normalize_csv_upper,
+    sanitize_email,
     sanitize_exchange,
     sanitize_ticker,
     split_csv,
+    strip_exchange_suffix,
 )
 from fastmcp.exceptions import ToolError
 
@@ -159,6 +161,47 @@ def test_sanitize_ticker_custom_param_name():
     """Error message includes custom param_name."""
     with pytest.raises(ToolError, match="symbol"):
         sanitize_ticker("", param_name="symbol")
+
+
+# ---------------------------------------------------------------------------
+# strip_exchange_suffix — marketplace providers key on the bare symbol
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("AAPL.US", "AAPL"),
+        ("AAPL", "AAPL"),
+        ("BRK-B.US", "BRK-B"),
+        ("VOD.LSE", "VOD"),
+        ("BMW.XETRA", "BMW"),
+        ("SAP.F", "SAP"),
+        ("BTC-USD.CC", "BTC-USD"),
+        ("EURUSD.FOREX", "EURUSD"),
+        ("BRK.B", "BRK"),
+        ("", ""),
+    ],
+    ids=[
+        "us",
+        "bare",
+        "dash-class-share",
+        "lse",
+        "long-exchange-code",
+        "single-letter-exchange",
+        "crypto",
+        "forex",
+        "dot-class-share-also-stripped",
+        "empty",
+    ],
+)
+def test_strip_exchange_suffix(value, expected):
+    """EODHD writes class shares with a dash (BRK-B.US), so only the exchange part is lost."""
+    assert strip_exchange_suffix(value) == expected
+
+
+def test_strip_exchange_suffix_is_idempotent():
+    assert strip_exchange_suffix(strip_exchange_suffix("AAPL.US")) == "AAPL"
 
 
 # ---------------------------------------------------------------------------
@@ -422,3 +465,58 @@ class TestFormatDateUnix:
 
     def test_empty(self):
         assert format_date_unix("") is None
+
+
+# ---------------------------------------------------------------------------
+# sanitize_email — provider-side report delivery
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("user@example.com", "user@example.com"),
+        ("  user@example.com  ", "user@example.com"),
+        ("first.last+tag@sub.example.co.uk", "first.last+tag@sub.example.co.uk"),
+    ],
+    ids=["plain", "whitespace-padded", "plus-and-subdomain"],
+)
+def test_sanitize_email_valid(value, expected):
+    assert sanitize_email(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        None,
+        123,
+        "   ",
+        "user@example",
+        "user example@mail.com",
+        "user@example.com, other@example.com",
+        "user@example.com;other@example.com",
+        "<user@example.com>",
+        "@example.com",
+    ],
+    ids=[
+        "empty",
+        "none",
+        "int",
+        "whitespace-only",
+        "no-tld",
+        "space-in-local-part",
+        "comma-separated-list",
+        "semicolon-separated-list",
+        "angle-brackets",
+        "missing-local-part",
+    ],
+)
+def test_sanitize_email_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_email(value)
+
+
+def test_sanitize_email_custom_param_name():
+    with pytest.raises(ToolError, match="notify_to"):
+        sanitize_email("", param_name="notify_to")

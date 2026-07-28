@@ -7,29 +7,35 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
-from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
+from app.input_formatter import build_url, sanitize_email, sanitize_ticker, strip_exchange_suffix
+from app.response_formatter import (
+    ResourceResponse,
+    format_binary_response,
+    is_client_error,
+    raise_on_api_error,
+)
 
 
 async def _run_praams_report_equity_by_ticker(
     ticker: str, email: str, is_full: bool | None, api_token: str | None
 ) -> ResourceResponse:
-    ticker = strip_exchange_suffix(sanitize_ticker(ticker)).upper()
-    if not email or not isinstance(email, str):
-        raise ToolError("Parameter 'email' is required for report notifications.")
+    ticker = sanitize_ticker(ticker).upper()
+    email = sanitize_email(email)
 
-    email = email.strip()
+    def url_for(sym: str) -> str:
+        return build_url(
+            f"mp/praams/reports/equity/ticker/{quote_plus(sym)}",
+            {
+                "email": email,
+                "isFull": str(is_full).lower() if is_full is not None else None,
+                "api_token": api_token,
+            },
+        )
 
-    url = build_url(
-        f"mp/praams/reports/equity/ticker/{quote_plus(ticker)}",
-        {
-            "email": email,
-            "isFull": str(is_full).lower() if is_full is not None else None,
-            "api_token": api_token,
-        },
-    )
-
-    data = await make_request(url, response_mode="bytes")
+    bare = strip_exchange_suffix(ticker)
+    data = await make_request(url_for(bare), response_mode="bytes")
+    if bare != ticker and is_client_error(data):
+        data = await make_request(url_for(ticker), response_mode="bytes")
     raise_on_api_error(data)
 
     if not isinstance(data, bytes) or not data:
@@ -42,7 +48,9 @@ async def _run_praams_report_equity_by_ticker(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Praams: Equity Report (by Ticker)", readOnlyHint=True))
+    @mcp.tool(
+        annotations=ToolAnnotations(title="Praams: Equity Report (by Ticker)", readOnlyHint=False, idempotentHint=False)
+    )
     async def get_mp_praams_report_equity_by_ticker(
         ticker: str,  # e.g. "AAPL", "TSLA", "AMZN"
         email: str,  # email for notifications

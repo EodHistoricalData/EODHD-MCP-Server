@@ -142,13 +142,29 @@ _EXCHANGE_SUFFIX_RE = re.compile(r"\.[A-Za-z]{1,6}$")
 def strip_exchange_suffix(ticker: str) -> str:
     """Drop a trailing ``.EXCHANGE`` so ``AAPL.US`` becomes ``AAPL``.
 
-    The rest of the EODHD platform keys on ``SYMBOL.EXCHANGE``, but some
-    marketplace providers (Praams) key on the bare symbol and reject / 500 on
-    the suffixed form. Use this only for those providers' ``*_by_ticker`` tools
-    so the standard ``SYMBOL.EXCHANGE`` input still works. A bare symbol (no dot)
-    is returned unchanged.
+    The rest of the EODHD platform keys on ``SYMBOL.EXCHANGE``, but some marketplace
+    providers (Praams, InvestVerte) key most instruments on the bare symbol and reject
+    the suffixed form. Those providers still key a few instruments on the suffixed form
+    (``000039.SZ``), so callers must treat the bare symbol as a first attempt and fall
+    back to the caller's original form on a 4xx — never as the only form tried. A bare
+    symbol (no dot) is returned unchanged.
     """
     return _EXCHANGE_SUFFIX_RE.sub("", ticker)
+
+
+_EMAIL_RE = re.compile(r"^[^@\s;,<>\"']+@[^@\s;,<>\"']+\.[A-Za-z]{2,}$")
+
+
+def sanitize_email(value: str, param_name: str = "email") -> str:
+    """Validate an email address used for provider-side report delivery."""
+    if not isinstance(value, str) or not value.strip():
+        raise ToolError(f"Parameter '{param_name}' is required and must be a non-empty string.")
+
+    email = value.strip()
+    if not _EMAIL_RE.match(email):
+        raise ToolError(f"Parameter '{param_name}' must be a single valid email address.")
+
+    return email
 
 
 def sanitize_exchange(code: str, param_name: str = "exchange_code") -> str:

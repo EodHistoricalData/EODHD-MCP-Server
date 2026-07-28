@@ -93,6 +93,20 @@ def _extract_error_context(data: dict[str, Any]) -> tuple[str | None, str | None
     return error_code, detail
 
 
+def is_client_error(data: Any) -> bool:
+    """True when make_request() returned a 4xx error payload.
+
+    Tools use this to decide whether an alternative request shape is worth trying
+    before the error is surfaced to the agent.
+    """
+    if not isinstance(data, dict) or not data.get("error"):
+        return False
+
+    status_code = data.get("status_code")
+
+    return isinstance(status_code, int) and 400 <= status_code < 500
+
+
 def raise_on_api_error(data: Any) -> None:
     """Raise ToolError when make_request() returned a structured API error."""
     if not isinstance(data, dict):

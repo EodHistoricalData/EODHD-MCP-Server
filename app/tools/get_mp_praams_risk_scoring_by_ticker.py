@@ -8,13 +8,28 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
-from app.response_formatter import ResourceResponse, format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, is_client_error
 
 logger = logging.getLogger(__name__)
 
 
 def _canon_ticker(v: str) -> str:
-    return strip_exchange_suffix(sanitize_ticker(v))
+    return sanitize_ticker(v)
+
+
+async def _fetch_by_symbol_form(url_for, bare: str, as_given: str):
+    """Request the bare symbol first, then the caller's form.
+
+    Praams keys most equities on the bare symbol (``AAPL``) but keys others on the
+    suffixed form (``000039.SZ``), and returns 400 for the wrong one.
+    """
+    data = await make_request(url_for(bare))
+    if bare != as_given and is_client_error(data):
+        logger.debug("Bare ticker %r rejected, retrying as %r", bare, as_given)
+
+        return await make_request(url_for(as_given))
+
+    return data
 
 
 async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> list:
@@ -32,10 +47,11 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
 
     # Build URL
     # Example: /api/mp/praams/analyse/equity/ticker/AAPL?api_token=...  (JSON only)
-    url = build_url(f"mp/praams/analyse/equity/ticker/{ct}", {"api_token": api_token})
+    def url_for(sym: str) -> str:
+        return build_url(f"mp/praams/analyse/equity/ticker/{sym}", {"api_token": api_token})
 
     # Call upstream
-    data = await make_request(url)
+    data = await _fetch_by_symbol_form(url_for, strip_exchange_suffix(ct), ct)
     # Normalize and return
     # The Praams API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
