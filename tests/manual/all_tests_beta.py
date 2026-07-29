@@ -20,16 +20,14 @@ def register(add_test, COMMON):
         }
     )
 
-    # --- UST Bill Rates: specific year with pagination ---
+    # --- UST Bill Rates: specific year ---
     add_test(
         {
-            "name": "UST Bill Rates: 2023 (limit=5, offset=0)",
+            "name": "UST Bill Rates: 2023",
             "tool": "get_ust_bill_rates",
             "use_common": ["api_token"],
             "params": {
                 "year": 2023,
-                "limit": 5,
-                "offset": 0,
             },
         }
     )
@@ -47,12 +45,11 @@ def register(add_test, COMMON):
     # --- UST Yield Rates: specific year ---
     add_test(
         {
-            "name": "UST Yield Rates: 2023 (limit=5)",
+            "name": "UST Yield Rates: 2023",
             "tool": "get_ust_yield_rates",
             "use_common": ["api_token"],
             "params": {
                 "year": 2023,
-                "limit": 5,
             },
         }
     )
@@ -70,12 +67,11 @@ def register(add_test, COMMON):
     # --- UST Real Yield Rates: specific year ---
     add_test(
         {
-            "name": "UST Real Yield Rates: 2023 (limit=5)",
+            "name": "UST Real Yield Rates: 2023",
             "tool": "get_ust_real_yield_rates",
             "use_common": ["api_token"],
             "params": {
                 "year": 2023,
-                "limit": 5,
             },
         }
     )
@@ -93,12 +89,11 @@ def register(add_test, COMMON):
     # --- UST Long-Term Rates: specific year ---
     add_test(
         {
-            "name": "UST Long-Term Rates: 2023 (limit=5)",
+            "name": "UST Long-Term Rates: 2023",
             "tool": "get_ust_long_term_rates",
             "use_common": ["api_token"],
             "params": {
                 "year": 2023,
-                "limit": 5,
             },
         }
     )

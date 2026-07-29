@@ -18,8 +18,6 @@ def register(mcp: FastMCP):
     @mcp.tool(annotations=ToolAnnotations(title="US Treasury Bill Rates", readOnlyHint=True))
     async def get_ust_bill_rates(
         year: int | str | None = None,  # filter[year], e.g. 2024
-        limit: int | str | None = None,  # page[limit]
-        offset: int | str | None = None,  # page[offset]
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:
         """
@@ -36,35 +34,32 @@ def register(mcp: FastMCP):
 
         Args:
             year (int, optional): Filter by year (1900+). Defaults to current year.
-            limit (int, optional): Records per page.
-            offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override.
 
 
         Returns:
-            Array of daily bill rate objects, each with:
-            - date (str): observation date (YYYY-MM-DD)
-            - 4WEEKS_BANK_DISCOUNT (float): 4-week bank discount rate
-            - 4WEEKS_COUPON_EQUIVALENT (float): 4-week coupon equivalent yield
-            - 8WEEKS_BANK_DISCOUNT (float): 8-week bank discount rate
-            - 8WEEKS_COUPON_EQUIVALENT (float): 8-week coupon equivalent yield
-            - 13WEEKS_BANK_DISCOUNT (float): 13-week bank discount rate
-            - 13WEEKS_COUPON_EQUIVALENT (float): 13-week coupon equivalent yield
-            - 17WEEKS_BANK_DISCOUNT (float): 17-week bank discount rate
-            - 17WEEKS_COUPON_EQUIVALENT (float): 17-week coupon equivalent yield
-            - 26WEEKS_BANK_DISCOUNT (float): 26-week bank discount rate
-            - 26WEEKS_COUPON_EQUIVALENT (float): 26-week coupon equivalent yield
-            - 52WEEKS_BANK_DISCOUNT (float): 52-week bank discount rate
-            - 52WEEKS_COUPON_EQUIVALENT (float): 52-week coupon equivalent yield
+            An envelope object with:
+            - meta (object): { "total": int } — total number of records returned.
+            - data (array): daily bill rate objects, each with:
+                - date (str): observation date (YYYY-MM-DD)
+                - tenor (str): bill tenor (e.g. 4WK, 8WK, 13WK, 17WK, 26WK, 52WK)
+                - discount (float): discount rate
+                - coupon (float): coupon-equivalent rate
+                - avg_discount (float): average discount rate
+                - avg_coupon (float): average coupon-equivalent rate
+                - maturity_date (str): maturity date (YYYY-MM-DD)
+                - cusip (str): CUSIP identifier
+            - links (object): { "next": null } — always null; the full dataset for the year is
+              returned and the endpoint does not paginate.
 
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
+            - No pagination or date-range filtering: filter[year] is the only supported filter.
 
         Examples:
             "Treasury bill rates for 2026" → get_ust_bill_rates(year=2026)
             "Latest T-bill rates" → get_ust_bill_rates()
-            "T-bill rates for 2025, first 50 records" → get_ust_bill_rates(year=2025, limit=50)
         """
         y: int | None = None
         if year is not None:
@@ -75,31 +70,11 @@ def register(mcp: FastMCP):
             if y < 1900:
                 raise ToolError("Parameter 'year' must be >= 1900.")
 
-        lim: int | None = None
-        if limit is not None:
-            try:
-                lim = int(limit)
-            except (ValueError, TypeError):
-                raise ToolError("Parameter 'limit' must be a positive integer.")
-            if lim <= 0:
-                raise ToolError("Parameter 'limit' must be a positive integer.")
-
-        off: int | None = None
-        if offset is not None:
-            try:
-                off = int(offset)
-            except (ValueError, TypeError):
-                raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            if off < 0:
-                raise ToolError("Parameter 'offset' must be a non-negative integer.")
-
         url = build_url(
             "ust/bill-rates",
             {"api_token": api_token},
         )
         url += build_query_param("filter[year]", y)
-        url += build_query_param("page[limit]", lim)
-        url += build_query_param("page[offset]", off)
 
         data = await make_request(url)
 

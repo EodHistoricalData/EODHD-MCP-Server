@@ -597,6 +597,11 @@ NON_PAGINATED_CASES = [
     ("get_rates_funding_stress", {"code": "EFFR_SOFR"}, "get_rates_funding_stress"),
     ("get_sanctions_programs", {}, "get_sanctions_programs"),
     ("get_sanctions_sources", {}, "get_sanctions_sources"),
+    # UST endpoints ignore page[limit]/page[offset]/from/to; only filter[year] applies.
+    ("get_ust_yield_rates", {}, "get_ust_yield_rates"),
+    ("get_ust_bill_rates", {}, "get_ust_bill_rates"),
+    ("get_ust_real_yield_rates", {}, "get_ust_real_yield_rates"),
+    ("get_ust_long_term_rates", {}, "get_ust_long_term_rates"),
 ]
 
 
