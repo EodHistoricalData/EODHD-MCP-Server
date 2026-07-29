@@ -5,7 +5,7 @@ This folder contains one stub file per endpoint.
 ## Using `retrieve_description_by_id` for Endpoints
 
 - **Type**: `2` (Endpoints)
-- **ID range**: `1` to `72`
+- **ID range**: `1` to `78`
 - **Get this README**: `type=2, id=0`
 - **Get global README**: `type=0`
 
@@ -17,74 +17,80 @@ This folder contains one stub file per endpoint.
 | 2 | CBOE Index Data |
 | 3 | CBOE Indices List |
 | 4 | Company News |
-| 5 | Earnings Trends |
-| 6 | Economic Events |
-| 7 | Exchange Details |
-| 8 | Exchange Tickers |
-| 9 | Exchanges List |
-| 10 | Fundamentals Data |
-| 11 | Historical Market Cap |
-| 12 | Historical Stock Prices |
-| 13 | Illio Market Insights Best Worst |
-| 14 | Illio Market Insights Beta Bands |
-| 15 | Illio Market Insights Largest Volatility |
-| 16 | Illio Market Insights Performance |
-| 17 | Illio Market Insights Risk Return |
-| 18 | Illio Market Insights Volatility |
-| 19 | Illio Performance Insights |
-| 20 | Illio Risk Insights |
-| 21 | Index Components |
-| 22 | Indices List |
-| 23 | Insider Transactions |
-| 24 | Intraday Historical Data |
-| 25 | Investverte ESG List Companies |
-| 26 | Investverte ESG List Countries |
-| 27 | Investverte ESG List Sectors |
-| 28 | Investverte ESG View Company |
-| 29 | Investverte ESG View Country |
-| 30 | Investverte ESG View Sector |
-| 31 | Live Price Data |
-| 32 | Macro Indicator |
-| 33 | Marketplace Tick Data |
-| 34 | News Word Weights |
-| 35 | PRAAMS Bank Balance Sheet By ISIN |
-| 36 | PRAAMS Bank Balance Sheet By Ticker |
-| 37 | PRAAMS Bank Income Statement By ISIN |
-| 38 | PRAAMS Bank Income Statement By Ticker |
-| 39 | PRAAMS Bond Analyze By ISIN |
-| 40 | PRAAMS Report Bond By ISIN |
-| 41 | PRAAMS Report Equity By ISIN |
-| 42 | PRAAMS Report Equity By Ticker |
-| 43 | PRAAMS Risk Scoring By ISIN |
-| 44 | PRAAMS Risk Scoring By Ticker |
-| 45 | PRAAMS Smart Investment Screener Bond |
-| 46 | PRAAMS Smart Investment Screener Equity |
-| 47 | Sentiment Data |
-| 48 | Stock Market Logos |
-| 49 | Stock Market Logos SVG |
-| 50 | Stock Screener Data |
-| 51 | Stocks From Search |
-| 52 | Symbol Change History |
-| 53 | Technical Indicators |
-| 54 | TradingHours List Markets |
-| 55 | TradingHours Lookup Markets |
-| 56 | TradingHours Market Details |
-| 57 | TradingHours Market Status |
-| 58 | Upcoming Dividends |
-| 59 | Upcoming Earnings |
-| 60 | Upcoming IPOs |
-| 61 | Upcoming Splits |
-| 62 | US Live Extended Quotes |
-| 63 | US Options Contracts |
-| 64 | US Options EOD |
-| 65 | US Options Underlyings |
-| 66 | US Tick Data |
-| 67 | UST Bill Rates |
-| 68 | UST Long-Term Rates |
-| 69 | UST Real Yield Rates |
-| 70 | UST Yield Rates |
-| 71 | User Details |
-| 72 | WebSockets Realtime |
+| 5 | Credit CDS Market Aggregates |
+| 6 | Credit Corporate CMDI |
+| 7 | Credit Corporate HQM Yields |
+| 8 | Credit Sovereign CDS Spreads |
+| 9 | Credit Sovereign Credit Ratings |
+| 10 | Credit Sovereign Default Spreads |
+| 11 | Credit Sovereign Risk Premium |
+| 12 | Earnings Trends |
+| 13 | Economic Events |
+| 14 | Exchange Details |
+| 15 | Exchange Tickers |
+| 16 | Exchanges List |
+| 17 | Fundamentals Data |
+| 18 | Historical Market Cap |
+| 19 | Historical Stock Prices |
+| 20 | Index Components |
+| 21 | Indices List |
+| 22 | Insider Transactions |
+| 23 | Intraday Historical Data |
+| 24 | Investverte ESG List Companies |
+| 25 | Investverte ESG List Countries |
+| 26 | Investverte ESG List Sectors |
+| 27 | Investverte ESG View Company |
+| 28 | Investverte ESG View Country |
+| 29 | Investverte ESG View Sector |
+| 30 | Live Price Data |
+| 31 | Macro Indicator |
+| 32 | Marketplace Tick Data |
+| 33 | News Word Weights |
+| 34 | PRAAMS Bank Balance Sheet By ISIN |
+| 35 | PRAAMS Bank Balance Sheet By Ticker |
+| 36 | PRAAMS Bank Income Statement By ISIN |
+| 37 | PRAAMS Bank Income Statement By Ticker |
+| 38 | PRAAMS Bond Analyze By ISIN |
+| 39 | PRAAMS Report Bond By ISIN |
+| 40 | PRAAMS Report Equity By ISIN |
+| 41 | PRAAMS Report Equity By Ticker |
+| 42 | PRAAMS Risk Scoring By ISIN |
+| 43 | PRAAMS Risk Scoring By Ticker |
+| 44 | PRAAMS Smart Investment Screener Bond |
+| 45 | PRAAMS Smart Investment Screener Equity |
+| 46 | Rates Funding Stress |
+| 47 | Rates Policy Rates |
+| 48 | Rates Reference Rates |
+| 49 | Sanctions Entities |
+| 50 | Sanctions Programs |
+| 51 | Sanctions Sources |
+| 52 | Sanctions Vessels |
+| 53 | Sentiment Data |
+| 54 | Stock Market Logos |
+| 55 | Stock Market Logos SVG |
+| 56 | Stock Screener Data |
+| 57 | Stocks From Search |
+| 58 | Symbol Change History |
+| 59 | Technical Indicators |
+| 60 | TradingHours List Markets |
+| 61 | TradingHours Lookup Markets |
+| 62 | TradingHours Market Details |
+| 63 | TradingHours Market Status |
+| 64 | Upcoming Dividends |
+| 65 | Upcoming Earnings |
+| 66 | Upcoming IPOs |
+| 67 | Upcoming Splits |
+| 68 | US Live Extended Quotes |
+| 69 | US Options Contracts |
+| 70 | US Options EOD |
+| 71 | US Options Underlyings |
+| 72 | US Tick Data |
+| 73 | User Details |
+| 74 | UST Bill Rates |
+| 75 | UST Long-Term Rates |
+| 76 | UST Real Yield Rates |
+| 77 | UST Yield Rates |
+| 78 | WebSockets Realtime |
 
 ## Endpoints
 
@@ -110,14 +116,6 @@ This folder contains one stub file per endpoint.
 - Live Price Data API (live-price-data.md)
 - Macro Indicator API (macro-indicator.md)
 - Marketplace Tick Data API (marketplace-tick-data.md)
-- Illio Market Insights Best Worst API (illio-market-insights-best-worst.md)
-- Illio Market Insights Beta Bands API (illio-market-insights-beta-bands.md)
-- Illio Market Insights Largest Volatility API (illio-market-insights-largest-volatility.md)
-- Illio Market Insights Performance API (illio-market-insights-performance.md)
-- Illio Market Insights Risk Return API (illio-market-insights-risk-return.md)
-- Illio Market Insights Volatility API (illio-market-insights-volatility.md)
-- Illio Performance Insights API (illio-performance-insights.md)
-- Illio Risk Insights API (illio-risk-insights.md)
 - Index Components API (index-components.md)
 - Indices List API (indices-list.md)
 - Investverte ESG List Companies API (investverte-esg-list-companies.md)
@@ -160,3 +158,17 @@ This folder contains one stub file per endpoint.
 - User Details API (user-details.md)
 - Us Live Extended Quotes API (us-live-extended-quotes.md)
 - Us Tick Data API (us-tick-data.md)
+- Credit & Sovereign Risk API - CDS Market Aggregates (credit-cds-market-aggregates.md)
+- Credit & Sovereign Risk API - Corporate CMDI (credit-corporate-cmdi.md)
+- Credit & Sovereign Risk API - Corporate HQM Yields (credit-corporate-hqm-yields.md)
+- Credit & Sovereign Risk API - Sovereign CDS Spreads (credit-sovereign-cds-spreads.md)
+- Credit & Sovereign Risk API - Sovereign Credit Ratings (credit-sovereign-credit-ratings.md)
+- Credit & Sovereign Risk API - Rating-based Default Spreads (credit-sovereign-default-spreads.md)
+- Credit & Sovereign Risk API - Sovereign Risk Premium (credit-sovereign-risk-premium.md)
+- Interest Rates API - Central-Bank Policy Rates (rates-policy-rates.md)
+- Interest Rates API - Reference Rates (rates-reference-rates.md)
+- Interest Rates API - Funding-Stress Spreads (rates-funding-stress.md)
+- Sanctions Screening API - Entities (sanctions-entities.md)
+- Sanctions Screening API - Programs (sanctions-programs.md)
+- Sanctions Screening API - Sources (sanctions-sources.md)
+- Sanctions Screening API - Vessels (sanctions-vessels.md)

@@ -248,7 +248,7 @@ async def _run_explore_equity(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Smart Equity Screener", readOnlyHint=True))
     async def get_mp_praams_smart_screener_equity(
         # pagination
         skip: int | None = 0,

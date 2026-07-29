@@ -7,14 +7,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
 
 def _canon_ticker(v: str) -> str:
-    return sanitize_ticker(v)
+    return strip_exchange_suffix(sanitize_ticker(v))
 
 
 async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> list:
@@ -49,7 +49,7 @@ async def _run_praams_equity_by_ticker(ticker: str, api_token: str | None) -> li
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Risk Scoring (by Ticker)", readOnlyHint=True))
     async def get_mp_praams_risk_scoring_by_ticker(
         ticker: str,  # e.g. 'AAPL' (demo supports AAPL, TSLA, AMZN)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

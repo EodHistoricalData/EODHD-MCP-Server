@@ -30,7 +30,7 @@ def _sanitize_articles(data: list) -> list:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Company News", readOnlyHint=True))
     async def get_company_news(
         ticker: str | None = None,  # maps to 's'
         tag: str | None = None,  # maps to 't'

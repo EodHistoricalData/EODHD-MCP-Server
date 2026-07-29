@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Tick Data (Marketplace)", readOnlyHint=True))
     async def get_mp_tick_data(
         ticker: str,  # maps to s=, e.g. "AAPL"
         from_timestamp: int | str | None = None,  # UNIX seconds (UTC)

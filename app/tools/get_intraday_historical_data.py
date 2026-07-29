@@ -24,7 +24,7 @@ MAX_RANGE_DAYS = {
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Intraday Historical Prices", readOnlyHint=True))
     async def get_intraday_historical_data(
         ticker: str,
         interval: str = "5m",

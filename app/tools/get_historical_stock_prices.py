@@ -18,7 +18,7 @@ ALLOWED_FMT = {"json", "csv"}  # default is csv in API, but we default to json h
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Historical Stock Prices (EOD)", readOnlyHint=True))
     async def get_historical_stock_prices(
         ticker: str,
         start_date: str | None = None,

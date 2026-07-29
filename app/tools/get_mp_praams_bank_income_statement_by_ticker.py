@@ -7,14 +7,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
 
 
 def _canon_ticker(v: str) -> str:
-    return sanitize_ticker(v)
+    return strip_exchange_suffix(sanitize_ticker(v))
 
 
 async def _run_praams_bank_income_statement_by_ticker(
@@ -54,7 +54,7 @@ async def _run_praams_bank_income_statement_by_ticker(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Bank Income Statement (by Ticker)", readOnlyHint=True))
     async def get_mp_praams_bank_income_statement_by_ticker(
         ticker: str,  # e.g. 'JPM', 'BAC', 'WFC'
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

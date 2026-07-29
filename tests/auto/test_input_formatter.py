@@ -7,17 +7,90 @@ Covers:
   - Edge cases: None, empty, non-string types
 """
 
+import re
+
 import pytest
 from app.input_formatter import (
     _parse_to_datetime,
     _to_unix_seconds,
+    coerce_page_params,
     format_date,
     format_date_unix,
     format_date_ymd,
+    normalize_csv_upper,
     sanitize_exchange,
     sanitize_ticker,
+    split_csv,
 )
 from fastmcp.exceptions import ToolError
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("USD,EUR", ["USD", "EUR"]),
+        (" USD , EUR ", ["USD", "EUR"]),
+        ("USD", ["USD"]),
+        ("USD,,EUR", ["USD", "EUR"]),
+        (10, ["10"]),
+        ("5,10", ["5", "10"]),
+        ("", []),
+        ("  ,  ", []),
+    ],
+)
+def test_split_csv(value, expected):
+    assert split_csv(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("sofr", "SOFR"),
+        ("fed_target_lower, ecb_dfr", "FED_TARGET_LOWER,ECB_DFR"),
+        (" us ", "US"),
+        (None, None),
+        ("", None),
+        ("  ,  ", None),
+    ],
+)
+def test_normalize_csv_upper(value, expected):
+    assert normalize_csv_upper(value) == expected
+
+
+@pytest.mark.parametrize(
+    "limit,offset,expected",
+    [
+        (None, None, (None, None)),
+        (50, 20, (50, 20)),
+        ("50", "20", (50, 20)),
+        (100, 0, (100, 0)),
+    ],
+)
+def test_coerce_page_params_valid(limit, offset, expected):
+    assert coerce_page_params(limit, offset) == expected
+
+
+@pytest.mark.parametrize(
+    "limit,offset,match",
+    [
+        (0, None, "positive"),
+        (-1, None, "positive"),
+        ("abc", None, "positive"),
+        (101, None, "<= 100"),
+        (None, -1, "non-negative"),
+        (None, "abc", "non-negative"),
+    ],
+)
+def test_coerce_page_params_invalid(limit, offset, match):
+    with pytest.raises(ToolError, match=re.escape(match)):
+        coerce_page_params(limit, offset)
+
+
+def test_coerce_page_params_custom_max():
+    assert coerce_page_params(500, None, max_limit=1000) == (500, None)
+    with pytest.raises(ToolError, match="<= 1000"):
+        coerce_page_params(1001, None, max_limit=1000)
+
 
 # ---------------------------------------------------------------------------
 # sanitize_ticker — valid inputs

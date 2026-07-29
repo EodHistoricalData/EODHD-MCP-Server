@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Sector Detail", readOnlyHint=True))
     async def get_mp_investverte_esg_view_sector(
         symbol: str,  # e.g., "Airlines"
         fmt: str | None = "json",

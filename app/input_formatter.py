@@ -54,6 +54,65 @@ def build_query_param(key: str, val: str | int | float | None) -> str:
     return f"&{key}={quote_plus(str(val))}"
 
 
+def split_csv(value: str | int | float) -> list[str]:
+    """Split a comma-separated filter value into stripped, non-empty parts.
+
+    Several EODHD filters accept a comma-separated list (upstream validates each
+    element via ``CsvIn``), so tools validate each part rather than the whole
+    string. A scalar (single value) yields a one-element list.
+    """
+    return [part.strip() for part in str(value).split(",") if part.strip()]
+
+
+def normalize_csv_upper(value: str | None) -> str | None:
+    """Normalise a comma-separated code list to trimmed upper-case parts.
+
+    EODHD rate/spread codes are upper-case (``SOFR``, ``FED_TARGET_LOWER``), and
+    upstream validates the CSV element-wise before its own normalisation, so
+    ``"fed, ecb"`` would be rejected without this step.  Returns ``None`` when
+    *value* is ``None`` or contains no usable parts.
+    """
+    if value is None:
+        return None
+    parts = [part.upper() for part in split_csv(value)]
+
+    return ",".join(parts) if parts else None
+
+
+def coerce_page_params(
+    limit: int | str | None,
+    offset: int | str | None,
+    max_limit: int = 100,
+) -> tuple[int | None, int | None]:
+    """Coerce JSON:API ``page[limit]`` / ``page[offset]`` inputs to ints.
+
+    Raises :class:`ToolError` when a value is not an integer, when *limit* is
+    outside ``1..max_limit``, or when *offset* is negative.  ``None`` is passed
+    through so callers can omit the parameter entirely.
+    """
+    lim: int | None = None
+    if limit is not None:
+        try:
+            lim = int(limit)
+        except (ValueError, TypeError):
+            raise ToolError("Parameter 'limit' must be a positive integer.")
+        if lim <= 0:
+            raise ToolError("Parameter 'limit' must be a positive integer.")
+        if lim > max_limit:
+            raise ToolError(f"Parameter 'limit' must be <= {max_limit}.")
+
+    off: int | None = None
+    if offset is not None:
+        try:
+            off = int(offset)
+        except (ValueError, TypeError):
+            raise ToolError("Parameter 'offset' must be a non-negative integer.")
+        if off < 0:
+            raise ToolError("Parameter 'offset' must be a non-negative integer.")
+
+    return lim, off
+
+
 def build_query_bool(key: str, val: bool | None) -> str:
     """Return ``&key=1`` / ``&key=0`` or ``""`` when *val* is ``None``."""
     if val is None:
@@ -75,6 +134,21 @@ def sanitize_ticker(ticker: str, param_name: str = "ticker") -> str:
             f"(spaces, ?, &, #, /). Got: {ticker!r}"
         )
     return ticker
+
+
+_EXCHANGE_SUFFIX_RE = re.compile(r"\.[A-Za-z]{1,6}$")
+
+
+def strip_exchange_suffix(ticker: str) -> str:
+    """Drop a trailing ``.EXCHANGE`` so ``AAPL.US`` becomes ``AAPL``.
+
+    The rest of the EODHD platform keys on ``SYMBOL.EXCHANGE``, but some
+    marketplace providers (Praams) key on the bare symbol and reject / 500 on
+    the suffixed form. Use this only for those providers' ``*_by_ticker`` tools
+    so the standard ``SYMBOL.EXCHANGE`` input still works. A bare symbol (no dot)
+    is returned unchanged.
+    """
+    return _EXCHANGE_SUFFIX_RE.sub("", ticker)
 
 
 def sanitize_exchange(code: str, param_name: str = "exchange_code") -> str:

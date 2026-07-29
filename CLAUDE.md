@@ -1,5 +1,5 @@
 # EODHD MCP Server v1
-MCP server exposing 75 EODHD financial data API tools via HTTP, SSE, and stdio transports.
+MCP server exposing 83 EODHD financial data API tools via HTTP, SSE, and stdio transports.
 
 ## Stack
 Python 3.10+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
@@ -36,7 +36,7 @@ app/
   api_client.py       - shared async httpx client, retry, rate-limit, auth injection
   input_formatter.py  - input sanitisation, date coercion, URL helpers
   response_formatter.py - MCP EmbeddedResource formatting and API error raising
-  tools/              - 75 tool modules, each exports register(mcp)
+  tools/              - 83 tool modules, each exports register(mcp)
     __init__.py       - ALL_TOOLS list, register_all(mcp), safe dynamic import
   prompts/            - example workflows
   resources/          - markdown reference docs exposed as MCP resources
@@ -46,7 +46,7 @@ server.py             - entry point, transport selection, argparse
 ## Tool Categories
 - `MAIN_TOOLS` - core EODHD endpoints
 - `MARKETPLACE_TOOLS` - marketplace partner endpoints
-- `THIRD_PARTY_TOOLS` - illio, praams, investverte partner tools
+- `THIRD_PARTY_TOOLS` - praams, investverte partner tools
 
 ## Conventions
 - Every tool file exports `register(mcp: FastMCP)`.

@@ -28,7 +28,7 @@ def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Upcoming Earnings", readOnlyHint=True))
     async def get_upcoming_earnings(
         start_date: str | None = None,  # maps to from= (YYYY-MM-DD)
         end_date: str | None = None,  # maps to to=   (YYYY-MM-DD)

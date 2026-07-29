@@ -7,14 +7,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_ticker
+from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
 from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
 
 
 async def _run_praams_report_equity_by_ticker(
     ticker: str, email: str, is_full: bool | None, api_token: str | None
 ) -> ResourceResponse:
-    ticker = sanitize_ticker(ticker).upper()
+    ticker = strip_exchange_suffix(sanitize_ticker(ticker)).upper()
     if not email or not isinstance(email, str):
         raise ToolError("Parameter 'email' is required for report notifications.")
 
@@ -42,7 +42,7 @@ async def _run_praams_report_equity_by_ticker(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Equity Report (by Ticker)", readOnlyHint=True))
     async def get_mp_praams_report_equity_by_ticker(
         ticker: str,  # e.g. "AAPL", "TSLA", "AMZN"
         email: str,  # email for notifications

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Insider Transactions", readOnlyHint=True))
     async def get_insider_transactions(
         start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
         end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)

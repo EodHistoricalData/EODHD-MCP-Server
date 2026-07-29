@@ -50,7 +50,7 @@ def _normalize_symbols(symbols: str | Iterable[str] | None) -> list[str]:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Live Extended-Hours Quotes", readOnlyHint=True))
     async def get_us_live_extended_quotes(
         symbols: str | Sequence[str],  # one or more (e.g., "AAPL.US,TSLA.US" or ["AAPL.US","TSLA.US"])
         fmt: str = DEFAULT_FMT,  # 'json' (default) or 'csv'

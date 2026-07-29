@@ -13,7 +13,7 @@
 
 Model Context Protocol (MCP) server for [EOD Historical Data](https://eodhd.com/) APIs.
 
-The current server exposes **75 read-only MCP tools** across three transports:
+The current server exposes **83 read-only MCP tools** across three transports:
 
 - `streamable-http` via `server.py` on `/mcp` by default
 - `sse`
@@ -34,11 +34,13 @@ It also ships bundled MCP prompts and documentation resources.
 - Macro indicators, economic events, exchanges, and listings
 - CBOE index tools
 - Treasury bill, yield, real yield, and long-term rates
+- Credit & sovereign risk: risk premiums, credit ratings, CDS/default spreads, corporate CMDI/HQM yields, CDS-market aggregates
+- Sanctions / OFAC: entities, vessels, programs, sources
+- Interest rates: reference rates (SOFR etc.), central-bank policy rates, funding-stress spreads
 
 ### Marketplace and partner datasets
 
 - US options: contracts, EOD, and underlyings
-- illio: performance, risk, and market insights
 - Praams: risk scoring, bonds, bank statements, reports, screeners
 - Investverte ESG: companies, countries, and sectors
 - TradingHours market lookup, market details, and status
@@ -249,3 +251,12 @@ The compose service starts `python server.py` and maps `${MCP_PORT_OUT}` to `${M
 - Some marketplace endpoints require specific EODHD subscription access.
 - A valid API key can still receive upstream permission errors for tools or watchlists not included in the account plan.
 - The server now preserves those upstream reasons in agent-visible tool errors instead of masking them behind generic failures.
+
+## Privacy Policy
+
+This connector is operated by EOD Historical Data (Unicorn Data Services). It sends the
+parameters you provide (for example tickers, date ranges, and your API key) to the EODHD
+APIs to fulfil each request, and returns the responses to your MCP client. It does not
+collect or store conversation content beyond what is required to serve a request.
+
+Full privacy policy: https://eodhd.com/financial-apis/privacy-policy

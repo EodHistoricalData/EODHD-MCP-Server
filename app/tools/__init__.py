@@ -50,6 +50,23 @@ MAIN_TOOLS: list[str] = [
     "retrieve_description_by_id",
     "get_support_resistance_levels",
     "resolve_ticker",
+    # Credit & Sovereign Risk
+    "get_credit_sovereign_risk_premium",
+    "get_credit_sovereign_credit_ratings",
+    "get_credit_sovereign_cds_spreads",
+    "get_credit_sovereign_default_spreads",
+    "get_credit_corporate_cmdi",
+    "get_credit_corporate_hqm_yields",
+    "get_credit_cds_market_aggregates",
+    # Sanctions / OFAC
+    "get_sanctions_entities",
+    "get_sanctions_vessels",
+    "get_sanctions_programs",
+    "get_sanctions_sources",
+    # Interest Rates
+    "get_rates_reference_rates",
+    "get_rates_policy_rates",
+    "get_rates_funding_stress",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [
@@ -66,15 +83,6 @@ MARKETPLACE_TOOLS: list[str] = [
 ]
 
 THIRD_PARTY_TOOLS: list[str] = [
-    # illio endpoints
-    "get_mp_illio_performance_insights",
-    "get_mp_illio_risk_insights",
-    "get_mp_illio_market_insights_performance",
-    "get_mp_illio_market_insights_best_worst",
-    "get_mp_illio_market_insights_volatility",
-    "get_mp_illio_market_insights_risk_return",
-    "get_mp_illio_market_insights_largest_volatility",
-    "get_mp_illio_market_insights_beta_bands",
     # praams endpoints
     "get_mp_praams_risk_scoring_by_ticker",
     "get_mp_praams_risk_scoring_by_isin",

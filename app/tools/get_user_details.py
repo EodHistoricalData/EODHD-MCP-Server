@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="EODHD Account Details", readOnlyHint=True))
     async def get_user_details(
         api_token: str | None = None,
     ) -> ResourceResponse:

@@ -12,7 +12,7 @@ from app.response_formatter import ResourceResponse, format_binary_response, rai
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Stock & Market Logos (PNG)", readOnlyHint=True))
     async def get_stock_market_logos(
         symbol: str,  # e.g. "AAPL.US", "BMW.XETRA"
         api_token: str | None = None,  # per-call override
