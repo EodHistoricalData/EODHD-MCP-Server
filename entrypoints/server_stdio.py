@@ -11,6 +11,7 @@ if str(ROOT) not in sys.path:
 
 from dotenv import load_dotenv
 from fastmcp import FastMCP
+from app.api_client import TokenRedactingFilter
 from app.tools import register_all
 
 load_dotenv()  # Load .env first; CLI can override via env below.
@@ -32,6 +33,12 @@ def main() -> None:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr,
     )
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(TokenRedactingFilter())
+    # httpx logs every request URL at INFO, which puts the caller's search parameters
+    # (tickers, member ids, date ranges) into operational logs. api_client already logs a
+    # redacted URL at DEBUG, so nothing is lost by keeping httpx quiet.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     logger = logging.getLogger("eodhd-mcp")
     logger.info("Starting EODHD MCP stdio Server...")
     mcp.run(transport="stdio")

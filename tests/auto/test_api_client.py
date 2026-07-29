@@ -3,6 +3,8 @@
 rate limiting, token redaction, token resolution, HTTP methods."""
 
 import asyncio
+import logging
+import pathlib
 import time
 from itertools import pairwise
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -12,6 +14,7 @@ import pytest
 import respx
 from app.api_client import (
     RETRY_DELAY_MAX,
+    TokenRedactingFilter,
     _backoff,
     _clear_connection_states,
     _ensure_api_token,
@@ -566,3 +569,83 @@ class TestMakeRequestRetry:
                 result = await make_request("https://eodhd.com/api/down", retry_enabled=False)
         assert result is not None
         assert "error" in result
+
+
+class TestSecretRedactionOnFailures:
+    """The api_token must never reach the agent-visible payload or the logs."""
+
+    SECRET = "SECRET_TOKEN_FOR_REDACTION_TEST"
+
+    async def _request(self, side_effect, caplog):
+        url = f"https://eodhd.com/api/eod/AAPL.US?api_token={self.SECRET}"
+        with respx.mock(assert_all_called=False) as mock:
+            mock.get(url__startswith="https://eodhd.com/api/eod").mock(side_effect=side_effect)
+            with caplog.at_level("DEBUG"):
+                return await make_request(url, retry_enabled=False)
+
+    def _own_logs(self, caplog) -> str:
+        return "\n".join(r.getMessage() for r in caplog.records if r.name.startswith("eodhd-mcp"))
+
+    @pytest.mark.asyncio
+    async def test_upstream_5xx_does_not_leak_token(self, caplog):
+        result = await self._request(Response(500, text="upstream boom"), caplog)
+        assert self.SECRET not in repr(result)
+        assert self.SECRET not in self._own_logs(caplog)
+        assert "api_token=***" in repr(result)
+
+    @pytest.mark.asyncio
+    async def test_network_error_does_not_leak_token(self, caplog):
+        result = await self._request(httpx.ConnectError("connection refused"), caplog)
+        assert self.SECRET not in repr(result)
+        assert self.SECRET not in self._own_logs(caplog)
+
+    @pytest.mark.asyncio
+    async def test_client_error_does_not_leak_token(self, caplog):
+        result = await self._request(Response(404, json={"error": "Ticker Not Found"}), caplog)
+        assert self.SECRET not in repr(result)
+        assert self.SECRET not in self._own_logs(caplog)
+
+    def test_filter_redacts_third_party_records(self):
+        """httpx logs the full request URL at INFO; the filter must scrub it."""
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='HTTP Request: GET https://eodhd.com/api/eod/AAPL.US?api_token=%s "HTTP/1.1 200 OK"',
+            args=(self.SECRET,),
+            exc_info=None,
+        )
+        assert TokenRedactingFilter().filter(record) is True
+        assert self.SECRET not in record.getMessage()
+
+    def test_filter_redacts_url_embedded_in_message(self):
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg=f"GET /mcp?api_token={self.SECRET} HTTP/1.1",
+            args=None,
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+        assert self.SECRET not in record.getMessage()
+        assert "api_token=***" in record.getMessage()
+
+
+ENTRY_POINTS = (
+    "server.py",
+    "entrypoints/server_http.py",
+    "entrypoints/server_sse.py",
+    "entrypoints/server_stdio.py",
+)
+
+
+@pytest.mark.parametrize("entry_point", ENTRY_POINTS)
+def test_startup_keeps_httpx_from_logging_request_urls(entry_point):
+    """httpx logs each request URL at INFO, which would put search parameters in the logs."""
+    source = (pathlib.Path(__file__).resolve().parents[2] / entry_point).read_text()
+
+    assert 'logging.getLogger("httpx").setLevel(logging.WARNING)' in source
+    assert "handler.addFilter(TokenRedactingFilter())" in source

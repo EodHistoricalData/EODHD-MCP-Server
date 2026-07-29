@@ -235,13 +235,42 @@ def _parse_retry_after(header_value: str | None) -> int:
     return _RETRY_AFTER_DEFAULT
 
 
-# Pattern to redact api_token from URLs before logging
-_TOKEN_RE = re.compile(r"api_token=[^&]+")
+# Pattern to redact api_token from URLs before logging. The value ends at a query
+# separator or at the punctuation that surrounds a URL quoted inside an exception message.
+_TOKEN_RE = re.compile(r"api_token=[^&\s'\"<>]+")
 
 
 def _redact_url(url: str) -> str:
     """Strip api_token values from a URL for safe logging."""
     return _TOKEN_RE.sub("api_token=***", url)
+
+
+class TokenRedactingFilter(logging.Filter):
+    """Scrub api_token values from every log record.
+
+    Third-party loggers (httpx logs each request URL at INFO) would otherwise write
+    the caller's API key to the server log. Attach this to the root handlers.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if self._may_carry_token(record):
+            record.msg = _redact_url(record.getMessage())
+            record.args = ()
+
+        return True
+
+    @staticmethod
+    def _may_carry_token(record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str) and "api_token=" in record.msg:
+            return True
+
+        args = record.args
+        if isinstance(args, dict):
+            return any("api_token=" in value for value in args.values() if isinstance(value, str))
+        if isinstance(args, tuple):
+            return any("api_token=" in arg for arg in args if isinstance(arg, str))
+
+        return False
 
 
 def _truncate_text(text: str | None, limit: int = 2000) -> str | None:
@@ -526,8 +555,9 @@ async def make_request(
             logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, e)
 
         except Exception as e:
-            logger.error("Unexpected error: %s", e)
-            return {"error": str(e)}
+            message = _redact_url(str(e))
+            logger.error("Unexpected error: %s", message)
+            return {"error": message}
 
         # Wait before next attempt
         if attempt < retries:
@@ -535,6 +565,6 @@ async def make_request(
             logger.info("Retrying in %.1fs...", delay)
             await _rate_limiter.set_backoff(connection_key, delay)
 
-    error_msg = str(last_error) if last_error else "Unknown error after retries"
+    error_msg = _redact_url(str(last_error)) if last_error else "Unknown error after retries"
     logger.error("All %d retries exhausted: %s", retries, error_msg)
     return {"error": error_msg}
