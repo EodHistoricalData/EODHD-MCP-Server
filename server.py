@@ -1,5 +1,6 @@
 # server.py
 import argparse
+import asyncio
 import logging
 import os
 import sys
@@ -161,7 +162,10 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("No transport selected.")
         return 2
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # The transport runs inside anyio, which delivers SIGINT as a CancelledError.
+        # That inherits from BaseException, so the handler below never saw it and an
+        # ordinary Ctrl+C ended with a traceback and exit code 1.
         logger.info("Shutdown requested (Ctrl+C).")
         return 0
     except Exception:

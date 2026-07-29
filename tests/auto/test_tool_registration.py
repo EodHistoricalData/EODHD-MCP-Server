@@ -42,6 +42,10 @@ def test_installed_fastmcp_matches_pin():
         f"fastmcp {version('fastmcp')} is installed but requirements.txt pins >=3.4.4,<3.5; "
         "older versions do not emit the top-level Tool.title the connector directory reads"
     )
+    assert installed < (3, 5), (
+        f"fastmcp {version('fastmcp')} is installed but requirements.txt pins <3.5; "
+        "the suite has not been run against a newer minor"
+    )
 
 
 def test_all_tools_list_not_empty():

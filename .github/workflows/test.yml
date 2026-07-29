@@ -21,11 +21,11 @@ jobs:
       - name: Install dependencies and linters
         run: pip install -r requirements.txt ruff mypy
       - name: Ruff check
-        run: ruff check app/ server.py
+        run: ruff check app/ server.py entrypoints/
       - name: Ruff format check
-        run: ruff format --check app/ server.py
+        run: ruff format --check app/ server.py entrypoints/
       - name: Mypy
-        run: mypy app/ server.py --ignore-missing-imports --explicit-package-bases
+        run: mypy app/ server.py entrypoints/ --ignore-missing-imports --explicit-package-bases
 
   test:
     runs-on: ubuntu-latest

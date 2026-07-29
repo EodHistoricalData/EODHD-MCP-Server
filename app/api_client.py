@@ -6,7 +6,7 @@ import re
 import time
 from http import HTTPStatus
 from typing import Any, Literal
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import httpx
 from fastmcp.server.dependencies import get_http_request
@@ -235,19 +235,35 @@ def _parse_retry_after(header_value: str | None) -> int:
     return _RETRY_AFTER_DEFAULT
 
 
-# Pattern to redact credentials from URLs before logging. Covers the upstream
-# ``api_token`` and every alias this server accepts on its own endpoint (see
-# _resolve_eodhd_token_from_request): uvicorn logs the request line with its query
-# string, so ``POST /mcp?apikey=…`` would otherwise put a usable key in the access log.
-# The lookbehind keeps unrelated names such as ``page_token`` out. The value ends at a
-# query separator or at the punctuation that surrounds a URL quoted inside an exception
-# message.
-_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_-])(api_token|api_key|api-key|apikey|access_token|token)=[^&\s'\"<>()\[\]]+")
+# Query parameter names that carry a credential: the upstream ``api_token`` plus every
+# alias this server accepts on its own endpoint (see _resolve_eodhd_token_from_request).
+# uvicorn logs the request line with its query string, so ``POST /mcp?apikey=…`` would
+# otherwise put a usable key in the access log.
+_CREDENTIAL_PARAMS = frozenset({"api_token", "api_key", "apikey", "access_token", "token"})
+
+# Any ``name=value`` pair, whether the string is a bare URL or text that embeds one. The
+# name is matched loosely and classified afterwards, because Starlette decodes the query
+# before the server reads it while uvicorn logs the raw path: ``api%5Ftoken=…`` is a
+# working credential that a literal-name pattern would miss. The value ends at a query
+# separator or at the punctuation that surrounds a URL quoted inside a message.
+_PARAM_RE = re.compile(r"(?<![A-Za-z0-9_%.-])([A-Za-z0-9_%.-]{3,24})=([^&\s'\"<>()\[\]]+)")
 
 
-def _redact_url(url: str) -> str:
-    """Strip credential values from a URL for safe logging."""
-    return _TOKEN_RE.sub(r"\1=***", url)
+def _is_credential_param(name: str) -> bool:
+    """Classify a query parameter name, ignoring percent-encoding and dash/underscore."""
+    return unquote(name).lower().replace("-", "_") in _CREDENTIAL_PARAMS
+
+
+def _carries_credential(text: str) -> bool:
+    return any(_is_credential_param(match.group(1)) for match in _PARAM_RE.finditer(text))
+
+
+def _redact_url(text: str) -> str:
+    """Strip credential values from a URL, or from any text that embeds one."""
+    return _PARAM_RE.sub(
+        lambda match: f"{match.group(1)}=***" if _is_credential_param(match.group(1)) else match.group(0),
+        text,
+    )
 
 
 class TokenRedactingFilter(logging.Filter):
@@ -259,7 +275,7 @@ class TokenRedactingFilter(logging.Filter):
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if isinstance(record.msg, str) and _TOKEN_RE.search(record.msg):
+        if isinstance(record.msg, str) and _carries_credential(record.msg):
             # The credential sits in the format string itself (httpx logs
             # 'GET …?api_token=%s'), so redacting it would eat the placeholder: render the
             # message first, then drop the arguments.
@@ -297,17 +313,35 @@ class TokenRedactingFilter(logging.Filter):
             return
 
         rendered = logging.Formatter().formatException(record.exc_info)
-        if _TOKEN_RE.search(rendered):
+        if _carries_credential(rendered):
             record.exc_text = _redact_url(rendered)
 
-    @staticmethod
-    def _redact_args(args: Any) -> Any:
+    @classmethod
+    def _redact_args(cls, args: Any) -> Any:
         if isinstance(args, dict):
-            return {key: _redact_url(value) if isinstance(value, str) else value for key, value in args.items()}
+            return {key: cls._redact_arg(value) for key, value in args.items()}
         if isinstance(args, tuple):
-            return tuple(_redact_url(arg) if isinstance(arg, str) else arg for arg in args)
+            return tuple(cls._redact_arg(arg) for arg in args)
 
         return args
+
+    @staticmethod
+    def _redact_arg(value: Any) -> Any:
+        """Redact an argument by its string form.
+
+        httpx passes the URL as an ``httpx.URL`` and exceptions carry it in their own
+        string form, so a str-only pass leaves those records with a usable key. Numbers
+        are returned untouched, so a ``%d`` placeholder keeps its type.
+        """
+        if isinstance(value, str):
+            return _redact_url(value)
+        if value is None or isinstance(value, (bool, int, float)):
+            return value
+
+        rendered = str(value)
+        redacted = _redact_url(rendered)
+
+        return redacted if redacted != rendered else value
 
 
 # Loggers that put a URL with credentials into a record and do not reach the root
@@ -370,7 +404,10 @@ def _extract_api_error_details(response: httpx.Response) -> tuple[str | None, st
         for key in keys:
             value = payload.get(key)
             if isinstance(value, str) and value.strip():
-                return value.strip()
+                # Redacted like the raw body: EODHD answers a malformed request with
+                # {"message": "bad request URL: …?api_token=…"}, and this string ends up
+                # in the ToolError the agent reads.
+                return _redact_url(value.strip())
         return None
 
     error_code = _pick_str("code", "error_code", "errorCode", "type")
@@ -379,7 +416,7 @@ def _extract_api_error_details(response: httpx.Response) -> tuple[str | None, st
     if detail is None:
         error_value = payload.get("error")
         if isinstance(error_value, str) and error_value.strip():
-            detail = error_value.strip()
+            detail = _redact_url(error_value.strip())
 
     return error_code, detail, response_text
 
@@ -418,7 +455,9 @@ def _build_http_error(
     if extra_fields:
         payload.update(extra_fields)
 
-    return payload
+    # Last line of defence: every HTTP error the agent sees is built here, so a caller's
+    # base_message or extra field cannot smuggle a credential out either.
+    return {key: _redact_url(value) if isinstance(value, str) else value for key, value in payload.items()}
 
 
 def _resolve_eodhd_token_from_request() -> str | None:

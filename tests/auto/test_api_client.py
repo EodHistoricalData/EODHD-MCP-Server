@@ -720,6 +720,70 @@ class TestSecretRedactionOnFailures:
         assert TokenRedactingFilter().filter(record) is True
         assert self.SECRET not in record.getMessage()
 
+    @pytest.mark.asyncio
+    async def test_json_error_message_echoing_the_url_is_redacted(self, caplog):
+        """EODHD answers a malformed request with the URL inside a JSON message field."""
+        body = {"message": f"bad request URL: https://eodhd.com/api/eod/AAPL.US?api_token={self.SECRET}"}
+        result = await self._request(Response(404, json=body), caplog)
+        assert self.SECRET not in repr(result)
+        assert "api_token=***" in repr(result)
+
+    @pytest.mark.parametrize(
+        "param",
+        ["api%5Ftoken", "api%2Dkey", "API_TOKEN", "%61pi_token"],
+    )
+    def test_percent_encoded_and_upper_case_names_are_redacted(self, param):
+        """Starlette decodes the name before the server reads it; uvicorn logs it raw."""
+        redacted = _redact_url(f"/mcp?{param}={self.SECRET}")
+        assert self.SECRET not in redacted
+        assert f"{param}=***" in redacted
+
+    def test_httpx_url_object_in_args_is_redacted(self):
+        """httpx passes the URL as an httpx.URL, not as a string."""
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='HTTP Request: %s %s "%s %d %s"',
+            args=("GET", httpx.URL(f"https://eodhd.com/api/eod?api_token={self.SECRET}"), "HTTP/1.1", 200, "OK"),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+
+        assert self.SECRET not in record.getMessage()
+        assert "api_token=***" in record.getMessage()
+
+    def test_exception_object_in_args_is_redacted(self):
+        record = logging.LogRecord(
+            name="third.party",
+            level=logging.WARNING,
+            pathname=__file__,
+            lineno=1,
+            msg="request failed: %s",
+            args=(httpx.ConnectError(f"cannot reach https://eodhd.com/api/eod?api_token={self.SECRET}"),),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+
+        assert self.SECRET not in record.getMessage()
+
+    def test_numeric_args_keep_their_type(self):
+        """A redacting pass must not turn %d arguments into strings."""
+        record = logging.LogRecord(
+            name="third.party",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="status %d after %d attempts",
+            args=(500, 3),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+
+        assert record.args == (500, 3)
+        assert record.getMessage() == "status 500 after 3 attempts"
+
     def test_filter_redacts_third_party_records(self):
         """httpx logs the full request URL at INFO; the filter must scrub it."""
         record = logging.LogRecord(
