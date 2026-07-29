@@ -18,6 +18,7 @@ from app.api_client import (
     _backoff,
     _clear_connection_states,
     _ensure_api_token,
+    _normalize_query_string,
     _parse_retry_after,
     _redact_url,
     _resolve_eodhd_token_from_request,
@@ -193,7 +194,7 @@ class TestParseRetryAfter:
     def test_http_date(self):
         """RFC 7231 HTTP-date format should be parsed into a delay."""
         import email.utils
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         future = datetime.now(timezone.utc) + timedelta(seconds=30)
         http_date = email.utils.format_datetime(future)
@@ -569,6 +570,55 @@ class TestMakeRequestRetry:
                 result = await make_request("https://eodhd.com/api/down", retry_enabled=False)
         assert result is not None
         assert "error" in result
+
+
+class TestNormalizeQueryString:
+    """_normalize_query_string promotes the first '&' to '?' (SUPPORT-1009)."""
+
+    def test_promotes_first_amp_when_no_question_mark(self):
+        url = "https://eodhd.com/api/ust/yield-rates&filter[year]=2026&page[limit]=10"
+        out = _normalize_query_string(url)
+        assert out == "https://eodhd.com/api/ust/yield-rates?filter[year]=2026&page[limit]=10"
+        assert out.index("?") < out.index("&")
+
+    def test_leaves_url_with_question_mark_unchanged(self):
+        url = "https://eodhd.com/api/ust/yield-rates?filter[year]=2026&page[limit]=10"
+        assert _normalize_query_string(url) == url
+
+    def test_no_query_params_unchanged(self):
+        url = "https://eodhd.com/api/ust/yield-rates"
+        assert _normalize_query_string(url) == url
+
+    def test_single_param_with_question_mark_unchanged(self):
+        url = "https://eodhd.com/api/ust/yield-rates?filter[year]=2026"
+        assert _normalize_query_string(url) == url
+
+    def test_ampersand_inside_fragment_not_promoted(self):
+        # No query, '&' only inside the fragment → must stay in the fragment.
+        url = "https://eodhd.com/api/ust/yield-rates#a&b"
+        assert _normalize_query_string(url) == url
+
+
+class TestMakeRequestQuerySeparator:
+    """make_request builds a well-formed URL when tools emit '&'-first params (SUPPORT-1009)."""
+
+    @pytest.mark.asyncio
+    async def test_amp_first_url_becomes_valid_request(self, monkeypatch):
+        # No per-call api_token in the URL (OAuth/remote case) → build_url emitted
+        # no '?', so the tool appended '&filter[year]=2026'. Env token (non-HTTP)
+        # then injects api_token. The outgoing request must start the query with '?'.
+        monkeypatch.setenv("EODHD_API_KEY", "envkey")
+        with respx.mock:
+            route = respx.get(url__startswith="https://eodhd.com/api/ust/yield-rates").mock(
+                return_value=Response(200, json=[{"date": "2026-01-02"}])
+            )
+            result = await make_request("https://eodhd.com/api/ust/yield-rates&filter[year]=2026", retry_enabled=False)
+        assert result == [{"date": "2026-01-02"}]
+        called = str(route.calls[0].request.url)
+        assert "?" in called and called.index("?") < called.index("&")
+        assert "api_token=envkey" in called
+        # the filter must live in the query string, not the path
+        assert "/ust/yield-rates?" in called
 
 
 class TestSecretRedactionOnFailures:

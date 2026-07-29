@@ -392,6 +392,27 @@ def _ensure_api_token(url: str) -> str:
     return url + (f"&api_token={token}" if "?" in url else f"?api_token={token}")
 
 
+def _normalize_query_string(url: str) -> str:
+    """Promote the first ``&``-joined query param to ``?`` when the URL has no
+    query start yet.
+
+    Tools assemble query params with ``build_query_param()``, which always emits
+    ``&key=value``. When ``build_url()`` produced no ``?…`` (e.g. the per-call
+    ``api_token`` is absent because the token comes from a header or the env),
+    the first param ends up as ``path&key=value`` — the ``&`` sits before any
+    ``?``, so EODHD reads it as part of the path and returns 404 (SUPPORT-1009).
+    Normalising here fixes every tool at the single HTTP choke point and lets
+    ``_ensure_api_token``'s ``"?" in url`` check append the token with the
+    correct separator. Only the part before any ``#`` fragment is inspected, so
+    an ``&`` inside a fragment is never mistaken for a separator.
+    """
+    head, sep, frag = url.partition("#")
+    if "?" not in head and "&" in head:
+        head = head.replace("&", "?", 1)
+
+    return head + sep + frag
+
+
 def _get_connection_key(url: str) -> str:
     """Resolve the request pacing bucket from the effective api_token."""
     query = parse_qs(urlsplit(url).query)
@@ -440,7 +461,7 @@ async def make_request(
     - ``response_mode="bytes"`` returns raw ``response.content`` on success.
     - Returns {"error": "..."} on failure.
     """
-    url = _ensure_api_token(url)
+    url = _ensure_api_token(_normalize_query_string(url))
     connection_key = _get_connection_key(url)
     m = (method or "GET").upper()
 
