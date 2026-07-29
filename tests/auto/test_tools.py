@@ -144,6 +144,12 @@ URL_CASES = [
         ["/historical-market-cap/AAPL.US"],
     ),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", ["/insider-transactions"]),
+    (
+        "get_congressional_trades",
+        {"chamber": "senate", "transaction_type": "purchase,sale"},
+        "get_congressional_trades",
+        ["/congressional-trades", "chamber=senate"],
+    ),
     # Technical
     (
         "get_technical_indicators",
