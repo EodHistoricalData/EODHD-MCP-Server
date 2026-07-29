@@ -14,15 +14,14 @@
   "privacy_policies": [
     "https://eodhd.com/financial-apis/privacy-policy"
   ],
+  "icon": "assets/icon.png",
   "server": {
     "type": "python",
     "entry_point": "entrypoints/server_stdio.py",
     "mcp_config": {
       "command": "python3",
       "args": [
-        "${__dirname}/entrypoints/server_stdio.py",
-        "--apikey",
-        "${user_config.EODHD_API_KEY}"
+        "${__dirname}/entrypoints/server_stdio.py"
       ],
       "env": {
         "PYTHONPATH": "server/lib",
