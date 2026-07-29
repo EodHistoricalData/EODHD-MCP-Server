@@ -686,6 +686,40 @@ class TestSecretRedactionOnFailures:
         assert self.SECRET not in repr(result)
         assert "api_token=***" in repr(result)
 
+    def test_clean_traceback_keeps_the_formatter_default(self):
+        """Only a traceback that actually carries a key is pre-rendered."""
+        try:
+            raise ValueError("nothing secret here")
+        except ValueError:
+            import sys
+
+            record = logging.LogRecord(
+                name="eodhd-mcp",
+                level=logging.ERROR,
+                pathname=__file__,
+                lineno=1,
+                msg="failed",
+                args=None,
+                exc_info=sys.exc_info(),
+            )
+        TokenRedactingFilter().filter(record)
+
+        assert record.exc_text is None
+
+    def test_broken_format_call_does_not_raise(self):
+        """A caller's formatting bug must not turn into an exception from the filter."""
+        record = logging.LogRecord(
+            name="third.party",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg=f"api_token={self.SECRET} %s %s",
+            args=("only-one",),
+            exc_info=None,
+        )
+        assert TokenRedactingFilter().filter(record) is True
+        assert self.SECRET not in record.getMessage()
+
     def test_filter_redacts_third_party_records(self):
         """httpx logs the full request URL at INFO; the filter must scrub it."""
         record = logging.LogRecord(

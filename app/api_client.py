@@ -263,16 +263,42 @@ class TokenRedactingFilter(logging.Filter):
             # The credential sits in the format string itself (httpx logs
             # 'GET …?api_token=%s'), so redacting it would eat the placeholder: render the
             # message first, then drop the arguments.
-            record.msg = _redact_url(record.getMessage())
+            record.msg = _redact_url(self._render(record))
             record.args = ()
         else:
             # Keep the argument shape — uvicorn's AccessFormatter unpacks exactly five of
             # them, and clearing the tuple turns every access line into a logging error.
             record.args = self._redact_args(record.args)
-        if record.exc_info:
-            record.exc_text = _redact_url(logging.Formatter().formatException(record.exc_info))
+        self._redact_traceback(record)
 
         return True
+
+    @staticmethod
+    def _render(record: logging.LogRecord) -> str:
+        """Format the record, falling back to the raw template on a broken log call.
+
+        A filter that raises would turn a caller's formatting bug into an exception at the
+        logging call site, where the stdlib merely reports it from the handler.
+        """
+        try:
+            return record.getMessage()
+        except Exception:
+            return str(record.msg)
+
+    @staticmethod
+    def _redact_traceback(record: logging.LogRecord) -> None:
+        """Pre-render the traceback only when it carries a credential.
+
+        The exception text is appended by the formatter, outside the message this filter
+        rewrites, so an exception whose ``str()`` holds the URL would leak. Rendering it
+        here overrides the handler's own exception style, so only do it when needed.
+        """
+        if not record.exc_info or record.exc_text:
+            return
+
+        rendered = logging.Formatter().formatException(record.exc_info)
+        if _TOKEN_RE.search(rendered):
+            record.exc_text = _redact_url(rendered)
 
     @staticmethod
     def _redact_args(args: Any) -> Any:
