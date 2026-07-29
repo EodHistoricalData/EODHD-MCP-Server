@@ -11,7 +11,7 @@ Auth: api_token (query)
 
 ## Purpose
 
-Fetches US Congress stock-trade disclosures filed under the STOCK Act, collected from the two
+Fetches US Congress securities transaction disclosures filed under the STOCK Act, collected from the two
 official government portals — the Senate Electronic Financial Disclosure (EFD) system and the
 House Clerk disclosure site — and normalised into one schema across both chambers. Useful for
 tracking congressional trading activity, building political-trade signals, and transparency
@@ -103,11 +103,11 @@ uses bracket notation (`page[offset]`, `page[limit]`).
 | member.district | integer or null | House district number; null for senators |
 | asset.symbol | string or null | Ticker symbol; null for assets without a ticker |
 | asset.description | string | Asset description as filed |
-| asset.asset_type | string | Normalised asset class (Stock, Bond, Other) |
+| asset.asset_type | string | Normalised asset class: `Stock`, `StockOption`, `Bond`, `MutualFund`, `Other` |
 | transaction.type | string | purchase, sale, or exchange |
 | transaction.transaction_date | string (YYYY-MM-DD) | Date the trade took place |
 | transaction.disclosure_date | string (YYYY-MM-DD) | Date the trade was disclosed |
-| transaction.owner | string or null | Self, Spouse, or Joint |
+| transaction.owner | string or null | `Self`, `Spouse`, `Child` or `Joint` |
 | transaction.amount_range | string | Disclosed amount band, as filed |
 | transaction.amount_low | number or null | Lower bound of the amount range, USD |
 | transaction.amount_high | number or null | Upper bound of the amount range, USD |
@@ -121,7 +121,7 @@ uses bracket notation (`page[offset]`, `page[limit]`).
 ## Example Requests
 
 ```
-# Latest disclosures
+# Most recent transactions (the feed sorts by transaction_date, not disclosure_date)
 https://eodhd.com/api/congressional-trades?api_token=YOUR_TOKEN
 
 # Senate purchases and sales since 2026, first 5
@@ -132,6 +132,11 @@ https://eodhd.com/api/congressional-trades?api_token=YOUR_TOKEN&bioguide_id=S000
 ```
 
 ## Notes
+
+- The API is in beta; response fields may still change.
+- Not a real-time feed: the Senate EFD and House Clerk sources are polled several times a day
+  and reconciled nightly, so a transaction appears only after its filing is published.
+- Results are ordered by `transaction_date` descending (then by internal id), not by disclosure date.
 
 - Both chambers are returned together; use `chamber` to restrict to one.
 - Derived fields (`amount_low`/`amount_high`, `days_to_disclose`, `is_late`) are computed by EODHD.

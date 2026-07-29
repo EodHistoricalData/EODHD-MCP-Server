@@ -20,7 +20,7 @@ the All-in-One and Fundamentals plans.
 
 | Parameter | Required | Type | Description |
 |-----------|----------|------|-------------|
-| code (path) | Yes | string | ISO alpha-2 country code, case-insensitive (e.g. `US`) |
+| code (path) | Yes | string | Country code, case-insensitive: ISO alpha-2 (e.g. `US`) or a BIS aggregate (e.g. `4T`) |
 | api_token | Yes | string | Your API key |
 | filter[type] | No | string | `nominal` or `real` |
 | filter[metric] | No | string | `index` or `yoy` |
@@ -94,7 +94,8 @@ curl "https://eodhd.com/api/real-estate/GB?api_token=YOUR_TOKEN&filter[type]=nom
 
 ## Notes
 
-- Country codes are ISO alpha-2 and case-insensitive (normalised to uppercase).
+- Country codes are case-insensitive (normalised to uppercase). Most are ISO alpha-2; the dataset
+  also carries BIS aggregates such as `4T` (emerging markets) and `5R`.
 - Unknown country code → 404 (`Symbol not found`). Unknown filter key → 422.
 - API call consumption: 5 calls per request.
 
@@ -104,7 +105,8 @@ curl "https://eodhd.com/api/real-estate/GB?api_token=YOUR_TOKEN&filter[type]=nom
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Unauthorized | Invalid API key. Check your `api_token` parameter. |
+| **401** | Unauthorized | Missing or invalid credentials. Check your `api_token` / OAuth connection. |
+| **403** | Forbidden | The account's plan does not include this dataset. |
 | **404** | Not Found | Unknown country code (`Symbol not found`). |
 | **422** | Unprocessable Entity | Invalid filter key or `page[limit]` above 500. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |

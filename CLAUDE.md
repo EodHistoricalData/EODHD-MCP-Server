@@ -1,8 +1,8 @@
 # EODHD MCP Server v1
-MCP server exposing 83 EODHD financial data API tools via HTTP, SSE, and stdio transports.
+MCP server exposing 88 EODHD financial data API tools via HTTP, SSE, and stdio transports.
 
 ## Stack
-Python 3.10+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
+Python 3.10+, FastMCP >=3.4, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
 
 ## Commands
 ```bash
@@ -36,7 +36,7 @@ app/
   api_client.py       - shared async httpx client, retry, rate-limit, auth injection
   input_formatter.py  - input sanitisation, date coercion, URL helpers
   response_formatter.py - MCP EmbeddedResource formatting and API error raising
-  tools/              - 83 tool modules, each exports register(mcp)
+  tools/              - 88 tool modules, each exports register(mcp)
     __init__.py       - ALL_TOOLS list, register_all(mcp), safe dynamic import
   prompts/            - example workflows
   resources/          - markdown reference docs exposed as MCP resources
@@ -50,7 +50,8 @@ server.py             - entry point, transport selection, argparse
 
 ## Conventions
 - Every tool file exports `register(mcp: FastMCP)`.
-- All tools are read-only (`readOnlyHint=True`).
+- All tools are read-only (`readOnlyHint=True`) except the three Praams report tools, which generate a
+  report and email it to the caller-supplied address (`readOnlyHint=False`).
 - Sanitize inputs with helpers from `app/input_formatter.py`.
 - Raise `ToolError` for user-facing failures.
 - Route all HTTP traffic through `make_request()` in `app/api_client.py`.

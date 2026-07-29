@@ -63,7 +63,7 @@ querying the other real-estate endpoints. Available in the All-in-One and Fundam
 
 | Field | Type | Description |
 |-------|------|-------------|
-| code | string | ISO alpha-2 country code (e.g. `US`) |
+| code | string | ISO alpha-2 country code (e.g. `US`) or BIS aggregate (e.g. `4T`, `5R`) |
 | name | string | Country name |
 | has_spp | boolean | Selected Property Prices available |
 | has_dpp | boolean | Detailed Property Prices available |
@@ -80,7 +80,8 @@ curl "https://eodhd.com/api/real-estate/countries?api_token=YOUR_TOKEN&sort=name
 
 ## Notes
 
-- Country codes are ISO alpha-2 and case-insensitive (normalised to uppercase).
+- Country codes are case-insensitive (normalised to uppercase). Most are ISO alpha-2; the dataset
+  also carries BIS aggregates such as `4T` (emerging markets) and `5R`.
 - API call consumption: 5 calls per request.
 - Part of the Real Estate Data API (BIS residential property prices).
 
@@ -90,7 +91,8 @@ curl "https://eodhd.com/api/real-estate/countries?api_token=YOUR_TOKEN&sort=name
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Unauthorized | Invalid API key. Check your `api_token` parameter. |
+| **401** | Unauthorized | Missing or invalid credentials. Check your `api_token` / OAuth connection. |
+| **403** | Forbidden | The account's plan does not include this dataset. |
 | **422** | Unprocessable Entity | Invalid filter key or `page[limit]` above 500. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
 
