@@ -1,12 +1,13 @@
 # server.py
 import argparse
+import asyncio
 import logging
 import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from app.api_client import close_client
+from app.api_client import close_client, install_token_redaction
 from app.prompts import register_all as register_all_prompts
 from app.resources import register_all as register_all_resources
 from app.tools import register_all as register_all_tools
@@ -84,6 +85,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr,
     )
+    install_token_redaction()
     logger = logging.getLogger("eodhd-mcp")
 
     if unknown:
@@ -160,7 +162,10 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("No transport selected.")
         return 2
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # The transport runs inside anyio, which delivers SIGINT as a CancelledError.
+        # That inherits from BaseException, so the handler below never saw it and an
+        # ordinary Ctrl+C ended with a traceback and exit code 1.
         logger.info("Shutdown requested (Ctrl+C).")
         return 0
     except Exception:

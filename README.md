@@ -13,7 +13,9 @@
 
 Model Context Protocol (MCP) server for [EOD Historical Data](https://eodhd.com/) APIs.
 
-The current server exposes **83 read-only MCP tools** across three transports:
+The current server exposes **88 MCP tools** across three transports — 85 are read-only; the three
+Praams report tools trigger provider-side report generation and email delivery, so they are annotated
+`readOnlyHint=False`:
 
 - `streamable-http` via `server.py` on `/mcp` by default
 - `sse`
@@ -47,7 +49,8 @@ It also ships bundled MCP prompts and documentation resources.
 
 ## Current Behavior
 
-- All tools are read-only and register through `app/tools/__init__.py`.
+- All tools are read-only except the three Praams report tools; every tool registers through
+  `app/tools/__init__.py`.
 - All HTTP requests go through the shared async client in `app/api_client.py`.
 - Upstream API errors are preserved as MCP `ToolError`s with status code and upstream details where available.
 - API tokens are injected into EODHD requests as `api_token=...` query parameters.

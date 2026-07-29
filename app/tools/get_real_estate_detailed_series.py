@@ -7,7 +7,7 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_url, sanitize_exchange
+from app.input_formatter import build_url, sanitize_country_code
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -28,6 +28,10 @@ def register(mcp: FastMCP):
         you can request from get_real_estate_detailed_prices. This is a parameterless
         catalogue endpoint (JSON only — fmt=csv is not honoured). Discover available country
         codes with get_real_estate_countries. Consumes 5 API calls per request.
+
+        The endpoint returns the country's whole series catalogue in one response — it has no
+        pagination upstream. The catalogue is small (at most a couple of dozen series per
+        country), so the response stays well inside client limits.
 
         Args:
             code (str): ISO alpha-2 country code, case-insensitive (e.g. 'US', 'us').
@@ -69,4 +73,4 @@ def register(mcp: FastMCP):
 
 def _normalize_country_code(code: str) -> str:
     """Sanitize and upper-case an ISO alpha-2 country code (case-insensitive)."""
-    return sanitize_exchange(code, "code").upper()
+    return sanitize_country_code(code)

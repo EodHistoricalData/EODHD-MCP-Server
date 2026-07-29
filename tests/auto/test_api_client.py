@@ -3,6 +3,8 @@
 rate limiting, token redaction, token resolution, HTTP methods."""
 
 import asyncio
+import logging
+import pathlib
 import time
 from itertools import pairwise
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -11,14 +13,18 @@ import httpx
 import pytest
 import respx
 from app.api_client import (
+    _CREDENTIAL_LOGGERS,
     RETRY_DELAY_MAX,
+    TokenRedactingFilter,
     _backoff,
     _clear_connection_states,
     _ensure_api_token,
+    _normalize_query_string,
     _parse_retry_after,
     _redact_url,
     _resolve_eodhd_token_from_request,
     close_client,
+    install_token_redaction,
     make_request,
     set_rate_limit,
 )
@@ -36,6 +42,12 @@ class TestRedactUrl:
         assert "SECRET123" not in result
         assert "api_token=***" in result
         assert "fmt=json" in result
+
+    def test_token_in_parentheses_keeps_the_bracket(self):
+        """An exception message often wraps the URL in brackets."""
+        assert _redact_url("failed (https://eodhd.com/api/eod?api_token=SECRET123)") == (
+            "failed (https://eodhd.com/api/eod?api_token=***)"
+        )
 
     def test_no_token_unchanged(self):
         url = "https://eodhd.com/api/exchanges-list/?fmt=json"
@@ -98,6 +110,21 @@ class TestResolveToken:
         req.query_params = {"api_key": "ak_val"}
         with patch("app.api_client.get_http_request", return_value=req):
             assert _resolve_eodhd_token_from_request() == "ak_val"
+
+    def test_query_param_api_token(self):
+        """The REST API name must work too, so the caller is not served the env key instead."""
+        req = MagicMock()
+        req.headers = {}
+        req.query_params = {"api_token": "rest_style"}
+        with patch("app.api_client.get_http_request", return_value=req):
+            assert _resolve_eodhd_token_from_request() == "rest_style"
+
+    def test_query_param_dashed_api_key(self):
+        req = MagicMock()
+        req.headers = {}
+        req.query_params = {"api-key": "dashed"}
+        with patch("app.api_client.get_http_request", return_value=req):
+            assert _resolve_eodhd_token_from_request() == "dashed"
 
     def test_query_param_token(self):
         req = MagicMock()
@@ -190,7 +217,7 @@ class TestParseRetryAfter:
     def test_http_date(self):
         """RFC 7231 HTTP-date format should be parsed into a delay."""
         import email.utils
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
 
         future = datetime.now(timezone.utc) + timedelta(seconds=30)
         http_date = email.utils.format_datetime(future)
@@ -566,3 +593,366 @@ class TestMakeRequestRetry:
                 result = await make_request("https://eodhd.com/api/down", retry_enabled=False)
         assert result is not None
         assert "error" in result
+
+
+class TestNormalizeQueryString:
+    """_normalize_query_string promotes the first '&' to '?' (SUPPORT-1009)."""
+
+    def test_promotes_first_amp_when_no_question_mark(self):
+        url = "https://eodhd.com/api/ust/yield-rates&filter[year]=2026&page[limit]=10"
+        out = _normalize_query_string(url)
+        assert out == "https://eodhd.com/api/ust/yield-rates?filter[year]=2026&page[limit]=10"
+        assert out.index("?") < out.index("&")
+
+    def test_leaves_url_with_question_mark_unchanged(self):
+        url = "https://eodhd.com/api/ust/yield-rates?filter[year]=2026&page[limit]=10"
+        assert _normalize_query_string(url) == url
+
+    def test_no_query_params_unchanged(self):
+        url = "https://eodhd.com/api/ust/yield-rates"
+        assert _normalize_query_string(url) == url
+
+    def test_single_param_with_question_mark_unchanged(self):
+        url = "https://eodhd.com/api/ust/yield-rates?filter[year]=2026"
+        assert _normalize_query_string(url) == url
+
+    def test_ampersand_inside_fragment_not_promoted(self):
+        # No query, '&' only inside the fragment → must stay in the fragment.
+        url = "https://eodhd.com/api/ust/yield-rates#a&b"
+        assert _normalize_query_string(url) == url
+
+
+class TestMakeRequestQuerySeparator:
+    """make_request builds a well-formed URL when tools emit '&'-first params (SUPPORT-1009)."""
+
+    @pytest.mark.asyncio
+    async def test_amp_first_url_becomes_valid_request(self, monkeypatch):
+        # No per-call api_token in the URL (OAuth/remote case) → build_url emitted
+        # no '?', so the tool appended '&filter[year]=2026'. Env token (non-HTTP)
+        # then injects api_token. The outgoing request must start the query with '?'.
+        monkeypatch.setenv("EODHD_API_KEY", "envkey")
+        with respx.mock:
+            route = respx.get(url__startswith="https://eodhd.com/api/ust/yield-rates").mock(
+                return_value=Response(200, json=[{"date": "2026-01-02"}])
+            )
+            result = await make_request("https://eodhd.com/api/ust/yield-rates&filter[year]=2026", retry_enabled=False)
+        assert result == [{"date": "2026-01-02"}]
+        called = str(route.calls[0].request.url)
+        assert "?" in called and called.index("?") < called.index("&")
+        assert "api_token=envkey" in called
+        # the filter must live in the query string, not the path
+        assert "/ust/yield-rates?" in called
+
+
+class TestSecretRedactionOnFailures:
+    """The api_token must never reach the agent-visible payload or the logs."""
+
+    SECRET = "SECRET_TOKEN_FOR_REDACTION_TEST"
+
+    async def _request(self, side_effect, caplog):
+        url = f"https://eodhd.com/api/eod/AAPL.US?api_token={self.SECRET}"
+        with respx.mock(assert_all_called=False) as mock:
+            mock.get(url__startswith="https://eodhd.com/api/eod").mock(side_effect=side_effect)
+            with caplog.at_level("DEBUG"):
+                return await make_request(url, retry_enabled=False)
+
+    def _own_logs(self, caplog) -> str:
+        return "\n".join(r.getMessage() for r in caplog.records if r.name.startswith("eodhd-mcp"))
+
+    @pytest.mark.asyncio
+    async def test_upstream_5xx_does_not_leak_token(self, caplog):
+        result = await self._request(Response(500, text="upstream boom"), caplog)
+        assert self.SECRET not in repr(result)
+        assert self.SECRET not in self._own_logs(caplog)
+        assert "api_token=***" in repr(result)
+
+    @pytest.mark.asyncio
+    async def test_network_error_does_not_leak_token(self, caplog):
+        result = await self._request(httpx.ConnectError("connection refused"), caplog)
+        assert self.SECRET not in repr(result)
+        assert self.SECRET not in self._own_logs(caplog)
+
+    @pytest.mark.asyncio
+    async def test_client_error_does_not_leak_token(self, caplog):
+        result = await self._request(Response(404, json={"error": "Ticker Not Found"}), caplog)
+        assert self.SECRET not in repr(result)
+        assert self.SECRET not in self._own_logs(caplog)
+
+    @pytest.mark.asyncio
+    async def test_upstream_body_echoing_the_url_is_redacted(self, caplog):
+        """EODHD's 404 page echoes the request URL, key included."""
+        body = f'<link rel="canonical" href="https://eodhd.com/api/eod/AAPL.US?api_token={self.SECRET}">'
+        result = await self._request(Response(404, text=body), caplog)
+        assert self.SECRET not in repr(result)
+        assert "api_token=***" in repr(result)
+
+    def test_clean_traceback_keeps_the_formatter_default(self):
+        """Only a traceback that actually carries a key is pre-rendered."""
+        try:
+            raise ValueError("nothing secret here")
+        except ValueError:
+            import sys
+
+            record = logging.LogRecord(
+                name="eodhd-mcp",
+                level=logging.ERROR,
+                pathname=__file__,
+                lineno=1,
+                msg="failed",
+                args=None,
+                exc_info=sys.exc_info(),
+            )
+        TokenRedactingFilter().filter(record)
+
+        assert record.exc_text is None
+
+    def test_broken_format_call_does_not_raise(self):
+        """A caller's formatting bug must not turn into an exception from the filter."""
+        record = logging.LogRecord(
+            name="third.party",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg=f"api_token={self.SECRET} %s %s",
+            args=("only-one",),
+            exc_info=None,
+        )
+        assert TokenRedactingFilter().filter(record) is True
+        assert self.SECRET not in record.getMessage()
+
+    @pytest.mark.asyncio
+    async def test_json_error_message_echoing_the_url_is_redacted(self, caplog):
+        """EODHD answers a malformed request with the URL inside a JSON message field."""
+        body = {"message": f"bad request URL: https://eodhd.com/api/eod/AAPL.US?api_token={self.SECRET}"}
+        result = await self._request(Response(404, json=body), caplog)
+        assert self.SECRET not in repr(result)
+        assert "api_token=***" in repr(result)
+
+    @pytest.mark.parametrize(
+        "param",
+        ["api%5Ftoken", "api%2Dkey", "API_TOKEN", "%61pi_token"],
+    )
+    def test_percent_encoded_and_upper_case_names_are_redacted(self, param):
+        """Starlette decodes the name before the server reads it; uvicorn logs it raw."""
+        redacted = _redact_url(f"/mcp?{param}={self.SECRET}")
+        assert self.SECRET not in redacted
+        assert f"{param}=***" in redacted
+
+    def test_httpx_url_object_in_args_is_redacted(self):
+        """httpx passes the URL as an httpx.URL, not as a string."""
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='HTTP Request: %s %s "%s %d %s"',
+            args=("GET", httpx.URL(f"https://eodhd.com/api/eod?api_token={self.SECRET}"), "HTTP/1.1", 200, "OK"),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+
+        assert self.SECRET not in record.getMessage()
+        assert "api_token=***" in record.getMessage()
+
+    def test_exception_object_in_args_is_redacted(self):
+        record = logging.LogRecord(
+            name="third.party",
+            level=logging.WARNING,
+            pathname=__file__,
+            lineno=1,
+            msg="request failed: %s",
+            args=(httpx.ConnectError(f"cannot reach https://eodhd.com/api/eod?api_token={self.SECRET}"),),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+
+        assert self.SECRET not in record.getMessage()
+
+    def test_numeric_args_keep_their_type(self):
+        """A redacting pass must not turn %d arguments into strings."""
+        record = logging.LogRecord(
+            name="third.party",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg="status %d after %d attempts",
+            args=(500, 3),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+
+        assert record.args == (500, 3)
+        assert record.getMessage() == "status 500 after 3 attempts"
+
+    def test_filter_redacts_third_party_records(self):
+        """httpx logs the full request URL at INFO; the filter must scrub it."""
+        record = logging.LogRecord(
+            name="httpx",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='HTTP Request: GET https://eodhd.com/api/eod/AAPL.US?api_token=%s "HTTP/1.1 200 OK"',
+            args=(self.SECRET,),
+            exc_info=None,
+        )
+        assert TokenRedactingFilter().filter(record) is True
+        assert self.SECRET not in record.getMessage()
+
+    @pytest.mark.parametrize(
+        "param",
+        ["api_token", "apikey", "api_key", "api-key", "token", "access_token"],
+    )
+    def test_redacts_every_accepted_credential_param(self, param):
+        """uvicorn logs this server's own request line, so every alias must be scrubbed."""
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='%s - "%s %s HTTP/%s" %d',
+            args=("172.17.0.1:5000", "POST", f"/mcp?{param}={self.SECRET}", "1.1", 200),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+        assert self.SECRET not in record.getMessage()
+        assert f"{param}=***" in record.getMessage()
+
+    def test_uvicorn_access_formatter_still_renders(self):
+        """Clearing record.args turns every uvicorn access line into a logging error."""
+        from uvicorn.logging import AccessFormatter
+
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='%s - "%s %s HTTP/%s" %d',
+            args=("172.17.0.1:5000", "POST", f"/mcp?apikey={self.SECRET}", "1.1", 200),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+        line = AccessFormatter(use_colors=False).format(record)
+
+        assert self.SECRET not in line
+        assert "apikey=***" in line
+        assert "POST" in line and "200" in line
+
+    def test_unrelated_token_names_are_left_alone(self):
+        assert _redact_url("https://x.com?page_token=abc&next_token=def") == (
+            "https://x.com?page_token=abc&next_token=def"
+        )
+
+    def test_redacts_token_inside_traceback(self):
+        """A traceback rendered by the formatter must not carry the key either."""
+        try:
+            raise httpx.ConnectError(f"failed for https://eodhd.com/api/eod?api_token={self.SECRET}")
+        except httpx.ConnectError:
+            import sys
+
+            record = logging.LogRecord(
+                name="eodhd-mcp",
+                level=logging.ERROR,
+                pathname=__file__,
+                lineno=1,
+                msg="upstream call failed",
+                args=None,
+                exc_info=sys.exc_info(),
+            )
+        TokenRedactingFilter().filter(record)
+        assert self.SECRET not in (record.exc_text or "")
+        assert "api_token=***" in (record.exc_text or "")
+
+    def test_filter_redacts_url_embedded_in_message(self):
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg=f"GET /mcp?api_token={self.SECRET} HTTP/1.1",
+            args=None,
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+        assert self.SECRET not in record.getMessage()
+        assert "api_token=***" in record.getMessage()
+
+
+ENTRY_POINTS = (
+    "server.py",
+    "entrypoints/server_http.py",
+    "entrypoints/server_sse.py",
+    "entrypoints/server_stdio.py",
+)
+
+
+@pytest.mark.parametrize("entry_point", ENTRY_POINTS)
+def test_every_entry_point_installs_the_redaction(entry_point):
+    """A transport that forgets this call logs the caller's key in clear text."""
+    source = (pathlib.Path(__file__).resolve().parents[2] / entry_point).read_text()
+
+    assert "install_token_redaction()" in source
+
+
+class TestInstallTokenRedaction:
+    """The install must cover loggers that never reach the root handlers."""
+
+    SECRET = "SECRET_TOKEN_FOR_INSTALL_TEST"
+
+    @staticmethod
+    def _reset(names):
+        for name in names:
+            logger = logging.getLogger(name)
+            logger.filters = [f for f in logger.filters if not isinstance(f, TokenRedactingFilter)]
+        for handler in logging.getLogger().handlers:
+            handler.filters = [f for f in handler.filters if not isinstance(f, TokenRedactingFilter)]
+
+    def test_uvicorn_access_line_is_scrubbed(self):
+        """uvicorn owns its handler and sets propagate=False, so the filter sits on the logger."""
+        logger = logging.getLogger("uvicorn.access")
+        seen: list[str] = []
+
+        class Capture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                seen.append(record.getMessage())
+
+        handler = Capture()
+        logger.addHandler(handler)
+        propagate = logger.propagate
+        logger.propagate = False
+        try:
+            install_token_redaction()
+            logger.warning(
+                '%s - "%s %s HTTP/%s" %d',
+                "172.17.0.1:5000",
+                "POST",
+                f"/mcp?apikey={self.SECRET}",
+                "1.1",
+                200,
+            )
+        finally:
+            logger.removeHandler(handler)
+            logger.propagate = propagate
+            self._reset(_CREDENTIAL_LOGGERS)
+
+        assert seen, "the capturing handler saw no record"
+        assert self.SECRET not in seen[0]
+        assert "apikey=***" in seen[0]
+
+    def test_httpx_is_kept_quiet(self):
+        level = logging.getLogger("httpx").level
+        try:
+            install_token_redaction()
+            assert logging.getLogger("httpx").level == logging.WARNING
+        finally:
+            logging.getLogger("httpx").setLevel(level)
+            self._reset(_CREDENTIAL_LOGGERS)
+
+    def test_repeated_calls_do_not_stack_filters(self):
+        try:
+            install_token_redaction()
+            install_token_redaction()
+            for name in _CREDENTIAL_LOGGERS:
+                installed = [f for f in logging.getLogger(name).filters if isinstance(f, TokenRedactingFilter)]
+                assert len(installed) == 1, name
+        finally:
+            self._reset(_CREDENTIAL_LOGGERS)

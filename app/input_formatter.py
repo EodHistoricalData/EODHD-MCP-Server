@@ -142,13 +142,97 @@ _EXCHANGE_SUFFIX_RE = re.compile(r"\.[A-Za-z]{1,6}$")
 def strip_exchange_suffix(ticker: str) -> str:
     """Drop a trailing ``.EXCHANGE`` so ``AAPL.US`` becomes ``AAPL``.
 
-    The rest of the EODHD platform keys on ``SYMBOL.EXCHANGE``, but some
-    marketplace providers (Praams) key on the bare symbol and reject / 500 on
-    the suffixed form. Use this only for those providers' ``*_by_ticker`` tools
-    so the standard ``SYMBOL.EXCHANGE`` input still works. A bare symbol (no dot)
-    is returned unchanged.
+    The rest of the EODHD platform keys on ``SYMBOL.EXCHANGE``, but some marketplace
+    providers (Praams, InvestVerte) key most instruments on the bare symbol and reject
+    the suffixed form. Those providers still key a few instruments on the suffixed form
+    (``000039.SZ``), so callers must treat the bare symbol as a first attempt and fall
+    back to the caller's original form on a 4xx — never as the only form tried. A bare
+    symbol (no dot) is returned unchanged.
     """
     return _EXCHANGE_SUFFIX_RE.sub("", ticker)
+
+
+_COUNTRY_CODE_RE = re.compile(r"^[A-Za-z0-9]{2,5}$")
+
+
+def sanitize_country_code(code: str, param_name: str = "code") -> str:
+    """Validate a Real Estate country code, uppercased.
+
+    The dataset keys on ISO alpha-2 codes (``US``) plus BIS aggregates (``4T``, ``5R``),
+    and the upstream route only accepts 2-5 alphanumeric characters.
+    """
+    if not isinstance(code, str) or not code.strip():
+        raise ToolError(f"Parameter '{param_name}' is required and must be a non-empty string.")
+
+    value = code.strip().upper()
+    if not _COUNTRY_CODE_RE.match(value):
+        raise ToolError(
+            f"Parameter '{param_name}' must be 2-5 alphanumeric characters — an ISO alpha-2 code "
+            f"like 'US' or a BIS aggregate like '4T'. Got: {code!r}"
+        )
+
+    return value
+
+
+def sanitize_dimension_code(value: str, param_name: str, max_length: int) -> str:
+    """Validate a short BIS dimension code (covered area, property type, vintage)."""
+    code = sanitize_exchange(value, param_name)
+    if len(code) > max_length:
+        raise ToolError(
+            f"Parameter '{param_name}' must be at most {max_length} character(s) — it is a BIS "
+            f"dimension code, not a label. Got: {value!r}"
+        )
+
+    return code
+
+
+_QUARTER_RE = re.compile(r"^(\d{4})-Q([1-4])$")
+
+
+def coerce_quarter_param(value: str | None, param_name: str) -> str | None:
+    """Normalize a quarterly period to ``YYYY-Qn``; ``None``/empty passes through.
+
+    The upstream API validates this shape with a regex, so checking it here turns an
+    opaque 422 into an actionable message.
+    """
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ToolError(f"Parameter '{param_name}' must be a quarter string like '2020-Q1'. Got: {value!r}")
+
+    period = value.strip().upper()
+    if not period:
+        return None
+    if not _QUARTER_RE.match(period):
+        raise ToolError(f"Parameter '{param_name}' must be a quarter in 'YYYY-Qn' form, e.g. '2020-Q1'. Got: {value!r}")
+
+    return period
+
+
+def validate_quarter_range(
+    from_period: str | None,
+    to_period: str | None,
+    from_name: str = "from_period",
+    to_name: str = "to_period",
+) -> None:
+    """Reject an inverted quarter range (``YYYY-Qn`` sorts correctly as a string)."""
+    if from_period and to_period and from_period > to_period:
+        raise ToolError(f"'{from_name}' ({from_period}) must not be later than '{to_name}' ({to_period}).")
+
+
+_EMAIL_RE = re.compile(r"^[^@\s;,<>\"']+@[^@\s;,<>\"']+\.[A-Za-z]{2,}$")
+
+
+def sanitize_email(value: str, param_name: str = "email") -> str:
+    """Validate an email address used for provider-side report delivery."""
+    if not isinstance(value, str) or not value.strip():
+        raise ToolError(f"Parameter '{param_name}' is required and must be a non-empty string.")
+
+    email = value.strip()
+    if not _EMAIL_RE.match(email):
+        raise ToolError(f"Parameter '{param_name}' must be a single valid email address.")
+
+    return email
 
 
 def sanitize_exchange(code: str, param_name: str = "exchange_code") -> str:

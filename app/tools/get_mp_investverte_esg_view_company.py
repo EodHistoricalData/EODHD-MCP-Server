@@ -9,11 +9,26 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
-from app.response_formatter import ResourceResponse, format_json_response
+from app.response_formatter import ResourceResponse, format_json_response, is_client_error
 
 logger = logging.getLogger(__name__)
 
 ALLOWED_FREQUENCIES = {"FY", "Q1", "Q2", "Q3", "Q4"}
+
+
+async def _fetch_by_symbol_form(url_for, bare: str, as_given: str):
+    """Request the bare symbol first, then the caller's form.
+
+    InvestVerte keys most companies on the bare symbol (``AAPL``) but keys others on
+    the suffixed form (``000039.SZ``), and returns 404 for the wrong one.
+    """
+    data = await make_request(url_for(bare))
+    if bare != as_given and is_client_error(data):
+        logger.debug("Bare symbol %r rejected, retrying as %r", bare, as_given)
+
+        return await make_request(url_for(as_given))
+
+    return data
 
 
 def register(mcp: FastMCP):
@@ -64,7 +79,7 @@ def register(mcp: FastMCP):
 
 
         """
-        symbol = strip_exchange_suffix(sanitize_ticker(symbol, param_name="symbol"))
+        symbol = sanitize_ticker(symbol, param_name="symbol")
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
@@ -76,17 +91,18 @@ def register(mcp: FastMCP):
             raise ToolError("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
 
         # Base URL for Investverte company ESG endpoint
-        url = build_url(
-            f"mp/investverte/esg/{symbol}",
-            {
-                "fmt": fmt,
-                "year": year,
-                "frequency": frequency,
-                "api_token": api_token,
-            },
-        )
+        def url_for(sym: str) -> str:
+            return build_url(
+                f"mp/investverte/esg/{sym}",
+                {
+                    "fmt": fmt,
+                    "year": year,
+                    "frequency": frequency,
+                    "api_token": api_token,
+                },
+            )
 
-        data = await make_request(url)
+        data = await _fetch_by_symbol_form(url_for, strip_exchange_suffix(symbol), symbol)
 
         try:
             # Expected: list of ESG entries for the company

@@ -6,7 +6,7 @@ import re
 import time
 from http import HTTPStatus
 from typing import Any, Literal
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import httpx
 from fastmcp.server.dependencies import get_http_request
@@ -235,19 +235,154 @@ def _parse_retry_after(header_value: str | None) -> int:
     return _RETRY_AFTER_DEFAULT
 
 
-# Pattern to redact api_token from URLs before logging
-_TOKEN_RE = re.compile(r"api_token=[^&]+")
+# Query parameter names that carry a credential: the upstream ``api_token`` plus every
+# alias this server accepts on its own endpoint (see _resolve_eodhd_token_from_request).
+# uvicorn logs the request line with its query string, so ``POST /mcp?apikey=…`` would
+# otherwise put a usable key in the access log.
+_CREDENTIAL_PARAMS = frozenset({"api_token", "api_key", "apikey", "access_token", "token"})
+
+# Any ``name=value`` pair, whether the string is a bare URL or text that embeds one. The
+# name is matched loosely and classified afterwards, because Starlette decodes the query
+# before the server reads it while uvicorn logs the raw path: ``api%5Ftoken=…`` is a
+# working credential that a literal-name pattern would miss. The value ends at a query
+# separator or at the punctuation that surrounds a URL quoted inside a message.
+_PARAM_RE = re.compile(r"(?<![A-Za-z0-9_%.-])([A-Za-z0-9_%.-]{3,24})=([^&\s'\"<>()\[\]]+)")
 
 
-def _redact_url(url: str) -> str:
-    """Strip api_token values from a URL for safe logging."""
-    return _TOKEN_RE.sub("api_token=***", url)
+def _is_credential_param(name: str) -> bool:
+    """Classify a query parameter name, ignoring percent-encoding and dash/underscore."""
+    return unquote(name).lower().replace("-", "_") in _CREDENTIAL_PARAMS
+
+
+def _carries_credential(text: str) -> bool:
+    return any(_is_credential_param(match.group(1)) for match in _PARAM_RE.finditer(text))
+
+
+def _redact_url(text: str) -> str:
+    """Strip credential values from a URL, or from any text that embeds one."""
+    return _PARAM_RE.sub(
+        lambda match: f"{match.group(1)}=***" if _is_credential_param(match.group(1)) else match.group(0),
+        text,
+    )
+
+
+class TokenRedactingFilter(logging.Filter):
+    """Scrub credential values from every log record.
+
+    Third-party loggers would otherwise write the caller's API key to the server log:
+    httpx logs each upstream request URL at INFO, and uvicorn logs this server's own
+    request line, query string included. Attach this to the root handlers.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str) and _carries_credential(record.msg):
+            # The credential sits in the format string itself (httpx logs
+            # 'GET …?api_token=%s'), so redacting it would eat the placeholder: render the
+            # message first, then drop the arguments.
+            record.msg = _redact_url(self._render(record))
+            record.args = ()
+        else:
+            # Keep the argument shape — uvicorn's AccessFormatter unpacks exactly five of
+            # them, and clearing the tuple turns every access line into a logging error.
+            record.args = self._redact_args(record.args)
+        self._redact_traceback(record)
+
+        return True
+
+    @staticmethod
+    def _render(record: logging.LogRecord) -> str:
+        """Format the record, falling back to the raw template on a broken log call.
+
+        A filter that raises would turn a caller's formatting bug into an exception at the
+        logging call site, where the stdlib merely reports it from the handler.
+        """
+        try:
+            return record.getMessage()
+        except Exception:
+            return str(record.msg)
+
+    @staticmethod
+    def _redact_traceback(record: logging.LogRecord) -> None:
+        """Pre-render the traceback only when it carries a credential.
+
+        The exception text is appended by the formatter, outside the message this filter
+        rewrites, so an exception whose ``str()`` holds the URL would leak. Rendering it
+        here overrides the handler's own exception style, so only do it when needed.
+        """
+        if not record.exc_info or record.exc_text:
+            return
+
+        rendered = logging.Formatter().formatException(record.exc_info)
+        if _carries_credential(rendered):
+            record.exc_text = _redact_url(rendered)
+
+    @classmethod
+    def _redact_args(cls, args: Any) -> Any:
+        if isinstance(args, dict):
+            return {key: cls._redact_arg(value) for key, value in args.items()}
+        if isinstance(args, tuple):
+            return tuple(cls._redact_arg(arg) for arg in args)
+
+        return args
+
+    @staticmethod
+    def _redact_arg(value: Any) -> Any:
+        """Redact an argument by its string form.
+
+        httpx passes the URL as an ``httpx.URL`` and exceptions carry it in their own
+        string form, so a str-only pass leaves those records with a usable key. Numbers
+        are returned untouched, so a ``%d`` placeholder keeps its type.
+        """
+        if isinstance(value, str):
+            return _redact_url(value)
+        if value is None or isinstance(value, (bool, int, float)):
+            return value
+
+        rendered = str(value)
+        redacted = _redact_url(rendered)
+
+        return redacted if redacted != rendered else value
+
+
+# Loggers that put a URL with credentials into a record and do not reach the root
+# handlers: uvicorn installs its own handlers and sets propagate=False, so the filter has
+# to sit on the logger itself. dictConfig (which uvicorn runs on start-up) drops handlers
+# but keeps logger filters, so installing before mcp.run() is enough.
+_CREDENTIAL_LOGGERS = ("uvicorn", "uvicorn.access", "uvicorn.error", "httpx", "httpcore")
+
+
+def install_token_redaction() -> None:
+    """Attach :class:`TokenRedactingFilter` everywhere a credential can reach a record.
+
+    Call this right after ``logging.basicConfig()`` in every entry point. Idempotent, so a
+    second call does not stack duplicate filters.
+    """
+
+    def attach(target: logging.Logger | logging.Handler) -> None:
+        if not any(isinstance(existing, TokenRedactingFilter) for existing in target.filters):
+            target.addFilter(TokenRedactingFilter())
+
+    for handler in logging.getLogger().handlers:
+        attach(handler)
+    for name in _CREDENTIAL_LOGGERS:
+        attach(logging.getLogger(name))
+
+    # httpx logs every request URL at INFO, which puts the caller's search parameters
+    # (tickers, member ids, date ranges) into operational logs. api_client already logs a
+    # redacted URL at DEBUG, so nothing is lost by keeping httpx quiet.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def _truncate_text(text: str | None, limit: int = 2000) -> str | None:
-    """Trim large response bodies so error payloads stay readable."""
+    """Trim large response bodies so error payloads stay readable.
+
+    The body is redacted as well: EODHD echoes the request URL back in its 404 page, so a
+    raw body would carry the caller's key into the tool result and into every transcript
+    that result lands in.
+    """
     if not text:
         return None
+    text = _redact_url(text)
     if len(text) > limit:
         return text[:limit] + "…"
     return text
@@ -269,7 +404,10 @@ def _extract_api_error_details(response: httpx.Response) -> tuple[str | None, st
         for key in keys:
             value = payload.get(key)
             if isinstance(value, str) and value.strip():
-                return value.strip()
+                # Redacted like the raw body: EODHD answers a malformed request with
+                # {"message": "bad request URL: …?api_token=…"}, and this string ends up
+                # in the ToolError the agent reads.
+                return _redact_url(value.strip())
         return None
 
     error_code = _pick_str("code", "error_code", "errorCode", "type")
@@ -278,7 +416,7 @@ def _extract_api_error_details(response: httpx.Response) -> tuple[str | None, st
     if detail is None:
         error_value = payload.get("error")
         if isinstance(error_value, str) and error_value.strip():
-            detail = error_value.strip()
+            detail = _redact_url(error_value.strip())
 
     return error_code, detail, response_text
 
@@ -317,7 +455,9 @@ def _build_http_error(
     if extra_fields:
         payload.update(extra_fields)
 
-    return payload
+    # Last line of defence: every HTTP error the agent sees is built here, so a caller's
+    # base_message or extra field cannot smuggle a credential out either.
+    return {key: _redact_url(value) if isinstance(value, str) else value for key, value in payload.items()}
 
 
 def _resolve_eodhd_token_from_request() -> str | None:
@@ -341,11 +481,14 @@ def _resolve_eodhd_token_from_request() -> str | None:
     if xkey:
         return xkey.strip()
 
-    # 3) Legacy query params
-    apikey = req.query_params.get("apikey")
-    if apikey:
-        return apikey
-    return req.query_params.get("api_key") or req.query_params.get("token")
+    # 3) Legacy query params. Same aliases as v2, so a caller who passes the key the way
+    # the REST API expects it (api_token) is not silently served the server's env key.
+    for param in ("apikey", "api_key", "api-key", "api_token", "token"):
+        value = req.query_params.get(param)
+        if value:
+            return value
+
+    return None
 
 
 def _ensure_api_token(url: str) -> str:
@@ -361,6 +504,27 @@ def _ensure_api_token(url: str) -> str:
         return url  # best-effort; caller may have other auth patterns
 
     return url + (f"&api_token={token}" if "?" in url else f"?api_token={token}")
+
+
+def _normalize_query_string(url: str) -> str:
+    """Promote the first ``&``-joined query param to ``?`` when the URL has no
+    query start yet.
+
+    Tools assemble query params with ``build_query_param()``, which always emits
+    ``&key=value``. When ``build_url()`` produced no ``?…`` (e.g. the per-call
+    ``api_token`` is absent because the token comes from a header or the env),
+    the first param ends up as ``path&key=value`` — the ``&`` sits before any
+    ``?``, so EODHD reads it as part of the path and returns 404 (SUPPORT-1009).
+    Normalising here fixes every tool at the single HTTP choke point and lets
+    ``_ensure_api_token``'s ``"?" in url`` check append the token with the
+    correct separator. Only the part before any ``#`` fragment is inspected, so
+    an ``&`` inside a fragment is never mistaken for a separator.
+    """
+    head, sep, frag = url.partition("#")
+    if "?" not in head and "&" in head:
+        head = head.replace("&", "?", 1)
+
+    return head + sep + frag
 
 
 def _get_connection_key(url: str) -> str:
@@ -411,7 +575,7 @@ async def make_request(
     - ``response_mode="bytes"`` returns raw ``response.content`` on success.
     - Returns {"error": "..."} on failure.
     """
-    url = _ensure_api_token(url)
+    url = _ensure_api_token(_normalize_query_string(url))
     connection_key = _get_connection_key(url)
     m = (method or "GET").upper()
 
@@ -523,11 +687,12 @@ async def make_request(
 
         except httpx.RequestError as e:
             last_error = e
-            logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, e)
+            logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, _redact_url(str(e)))
 
         except Exception as e:
-            logger.error("Unexpected error: %s", e)
-            return {"error": str(e)}
+            message = _redact_url(str(e))
+            logger.error("Unexpected error: %s", message)
+            return {"error": message}
 
         # Wait before next attempt
         if attempt < retries:
@@ -535,6 +700,6 @@ async def make_request(
             logger.info("Retrying in %.1fs...", delay)
             await _rate_limiter.set_backoff(connection_key, delay)
 
-    error_msg = str(last_error) if last_error else "Unknown error after retries"
+    error_msg = _redact_url(str(last_error)) if last_error else "Unknown error after retries"
     logger.error("All %d retries exhausted: %s", retries, error_msg)
     return {"error": error_msg}

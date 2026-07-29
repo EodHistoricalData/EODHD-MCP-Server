@@ -14,13 +14,19 @@ from app.input_formatter import (
     _parse_to_datetime,
     _to_unix_seconds,
     coerce_page_params,
+    coerce_quarter_param,
     format_date,
     format_date_unix,
     format_date_ymd,
     normalize_csv_upper,
+    sanitize_country_code,
+    sanitize_dimension_code,
+    sanitize_email,
     sanitize_exchange,
     sanitize_ticker,
     split_csv,
+    strip_exchange_suffix,
+    validate_quarter_range,
 )
 from fastmcp.exceptions import ToolError
 
@@ -159,6 +165,47 @@ def test_sanitize_ticker_custom_param_name():
     """Error message includes custom param_name."""
     with pytest.raises(ToolError, match="symbol"):
         sanitize_ticker("", param_name="symbol")
+
+
+# ---------------------------------------------------------------------------
+# strip_exchange_suffix — marketplace providers key on the bare symbol
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("AAPL.US", "AAPL"),
+        ("AAPL", "AAPL"),
+        ("BRK-B.US", "BRK-B"),
+        ("VOD.LSE", "VOD"),
+        ("BMW.XETRA", "BMW"),
+        ("SAP.F", "SAP"),
+        ("BTC-USD.CC", "BTC-USD"),
+        ("EURUSD.FOREX", "EURUSD"),
+        ("BRK.B", "BRK"),
+        ("", ""),
+    ],
+    ids=[
+        "us",
+        "bare",
+        "dash-class-share",
+        "lse",
+        "long-exchange-code",
+        "single-letter-exchange",
+        "crypto",
+        "forex",
+        "dot-class-share-also-stripped",
+        "empty",
+    ],
+)
+def test_strip_exchange_suffix(value, expected):
+    """EODHD writes class shares with a dash (BRK-B.US), so only the exchange part is lost."""
+    assert strip_exchange_suffix(value) == expected
+
+
+def test_strip_exchange_suffix_is_idempotent():
+    assert strip_exchange_suffix(strip_exchange_suffix("AAPL.US")) == "AAPL"
 
 
 # ---------------------------------------------------------------------------
@@ -422,3 +469,139 @@ class TestFormatDateUnix:
 
     def test_empty(self):
         assert format_date_unix("") is None
+
+
+# ---------------------------------------------------------------------------
+# sanitize_email — provider-side report delivery
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("user@example.com", "user@example.com"),
+        ("  user@example.com  ", "user@example.com"),
+        ("first.last+tag@sub.example.co.uk", "first.last+tag@sub.example.co.uk"),
+    ],
+    ids=["plain", "whitespace-padded", "plus-and-subdomain"],
+)
+def test_sanitize_email_valid(value, expected):
+    assert sanitize_email(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        None,
+        123,
+        "   ",
+        "user@example",
+        "user example@mail.com",
+        "user@example.com, other@example.com",
+        "user@example.com;other@example.com",
+        "<user@example.com>",
+        "@example.com",
+    ],
+    ids=[
+        "empty",
+        "none",
+        "int",
+        "whitespace-only",
+        "no-tld",
+        "space-in-local-part",
+        "comma-separated-list",
+        "semicolon-separated-list",
+        "angle-brackets",
+        "missing-local-part",
+    ],
+)
+def test_sanitize_email_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_email(value)
+
+
+def test_sanitize_email_custom_param_name():
+    with pytest.raises(ToolError, match="notify_to"):
+        sanitize_email("", param_name="notify_to")
+
+
+# ---------------------------------------------------------------------------
+# Real Estate helpers — country codes, BIS dimension codes, quarterly periods
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [("US", "US"), ("us", "US"), ("  gb  ", "GB"), ("4T", "4T"), ("5R", "5R"), ("XKX", "XKX")],
+    ids=["iso", "lowercase", "padded", "bis-aggregate", "bis-aggregate-2", "three-letter"],
+)
+def test_sanitize_country_code_valid(value, expected):
+    assert sanitize_country_code(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", None, 12, "U", "TOOLONGCODE", "US/X", "US?x", "U S", "../etc"],
+    ids=["empty", "none", "int", "single-char", "too-long", "slash", "qmark", "space", "traversal"],
+)
+def test_sanitize_country_code_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_country_code(value)
+
+
+@pytest.mark.parametrize(
+    "value,max_length,expected",
+    [("0", 1, "0"), ("2", 2, "2"), ("AB", 2, "AB"), (" 1 ", 1, "1")],
+    ids=["vintage", "single-digit-area", "two-chars", "padded"],
+)
+def test_sanitize_dimension_code_valid(value, max_length, expected):
+    assert sanitize_dimension_code(value, "area", max_length) == expected
+
+
+@pytest.mark.parametrize(
+    "value,max_length",
+    [("ABC", 2), ("AB", 1), ("", 2), ("A/B", 2)],
+    ids=["over-limit", "over-limit-vintage", "empty", "url-breaking"],
+)
+def test_sanitize_dimension_code_rejects(value, max_length):
+    with pytest.raises(ToolError):
+        sanitize_dimension_code(value, "area", max_length)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("2020-Q1", "2020-Q1"),
+        ("2020-q4", "2020-Q4"),
+        ("  1999-Q2  ", "1999-Q2"),
+        (None, None),
+        ("", None),
+        ("   ", None),
+    ],
+    ids=["plain", "lowercase", "padded", "none", "empty", "whitespace"],
+)
+def test_coerce_quarter_param_valid(value, expected):
+    assert coerce_quarter_param(value, "from_period") == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["2020-01-01", "2020Q1", "2020-Q5", "2020-Q0", "20-Q1", "Q1-2020", 2020],
+    ids=["iso-date", "no-dash", "quarter-5", "quarter-0", "short-year", "reversed", "int"],
+)
+def test_coerce_quarter_param_rejects(value):
+    with pytest.raises(ToolError, match="from_period"):
+        coerce_quarter_param(value, "from_period")
+
+
+def test_validate_quarter_range_accepts_ordered_and_partial():
+    validate_quarter_range("2020-Q1", "2024-Q4")
+    validate_quarter_range("2020-Q1", "2020-Q1")
+    validate_quarter_range(None, "2024-Q4")
+    validate_quarter_range("2020-Q1", None)
+
+
+def test_validate_quarter_range_rejects_inverted():
+    with pytest.raises(ToolError, match="later than"):
+        validate_quarter_range("2024-Q4", "2020-Q1")

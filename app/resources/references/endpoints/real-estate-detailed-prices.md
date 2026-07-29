@@ -21,7 +21,7 @@ the All-in-One and Fundamentals plans.
 
 | Parameter | Required | Type | Description |
 |-----------|----------|------|-------------|
-| code (path) | Yes | string | ISO alpha-2 country code, case-insensitive (e.g. `AE`) |
+| code (path) | Yes | string | Country code, case-insensitive: ISO alpha-2 (e.g. `AE`) or a BIS aggregate (e.g. `4T`) |
 | api_token | Yes | string | Your API key |
 | filter[area] | No | string | BIS covered-area dimension code |
 | filter[property_type] | No | string | Property type code |
@@ -31,7 +31,7 @@ the All-in-One and Fundamentals plans.
 | filter[to] | No | string | End period |
 | sort | No | string | `period`, `-period`, `value`, or `-value` |
 | fmt | No | string | `json` (default) or `csv` |
-| page[limit] | No | integer | Records per page, 1–500 (default 50). Above 500 → 422 |
+| page[limit] | No | integer | Records per page, 1–500 upstream (default 50). Above 500 → 422. The MCP tool caps JSON at 250 because a 500-row JSON page exceeds what a client can accept; `fmt=csv` keeps the full 500 |
 | page[offset] | No | integer | Pagination offset, ≥ 0 (default 0) |
 
 ## Response (shape)
@@ -49,8 +49,8 @@ the All-in-One and Fundamentals plans.
       "property_type_label": "All types of dwellings",
       "vintage": "0",
       "vintage_label": "All",
-      "unit_measure": "IX",
-      "unit_measure_label": "Index"
+      "unit_measure": "519: Index, 2005 = 100",
+      "unit_measure_label": null
     }
   ],
   "meta": {
@@ -93,8 +93,8 @@ the All-in-One and Fundamentals plans.
 | property_type_label | string | Human-readable property type |
 | vintage | string | Vintage code |
 | vintage_label | string | Human-readable vintage |
-| unit_measure | string | Unit-of-measure code |
-| unit_measure_label | string \| null | Human-readable unit of measure (may be null) |
+| unit_measure | string | Unit of measure as returned by BIS, e.g. `519: Index, 2005 = 100` |
+| unit_measure_label | string \| null | Extra label; currently null for every row |
 
 ## Example Requests
 
@@ -108,7 +108,8 @@ curl "https://eodhd.com/api/real-estate/US/detailed?api_token=YOUR_TOKEN&filter[
 
 ## Notes
 
-- Country codes are ISO alpha-2 and case-insensitive (normalised to uppercase).
+- Country codes are case-insensitive (normalised to uppercase). Most are ISO alpha-2; the dataset
+  also carries BIS aggregates such as `4T` (emerging markets) and `5R`.
 - Unknown country code → 404 (`Symbol not found`). Unknown filter key → 422.
 - API call consumption: 5 calls per request.
 
@@ -118,7 +119,8 @@ curl "https://eodhd.com/api/real-estate/US/detailed?api_token=YOUR_TOKEN&filter[
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Unauthorized | Invalid API key. Check your `api_token` parameter. |
+| **401** | Unauthorized | Missing or invalid credentials. Check your `api_token` / OAuth connection. |
+| **403** | Forbidden | The account's plan does not include this dataset. |
 | **404** | Not Found | Unknown country code (`Symbol not found`). |
 | **422** | Unprocessable Entity | Invalid filter key or `page[limit]` above 500. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
