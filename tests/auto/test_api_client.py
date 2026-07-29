@@ -43,6 +43,12 @@ class TestRedactUrl:
         assert "api_token=***" in result
         assert "fmt=json" in result
 
+    def test_token_in_parentheses_keeps_the_bracket(self):
+        """An exception message often wraps the URL in brackets."""
+        assert _redact_url("failed (https://eodhd.com/api/eod?api_token=SECRET123)") == (
+            "failed (https://eodhd.com/api/eod?api_token=***)"
+        )
+
     def test_no_token_unchanged(self):
         url = "https://eodhd.com/api/exchanges-list/?fmt=json"
         assert _redact_url(url) == url

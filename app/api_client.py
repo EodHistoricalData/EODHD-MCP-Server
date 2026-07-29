@@ -242,7 +242,7 @@ def _parse_retry_after(header_value: str | None) -> int:
 # The lookbehind keeps unrelated names such as ``page_token`` out. The value ends at a
 # query separator or at the punctuation that surrounds a URL quoted inside an exception
 # message.
-_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_-])(api_token|api_key|api-key|apikey|access_token|token)=[^&\s'\"<>]+")
+_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_-])(api_token|api_key|api-key|apikey|access_token|token)=[^&\s'\"<>()\[\]]+")
 
 
 def _redact_url(url: str) -> str:
@@ -622,7 +622,7 @@ async def make_request(
 
         except httpx.RequestError as e:
             last_error = e
-            logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, e)
+            logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, _redact_url(str(e)))
 
         except Exception as e:
             message = _redact_url(str(e))
