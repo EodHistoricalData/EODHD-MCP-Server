@@ -235,42 +235,82 @@ def _parse_retry_after(header_value: str | None) -> int:
     return _RETRY_AFTER_DEFAULT
 
 
-# Pattern to redact api_token from URLs before logging. The value ends at a query
-# separator or at the punctuation that surrounds a URL quoted inside an exception message.
-_TOKEN_RE = re.compile(r"api_token=[^&\s'\"<>]+")
+# Pattern to redact credentials from URLs before logging. Covers the upstream
+# ``api_token`` and every alias this server accepts on its own endpoint (see
+# _resolve_eodhd_token_from_request): uvicorn logs the request line with its query
+# string, so ``POST /mcp?apikey=…`` would otherwise put a usable key in the access log.
+# The lookbehind keeps unrelated names such as ``page_token`` out. The value ends at a
+# query separator or at the punctuation that surrounds a URL quoted inside an exception
+# message.
+_TOKEN_RE = re.compile(r"(?<![A-Za-z0-9_-])(api_token|api_key|api-key|apikey|access_token|token)=[^&\s'\"<>]+")
 
 
 def _redact_url(url: str) -> str:
-    """Strip api_token values from a URL for safe logging."""
-    return _TOKEN_RE.sub("api_token=***", url)
+    """Strip credential values from a URL for safe logging."""
+    return _TOKEN_RE.sub(r"\1=***", url)
 
 
 class TokenRedactingFilter(logging.Filter):
-    """Scrub api_token values from every log record.
+    """Scrub credential values from every log record.
 
-    Third-party loggers (httpx logs each request URL at INFO) would otherwise write
-    the caller's API key to the server log. Attach this to the root handlers.
+    Third-party loggers would otherwise write the caller's API key to the server log:
+    httpx logs each upstream request URL at INFO, and uvicorn logs this server's own
+    request line, query string included. Attach this to the root handlers.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if self._may_carry_token(record):
+        if isinstance(record.msg, str) and _TOKEN_RE.search(record.msg):
+            # The credential sits in the format string itself (httpx logs
+            # 'GET …?api_token=%s'), so redacting it would eat the placeholder: render the
+            # message first, then drop the arguments.
             record.msg = _redact_url(record.getMessage())
             record.args = ()
+        else:
+            # Keep the argument shape — uvicorn's AccessFormatter unpacks exactly five of
+            # them, and clearing the tuple turns every access line into a logging error.
+            record.args = self._redact_args(record.args)
+        if record.exc_info:
+            record.exc_text = _redact_url(logging.Formatter().formatException(record.exc_info))
 
         return True
 
     @staticmethod
-    def _may_carry_token(record: logging.LogRecord) -> bool:
-        if isinstance(record.msg, str) and "api_token=" in record.msg:
-            return True
-
-        args = record.args
+    def _redact_args(args: Any) -> Any:
         if isinstance(args, dict):
-            return any("api_token=" in value for value in args.values() if isinstance(value, str))
+            return {key: _redact_url(value) if isinstance(value, str) else value for key, value in args.items()}
         if isinstance(args, tuple):
-            return any("api_token=" in arg for arg in args if isinstance(arg, str))
+            return tuple(_redact_url(arg) if isinstance(arg, str) else arg for arg in args)
 
-        return False
+        return args
+
+
+# Loggers that put a URL with credentials into a record and do not reach the root
+# handlers: uvicorn installs its own handlers and sets propagate=False, so the filter has
+# to sit on the logger itself. dictConfig (which uvicorn runs on start-up) drops handlers
+# but keeps logger filters, so installing before mcp.run() is enough.
+_CREDENTIAL_LOGGERS = ("uvicorn", "uvicorn.access", "uvicorn.error", "httpx", "httpcore")
+
+
+def install_token_redaction() -> None:
+    """Attach :class:`TokenRedactingFilter` everywhere a credential can reach a record.
+
+    Call this right after ``logging.basicConfig()`` in every entry point. Idempotent, so a
+    second call does not stack duplicate filters.
+    """
+
+    def attach(target: logging.Logger | logging.Handler) -> None:
+        if not any(isinstance(existing, TokenRedactingFilter) for existing in target.filters):
+            target.addFilter(TokenRedactingFilter())
+
+    for handler in logging.getLogger().handlers:
+        attach(handler)
+    for name in _CREDENTIAL_LOGGERS:
+        attach(logging.getLogger(name))
+
+    # httpx logs every request URL at INFO, which puts the caller's search parameters
+    # (tickers, member ids, date ranges) into operational logs. api_client already logs a
+    # redacted URL at DEBUG, so nothing is lost by keeping httpx quiet.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 def _truncate_text(text: str | None, limit: int = 2000) -> str | None:
@@ -370,11 +410,14 @@ def _resolve_eodhd_token_from_request() -> str | None:
     if xkey:
         return xkey.strip()
 
-    # 3) Legacy query params
-    apikey = req.query_params.get("apikey")
-    if apikey:
-        return apikey
-    return req.query_params.get("api_key") or req.query_params.get("token")
+    # 3) Legacy query params. Same aliases as v2, so a caller who passes the key the way
+    # the REST API expects it (api_token) is not silently served the server's env key.
+    for param in ("apikey", "api_key", "api-key", "api_token", "token"):
+        value = req.query_params.get(param)
+        if value:
+            return value
+
+    return None
 
 
 def _ensure_api_token(url: str) -> str:

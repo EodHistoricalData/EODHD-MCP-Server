@@ -6,7 +6,7 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from app.api_client import TokenRedactingFilter, close_client
+from app.api_client import close_client, install_token_redaction
 from app.prompts import register_all as register_all_prompts
 from app.resources import register_all as register_all_resources
 from app.tools import register_all as register_all_tools
@@ -84,12 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr,
     )
-    for handler in logging.getLogger().handlers:
-        handler.addFilter(TokenRedactingFilter())
-    # httpx logs every request URL at INFO, which puts the caller's search parameters
-    # (tickers, member ids, date ranges) into operational logs. api_client already logs a
-    # redacted URL at DEBUG, so nothing is lost by keeping httpx quiet.
-    logging.getLogger("httpx").setLevel(logging.WARNING)
+    install_token_redaction()
     logger = logging.getLogger("eodhd-mcp")
 
     if unknown:

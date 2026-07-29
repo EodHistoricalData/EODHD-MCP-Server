@@ -13,6 +13,7 @@ import httpx
 import pytest
 import respx
 from app.api_client import (
+    _CREDENTIAL_LOGGERS,
     RETRY_DELAY_MAX,
     TokenRedactingFilter,
     _backoff,
@@ -23,6 +24,7 @@ from app.api_client import (
     _redact_url,
     _resolve_eodhd_token_from_request,
     close_client,
+    install_token_redaction,
     make_request,
     set_rate_limit,
 )
@@ -102,6 +104,21 @@ class TestResolveToken:
         req.query_params = {"api_key": "ak_val"}
         with patch("app.api_client.get_http_request", return_value=req):
             assert _resolve_eodhd_token_from_request() == "ak_val"
+
+    def test_query_param_api_token(self):
+        """The REST API name must work too, so the caller is not served the env key instead."""
+        req = MagicMock()
+        req.headers = {}
+        req.query_params = {"api_token": "rest_style"}
+        with patch("app.api_client.get_http_request", return_value=req):
+            assert _resolve_eodhd_token_from_request() == "rest_style"
+
+    def test_query_param_dashed_api_key(self):
+        req = MagicMock()
+        req.headers = {}
+        req.query_params = {"api-key": "dashed"}
+        with patch("app.api_client.get_http_request", return_value=req):
+            assert _resolve_eodhd_token_from_request() == "dashed"
 
     def test_query_param_token(self):
         req = MagicMock()
@@ -669,6 +686,70 @@ class TestSecretRedactionOnFailures:
         assert TokenRedactingFilter().filter(record) is True
         assert self.SECRET not in record.getMessage()
 
+    @pytest.mark.parametrize(
+        "param",
+        ["api_token", "apikey", "api_key", "api-key", "token", "access_token"],
+    )
+    def test_redacts_every_accepted_credential_param(self, param):
+        """uvicorn logs this server's own request line, so every alias must be scrubbed."""
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='%s - "%s %s HTTP/%s" %d',
+            args=("172.17.0.1:5000", "POST", f"/mcp?{param}={self.SECRET}", "1.1", 200),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+        assert self.SECRET not in record.getMessage()
+        assert f"{param}=***" in record.getMessage()
+
+    def test_uvicorn_access_formatter_still_renders(self):
+        """Clearing record.args turns every uvicorn access line into a logging error."""
+        from uvicorn.logging import AccessFormatter
+
+        record = logging.LogRecord(
+            name="uvicorn.access",
+            level=logging.INFO,
+            pathname=__file__,
+            lineno=1,
+            msg='%s - "%s %s HTTP/%s" %d',
+            args=("172.17.0.1:5000", "POST", f"/mcp?apikey={self.SECRET}", "1.1", 200),
+            exc_info=None,
+        )
+        TokenRedactingFilter().filter(record)
+        line = AccessFormatter(use_colors=False).format(record)
+
+        assert self.SECRET not in line
+        assert "apikey=***" in line
+        assert "POST" in line and "200" in line
+
+    def test_unrelated_token_names_are_left_alone(self):
+        assert _redact_url("https://x.com?page_token=abc&next_token=def") == (
+            "https://x.com?page_token=abc&next_token=def"
+        )
+
+    def test_redacts_token_inside_traceback(self):
+        """A traceback rendered by the formatter must not carry the key either."""
+        try:
+            raise httpx.ConnectError(f"failed for https://eodhd.com/api/eod?api_token={self.SECRET}")
+        except httpx.ConnectError:
+            import sys
+
+            record = logging.LogRecord(
+                name="eodhd-mcp",
+                level=logging.ERROR,
+                pathname=__file__,
+                lineno=1,
+                msg="upstream call failed",
+                args=None,
+                exc_info=sys.exc_info(),
+            )
+        TokenRedactingFilter().filter(record)
+        assert self.SECRET not in (record.exc_text or "")
+        assert "api_token=***" in (record.exc_text or "")
+
     def test_filter_redacts_url_embedded_in_message(self):
         record = logging.LogRecord(
             name="uvicorn.access",
@@ -693,9 +774,73 @@ ENTRY_POINTS = (
 
 
 @pytest.mark.parametrize("entry_point", ENTRY_POINTS)
-def test_startup_keeps_httpx_from_logging_request_urls(entry_point):
-    """httpx logs each request URL at INFO, which would put search parameters in the logs."""
+def test_every_entry_point_installs_the_redaction(entry_point):
+    """A transport that forgets this call logs the caller's key in clear text."""
     source = (pathlib.Path(__file__).resolve().parents[2] / entry_point).read_text()
 
-    assert 'logging.getLogger("httpx").setLevel(logging.WARNING)' in source
-    assert "handler.addFilter(TokenRedactingFilter())" in source
+    assert "install_token_redaction()" in source
+
+
+class TestInstallTokenRedaction:
+    """The install must cover loggers that never reach the root handlers."""
+
+    SECRET = "SECRET_TOKEN_FOR_INSTALL_TEST"
+
+    @staticmethod
+    def _reset(names):
+        for name in names:
+            logger = logging.getLogger(name)
+            logger.filters = [f for f in logger.filters if not isinstance(f, TokenRedactingFilter)]
+        for handler in logging.getLogger().handlers:
+            handler.filters = [f for f in handler.filters if not isinstance(f, TokenRedactingFilter)]
+
+    def test_uvicorn_access_line_is_scrubbed(self):
+        """uvicorn owns its handler and sets propagate=False, so the filter sits on the logger."""
+        logger = logging.getLogger("uvicorn.access")
+        seen: list[str] = []
+
+        class Capture(logging.Handler):
+            def emit(self, record: logging.LogRecord) -> None:
+                seen.append(record.getMessage())
+
+        handler = Capture()
+        logger.addHandler(handler)
+        propagate = logger.propagate
+        logger.propagate = False
+        try:
+            install_token_redaction()
+            logger.warning(
+                '%s - "%s %s HTTP/%s" %d',
+                "172.17.0.1:5000",
+                "POST",
+                f"/mcp?apikey={self.SECRET}",
+                "1.1",
+                200,
+            )
+        finally:
+            logger.removeHandler(handler)
+            logger.propagate = propagate
+            self._reset(_CREDENTIAL_LOGGERS)
+
+        assert seen, "the capturing handler saw no record"
+        assert self.SECRET not in seen[0]
+        assert "apikey=***" in seen[0]
+
+    def test_httpx_is_kept_quiet(self):
+        level = logging.getLogger("httpx").level
+        try:
+            install_token_redaction()
+            assert logging.getLogger("httpx").level == logging.WARNING
+        finally:
+            logging.getLogger("httpx").setLevel(level)
+            self._reset(_CREDENTIAL_LOGGERS)
+
+    def test_repeated_calls_do_not_stack_filters(self):
+        try:
+            install_token_redaction()
+            install_token_redaction()
+            for name in _CREDENTIAL_LOGGERS:
+                installed = [f for f in logging.getLogger(name).filters if isinstance(f, TokenRedactingFilter)]
+                assert len(installed) == 1, name
+        finally:
+            self._reset(_CREDENTIAL_LOGGERS)
