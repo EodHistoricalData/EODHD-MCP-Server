@@ -5,7 +5,7 @@ This folder contains one stub file per endpoint.
 ## Using `retrieve_description_by_id` for Endpoints
 
 - **Type**: `2` (Endpoints)
-- **ID range**: `1` to `78`
+- **ID range**: `1` to `82`
 - **Get this README**: `type=2, id=0`
 - **Get global README**: `type=0`
 
@@ -61,36 +61,40 @@ This folder contains one stub file per endpoint.
 | 46 | Rates Funding Stress |
 | 47 | Rates Policy Rates |
 | 48 | Rates Reference Rates |
-| 49 | Sanctions Entities |
-| 50 | Sanctions Programs |
-| 51 | Sanctions Sources |
-| 52 | Sanctions Vessels |
-| 53 | Sentiment Data |
-| 54 | Stock Market Logos |
-| 55 | Stock Market Logos SVG |
-| 56 | Stock Screener Data |
-| 57 | Stocks From Search |
-| 58 | Symbol Change History |
-| 59 | Technical Indicators |
-| 60 | TradingHours List Markets |
-| 61 | TradingHours Lookup Markets |
-| 62 | TradingHours Market Details |
-| 63 | TradingHours Market Status |
-| 64 | Upcoming Dividends |
-| 65 | Upcoming Earnings |
-| 66 | Upcoming IPOs |
-| 67 | Upcoming Splits |
-| 68 | US Live Extended Quotes |
-| 69 | US Options Contracts |
-| 70 | US Options EOD |
-| 71 | US Options Underlyings |
-| 72 | US Tick Data |
-| 73 | User Details |
-| 74 | UST Bill Rates |
-| 75 | UST Long-Term Rates |
-| 76 | UST Real Yield Rates |
-| 77 | UST Yield Rates |
-| 78 | WebSockets Realtime |
+| 49 | Real Estate Countries |
+| 50 | Real Estate Detailed Prices |
+| 51 | Real Estate Detailed Series |
+| 52 | Real Estate Selected Prices |
+| 53 | Sanctions Entities |
+| 54 | Sanctions Programs |
+| 55 | Sanctions Sources |
+| 56 | Sanctions Vessels |
+| 57 | Sentiment Data |
+| 58 | Stock Market Logos |
+| 59 | Stock Market Logos SVG |
+| 60 | Stock Screener Data |
+| 61 | Stocks From Search |
+| 62 | Symbol Change History |
+| 63 | Technical Indicators |
+| 64 | TradingHours List Markets |
+| 65 | TradingHours Lookup Markets |
+| 66 | TradingHours Market Details |
+| 67 | TradingHours Market Status |
+| 68 | Upcoming Dividends |
+| 69 | Upcoming Earnings |
+| 70 | Upcoming IPOs |
+| 71 | Upcoming Splits |
+| 72 | US Live Extended Quotes |
+| 73 | US Options Contracts |
+| 74 | US Options EOD |
+| 75 | US Options Underlyings |
+| 76 | US Tick Data |
+| 77 | User Details |
+| 78 | UST Bill Rates |
+| 79 | UST Long-Term Rates |
+| 80 | UST Real Yield Rates |
+| 81 | UST Yield Rates |
+| 82 | WebSockets Realtime |
 
 ## Endpoints
 
@@ -172,3 +176,7 @@ This folder contains one stub file per endpoint.
 - Sanctions Screening API - Programs (sanctions-programs.md)
 - Sanctions Screening API - Sources (sanctions-sources.md)
 - Sanctions Screening API - Vessels (sanctions-vessels.md)
+- Real Estate Data API - Countries (real-estate-countries.md)
+- Real Estate Data API - Selected Property Prices (real-estate-selected-prices.md)
+- Real Estate Data API - Detailed Property Prices (real-estate-detailed-prices.md)
+- Real Estate Data API - Detailed Series Catalogue (real-estate-detailed-series.md)

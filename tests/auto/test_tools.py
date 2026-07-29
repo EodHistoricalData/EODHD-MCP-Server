@@ -177,6 +177,26 @@ URL_CASES = [
     ("get_ust_long_term_rates", {}, "get_ust_long_term_rates", ["/ust/long-term-rates"]),
     ("get_ust_real_yield_rates", {}, "get_ust_real_yield_rates", ["/ust/real-yield-rates"]),
     ("get_ust_yield_rates", {}, "get_ust_yield_rates", ["/ust/yield-rates"]),
+    # Real Estate (BIS property prices)
+    ("get_real_estate_countries", {}, "get_real_estate_countries", ["/real-estate/countries", "fmt=json"]),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "us", "type": "real", "metric": "index"},
+        "get_real_estate_selected_prices",
+        ["/real-estate/US", "filter[type]=real", "filter[metric]=index"],
+    ),
+    (
+        "get_real_estate_detailed_prices",
+        {"code": "AE", "property_type": "1"},
+        "get_real_estate_detailed_prices",
+        ["/real-estate/AE/detailed", "filter[property_type]=1"],
+    ),
+    (
+        "get_real_estate_detailed_series",
+        {"code": "us"},
+        "get_real_estate_detailed_series",
+        ["/real-estate/US/detailed/series"],
+    ),
     # Intraday
     ("get_intraday_historical_data", {"ticker": "AAPL.US"}, "get_intraday_historical_data", ["/intraday/AAPL.US"]),
     # Marketplace — indices
@@ -584,6 +604,17 @@ VALIDATION_CASES = [
     ("get_us_options_contracts", {"underlying_symbol": "AAPL/US"}, "(?i)underlying_symbol|break the request url"),
     ("get_us_options_eod", {"contract": "AAPL/US"}, "(?i)contract|break the request url"),
     ("get_mp_investverte_esg_view_company", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
+    # Real Estate — code required, enum + fmt + pagination validation, URL-breaking code
+    ("get_real_estate_selected_prices", {"code": ""}, "required"),
+    ("get_real_estate_detailed_prices", {"code": ""}, "required"),
+    ("get_real_estate_detailed_series", {"code": ""}, "required"),
+    ("get_real_estate_selected_prices", {"code": "US", "type": "bogus"}, "(?i)type|invalid"),
+    ("get_real_estate_selected_prices", {"code": "US", "metric": "bogus"}, "(?i)metric|invalid"),
+    ("get_real_estate_detailed_prices", {"code": "US", "freq": "X"}, "(?i)freq|invalid"),
+    ("get_real_estate_countries", {"fmt": "xml"}, "(?i)fmt|json|csv"),
+    ("get_real_estate_countries", {"limit": 501}, "(?i)limit|between|must be"),
+    ("get_real_estate_countries", {"offset": -1}, "(?i)offset|non-negative|must be"),
+    ("get_real_estate_selected_prices", {"code": "US/X"}, "(?i)code|break the request url"),
     # WebSocket — invalid feed
     ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, "(?i)feed|must be|invalid|supported"),
     # Stock screener — limit range
@@ -769,6 +800,10 @@ ERROR_RESPONSE_TOOLS = [
     ("get_economic_events", {}, "get_economic_events"),
     ("resolve_ticker", {"query": "apple"}, "resolve_ticker"),
     ("get_cboe_indices_list", {}, "get_cboe_indices_list"),
+    ("get_real_estate_countries", {}, "get_real_estate_countries"),
+    ("get_real_estate_selected_prices", {"code": "US"}, "get_real_estate_selected_prices"),
+    ("get_real_estate_detailed_prices", {"code": "US"}, "get_real_estate_detailed_prices"),
+    ("get_real_estate_detailed_series", {"code": "US"}, "get_real_estate_detailed_series"),
     ("mp_indices_list", {}, "get_mp_indices_list"),
     ("get_mp_investverte_esg_list_companies", {}, "get_mp_investverte_esg_list_companies"),
     ("get_mp_investverte_esg_view_company", {"symbol": "AAPL"}, "get_mp_investverte_esg_view_company"),
@@ -887,6 +922,13 @@ SUCCESS_TOOLS = [
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", [{"shares": 1000}]),
     ("get_symbol_change_history", {}, "get_symbol_change_history", [{"old_code": "FB"}]),
     ("get_cboe_indices_list", {}, "get_cboe_indices_list", [{"code": "BDE30P"}]),
+    ("get_real_estate_countries", {}, "get_real_estate_countries", {"data": [{"code": "US"}]}),
+    (
+        "get_real_estate_detailed_series",
+        {"code": "US"},
+        "get_real_estate_detailed_series",
+        {"data": [{"title": "Whole country"}], "meta": {"country_code": "US", "total": 1}},
+    ),
     ("mp_indices_list", {}, "get_mp_indices_list", [{"symbol": "GSPC"}]),
 ]
 
