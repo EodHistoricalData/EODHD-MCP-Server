@@ -314,9 +314,15 @@ def install_token_redaction() -> None:
 
 
 def _truncate_text(text: str | None, limit: int = 2000) -> str | None:
-    """Trim large response bodies so error payloads stay readable."""
+    """Trim large response bodies so error payloads stay readable.
+
+    The body is redacted as well: EODHD echoes the request URL back in its 404 page, so a
+    raw body would carry the caller's key into the tool result and into every transcript
+    that result lands in.
+    """
     if not text:
         return None
+    text = _redact_url(text)
     if len(text) > limit:
         return text[:limit] + "…"
     return text

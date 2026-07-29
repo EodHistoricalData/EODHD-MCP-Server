@@ -672,6 +672,14 @@ class TestSecretRedactionOnFailures:
         assert self.SECRET not in repr(result)
         assert self.SECRET not in self._own_logs(caplog)
 
+    @pytest.mark.asyncio
+    async def test_upstream_body_echoing_the_url_is_redacted(self, caplog):
+        """EODHD's 404 page echoes the request URL, key included."""
+        body = f'<link rel="canonical" href="https://eodhd.com/api/eod/AAPL.US?api_token={self.SECRET}">'
+        result = await self._request(Response(404, text=body), caplog)
+        assert self.SECRET not in repr(result)
+        assert "api_token=***" in repr(result)
+
     def test_filter_redacts_third_party_records(self):
         """httpx logs the full request URL at INFO; the filter must scrub it."""
         record = logging.LogRecord(
