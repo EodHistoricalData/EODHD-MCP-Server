@@ -25,6 +25,7 @@ ALIASED_MODULES = {
     "get_mp_us_options_eod": "get_us_options_eod",
     "get_mp_us_options_underlyings": "get_us_options_underlyings",
     "get_stock_screener_data": "stock_screener",
+    "sec_filings": "get_sec_filings",
 }
 
 

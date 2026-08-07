@@ -191,6 +191,26 @@ URL_CASES = [
         "get_congressional_trades",
         ["/congressional-trades", "symbol=BRK.B&", "page[limit]=5"],
     ),
+    # SEC Filings — path-segment form selector; only list endpoints paginate
+    ("get_sec_filings", {"symbol": "AAPL.US"}, "sec_filings", ["/sec-filings/AAPL.US"]),
+    (
+        "get_sec_filings",
+        {"symbol": "AAPL", "form": "10k", "limit": 100, "offset": 20},
+        "sec_filings",
+        ["/sec-filings/AAPL/10k", "page[limit]=100", "page[offset]=20"],
+    ),
+    (
+        "get_sec_filings",
+        {"symbol": "TSLA.US", "form": "10q"},
+        "sec_filings",
+        ["/sec-filings/TSLA.US/10q"],
+    ),
+    (  # flexible form spelling "8-K" is normalized to the "8k" segment
+        "get_sec_filings",
+        {"symbol": "AAPL.US", "form": "8-K", "limit": 5},
+        "sec_filings",
+        ["/sec-filings/AAPL.US/8k", "page[limit]=5"],
+    ),
     # Technical
     (
         "get_technical_indicators",
