@@ -27,6 +27,7 @@ MAIN_TOOLS: list[str] = [
     "get_historical_splits",
     "get_insider_transactions",
     "get_congressional_trades",
+    "sec_filings",
     "capture_realtime_ws",
     "get_us_tick_data",
     "get_stock_screener_data",
