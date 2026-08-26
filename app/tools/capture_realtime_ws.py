@@ -34,9 +34,17 @@ DEFAULT_MAX_DATA_BYTES = 50 * 1024 * 1024
 # generous for any realistic capture window while still bounding memory.
 DEFAULT_MAX_QUEUE = 1024
 
+# The Cboe equity markets each serve four streams; forex and crypto come from separate
+# providers and have trades only.
 FEED_ENDPOINTS = {
-    "us_trades": "us",  # trades (price, conditions, etc.)
-    "us_quotes": "us-quote",  # quotes (bid/ask)
+    "us_trades": "us",  # trades (price, size, session state)
+    "us_quotes": "us-quote",  # top of book (bid/ask)
+    "us_candles": "us-candles",  # rolling one-minute OHLCV bars
+    "us_status": "us-status",  # trading status / halts
+    "eu_trades": "eu",  # European trades
+    "eu_quotes": "eu-quote",  # European top of book, consolidated across BXE/CXE/DXE
+    "eu_candles": "eu-candles",
+    "eu_status": "eu-status",
     "forex": "forex",
     "crypto": "crypto",
 }
@@ -92,7 +100,7 @@ def register(mcp: FastMCP):
         the user needs live tick-by-tick prices, real-time trades, bid/ask quotes, or streaming
         forex/crypto rates.
 
-        Connects to EODHD WebSocket feeds (us_trades, us_quotes, forex, crypto), subscribes to
+        Connects to EODHD WebSocket feeds, subscribes to
         specified symbols, collects messages for the given duration, then returns all captured
         data at once. Unlike get_live_price_data (REST snapshot), this streams continuous updates.
 
@@ -100,8 +108,13 @@ def register(mcp: FastMCP):
         For historical tick-level trade data (not real-time), use get_us_tick_data.
 
         Args:
-            feed (str): One of {'us_trades','us_quotes','forex','crypto'}.
+            feed (str): One of {'us_trades','us_quotes','us_candles','us_status',
+                'eu_trades','eu_quotes','eu_candles','eu_status','forex','crypto'}.
             symbols (str | list[str]): Single or comma-separated symbols, or a list.
+                US equities use plain tickers ('AAPL'); European equities use
+                TICKER.EXCHANGE ('GSK.LSE'). For a European dual-class ticker the
+                un-hyphenated alias is accepted too, and the reply always reports the
+                canonical hyphenated form in 's'.
                 Returns:
             Object with:
             - feed (str): feed name used
@@ -112,10 +125,22 @@ def register(mcp: FastMCP):
             - ended_at (int): end epoch in ms
             - message_count (int): total messages captured
             - messages (array): captured messages, each varies by feed:
-              - us_trades: s (str, symbol), p (float, price), v (int, volume), t (int, timestamp ms), c (str, conditions)
-              - us_quotes: s (str, symbol), ap (float, ask price), as (int, ask size), bp (float, bid price), bs (int, bid size), t (int, timestamp ms)
-              - forex: s (str, symbol), a (float, ask), b (float, bid), t (int, timestamp ms)
-              - crypto: s (str, symbol), p (float, price), q (float, quantity), t (int, timestamp ms)
+              - us_trades / eu_trades: s (str, symbol), p (float, price), v (int, size),
+                dp (bool, dark pool - always false on this feed), ms (str, one of open |
+                closed | extended-hours), t (int, timestamp ms), c (array, trade conditions -
+                ALWAYS EMPTY on this feed, the exchange top-of-book source carries none)
+              - us_quotes / eu_quotes: s (str, symbol), ap (float, ask price), as (int, ask size), bp (float, bid price), bs (int, bid size), t (int, timestamp ms)
+              - us_candles / eu_candles: s (str, symbol), i (str, interval, '1m'), t (int, bar
+                OPEN timestamp ms), o/h/l/c (float, open/high/low/CLOSE - note c is the close
+                price here, not the conditions array), v (int, size in the bar). The current
+                bar is re-sent on every update, so the same t recurs with a growing v: take
+                the newest message per t rather than summing them.
+              - us_status / eu_status: s (str, symbol), h (str, venue trading-status code,
+                'T' while trading normally), r (str, reason code), t (int, timestamp ms)
+              - forex: s (str, symbol), a (float, ask), b (float, bid), dc (STRING, daily
+                change percent), dd (STRING, daily change absolute), ppms (bool), t (int, timestamp ms)
+              - crypto: s (str, symbol), p (STRING, price), q (STRING, quantity - may use
+                exponent notation such as '1.9e-7'), dc (STRING), dd (STRING), t (int, timestamp ms)
 
         Examples: 'AAPL,MSFT,TSLA' (US), 'EURUSD' (forex), 'ETH-USD,BTC-USD' (crypto).
             duration_seconds (int): How long to capture messages (1..600). Default 5.
