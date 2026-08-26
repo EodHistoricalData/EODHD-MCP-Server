@@ -24,20 +24,23 @@ JsonResponse = ResourceResponse
 # Its upstream text sends the user to support, which is a dead end: both ways out are
 # self-serve. On 402 that text is replaced by this hint rather than stacked next to it,
 # so the agent does not relay "contact support" and "support is not needed" together.
+# Phrased as statements, never as instructions to the agent: an agent that parrots the
+# text verbatim then still reads as a sensible message to the person on the other end.
 QUOTA_CONTROL_PANEL_URL = "https://eodhd.com/cp/dashboard"
 QUOTA_PRICING_URL = "https://eodhd.com/pricing"
 
 QUOTA_EXHAUSTED_HINT = (
     "The daily API-call quota for this EODHD API key is used up. It resets on its own at "
-    "00:00 UTC. Contacting support is not necessary — but what can be done before the reset "
-    "depends on the plan, so check it first with the get_user_details tool, which does not "
-    "consume quota. Paid plans: buy extra API calls (a one-off top-up, spent automatically "
-    "whenever the daily limit is reached, and it does not expire), or raise the daily limit "
-    f"itself — both are in the Daily usage panel of {QUOTA_CONTROL_PANEL_URL}. Free plan: extra "
-    "API calls can be bought in that same panel, but the daily limit cannot be raised without "
-    f"moving to a paid plan ({QUOTA_PRICING_URL}). Give the user only the options that apply to "
-    "them, with the link, and do not retry the request until the quota is topped up or reset."
+    "00:00 UTC, and a retry before then fails again. Support does not need to be contacted: "
+    "on a paid plan there are two self-serve options — extra API calls (a one-off top-up, "
+    "spent automatically whenever the daily limit is reached, and it does not expire) and "
+    f"raising the daily limit itself, both in the Daily usage panel of {QUOTA_CONTROL_PANEL_URL}; "
+    "on the free plan extra API calls can be bought in that same panel, but raising the daily "
+    f"limit requires moving to a paid plan ({QUOTA_PRICING_URL}). Which of the two applies "
+    "depends on the plan this key is on, which the get_user_details tool reports without "
+    "consuming quota."
 )
+
 # Zero-width spaces, bidi overrides, word joiners, BOM, and similar invisible
 # formatting characters that can hide instruction-like text from readers.
 _INVISIBLE_RE = re.compile("[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]")

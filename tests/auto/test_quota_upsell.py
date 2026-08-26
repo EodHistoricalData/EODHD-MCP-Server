@@ -194,6 +194,12 @@ class TestQuotaHint:
 
         assert "contact our support team" not in str(exc.value)
 
+    def test_hint_is_written_as_statements_not_instructions(self):
+        # An agent may parrot the text verbatim; a command reads absurd to the person
+        # on the other end, a statement does not.
+        for imperative in ("Relay ", "Give the user", "Tell the user", "do not retry", "check it first"):
+            assert imperative not in QUOTA_EXHAUSTED_HINT
+
     def test_402_names_both_plan_paths(self):
         payload = {"error": "402", "status_code": 402, "text": QUOTA_402_BODY}
 
@@ -201,8 +207,8 @@ class TestQuotaHint:
             raise_on_api_error(payload)
 
         message = str(exc.value)
-        assert "Paid plans:" in message
-        assert "Free plan:" in message
+        assert "on a paid plan" in message
+        assert "on the free plan" in message
         assert QUOTA_PRICING_URL in message  # free plan needs an upgrade, not a top-up
         assert "get_user_details" in message  # how the agent finds out which one applies
 
