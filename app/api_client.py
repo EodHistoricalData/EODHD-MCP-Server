@@ -11,6 +11,7 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import httpx
 from fastmcp.server.dependencies import get_http_request
 
+from . import quota
 from .config import EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key, get_user_agent
 
 logger = logging.getLogger("eodhd-mcp.api_client")
@@ -74,6 +75,14 @@ def _record_quota_exhausted(redacted_url: str) -> None:
         _quota_exhausted_hits,
         redacted_url,
     )
+
+
+async def _observe_quota(url: str) -> None:
+    """Let the quota watcher read the account, never at the cost of the caller's request."""
+    try:
+        await quota.observe(url, lambda account_url: make_request(account_url, retry_enabled=False))
+    except Exception:
+        logger.debug("Quota observation failed", exc_info=True)
 
 
 def _create_http_client() -> httpx.AsyncClient:
@@ -670,6 +679,10 @@ async def make_request(
 
             response.raise_for_status()
 
+            # A successful call is the only moment the quota is worth reading: it tells
+            # the user they are running out while they can still do something about it.
+            await _observe_quota(url)
+
             if response_mode == "bytes":
                 return response.content
 
@@ -678,7 +691,10 @@ async def make_request(
 
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
-                return response.json()
+                payload = response.json()
+                quota.remember(url, payload)
+
+                return payload
             except ValueError:
                 ct = response.headers.get("content-type", "")
                 text = _truncate_text(response.text)

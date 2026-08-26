@@ -75,6 +75,21 @@ server.py             - entry point, transport selection, argparse
   `raise_on_api_error` appends the self-serve options (extra calls / higher daily
   limit) so the agent can relay them instead of the upstream "contact support" text
 
+## Quota awareness (`app/quota.py`)
+- Every 25th successful call re-reads `GET /api/user` (costs no quota; cached 60s per
+  token) and, at 80% and 95% of the daily limit, attaches a plain-text notice as an
+  extra resource on the response the agent is already receiving. The interval is wider
+  than the free tier's 20 calls/day on purpose — that traffic would buy nothing, and
+  the 402 message covers those users
+- Each threshold is announced once per account per UTC day; the notice travels in a
+  `ContextVar`, never a module global — one process serves many API keys, and a global
+  would surface one account's usage inside another's response
+- `get_user_details` returns a derived `quota` block (remaining, percentUsed, resetsAt,
+  status) next to the raw account fields
+- Notices and the 402 hint are written as statements, never as instructions to the
+  agent: a weak agent quotes tool text verbatim, and the person on the other end must
+  still read something sensible
+
 ### Error handling — by design `make_request()` returns dicts, not exceptions
 `make_request()` returns `{"error": ...}` dicts on failure **by design**. This is
 intentional and must not be "fixed" to raise exceptions. Rationale:

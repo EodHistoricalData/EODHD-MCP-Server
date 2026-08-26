@@ -16,6 +16,8 @@ from fastmcp.exceptions import ToolError
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 from pydantic import AnyUrl
 
+from . import quota
+
 ResourceResponse = list[EmbeddedResource]
 JsonResponse = ResourceResponse
 
@@ -169,30 +171,34 @@ def raise_on_api_error(data: Any) -> None:
 
 def format_text_response(text: str, mime_type: str, *, resource_path: str = "response") -> ResourceResponse:
     """Return textual API data as an EmbeddedResource with its MIME type."""
-    return [
-        EmbeddedResource(
-            type="resource",
-            resource=TextResourceContents(
-                uri=_resource_uri(resource_path),
-                mimeType=mime_type,
-                text=_strip_invisible_chars(text),
-            ),
-        )
-    ]
+    return _with_quota_notice(
+        [
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri=_resource_uri(resource_path),
+                    mimeType=mime_type,
+                    text=_strip_invisible_chars(text),
+                ),
+            )
+        ]
+    )
 
 
 def format_binary_response(data: bytes, mime_type: str, *, resource_path: str = "response") -> ResourceResponse:
     """Return binary API data as a base64-encoded EmbeddedResource."""
-    return [
-        EmbeddedResource(
-            type="resource",
-            resource=BlobResourceContents(
-                uri=_resource_uri(resource_path),
-                mimeType=mime_type,
-                blob=base64.b64encode(data).decode("ascii"),
-            ),
-        )
-    ]
+    return _with_quota_notice(
+        [
+            EmbeddedResource(
+                type="resource",
+                resource=BlobResourceContents(
+                    uri=_resource_uri(resource_path),
+                    mimeType=mime_type,
+                    blob=base64.b64encode(data).decode("ascii"),
+                ),
+            )
+        ]
+    )
 
 
 def format_json_response(data: Any, *, resource_path: str = "response") -> JsonResponse:
@@ -201,13 +207,40 @@ def format_json_response(data: Any, *, resource_path: str = "response") -> JsonR
     if data is None:
         raise ToolError("No response from API.")
     sanitized = _sanitize_data(data)
+    return _with_quota_notice(
+        [
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri=_resource_uri(resource_path),
+                    mimeType="application/json",
+                    text=json.dumps(sanitized, indent=2),
+                ),
+            )
+        ]
+    )
+
+
+def _with_quota_notice(response: ResourceResponse) -> ResourceResponse:
+    """Carry a pending quota notice alongside the data, as its own resource.
+
+    It rides on whatever tool happened to run, which is the point: the user learns the
+    quota is running low during the work, without having to ask. Every formatter drains
+    it, so a notice raised during a CSV or image request is delivered there rather than
+    waiting for the next JSON one.
+    """
+    notice = quota.take_pending_note()
+    if not notice:
+        return response
+
     return [
+        *response,
         EmbeddedResource(
             type="resource",
             resource=TextResourceContents(
-                uri=_resource_uri(resource_path),
-                mimeType="application/json",
-                text=json.dumps(sanitized, indent=2),
+                uri=_resource_uri("quota-notice"),
+                mimeType="text/plain",
+                text=notice,
             ),
-        )
+        ),
     ]
