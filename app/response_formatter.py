@@ -21,21 +21,23 @@ JsonResponse = ResourceResponse
 
 # EODHD returns HTTP 402 from one place only — the daily-quota rate limiters
 # (App\Services\RateLimit\*) — so 402 always means "daily API-call quota spent".
-# Its upstream text points at support, which is a dead end for an agent: both ways
-# out are self-serve. This hint gives the agent the options and the link to relay.
+# Its upstream text sends the user to support, which is a dead end: both ways out are
+# self-serve. On 402 that text is replaced by this hint rather than stacked next to it,
+# so the agent does not relay "contact support" and "support is not needed" together.
 QUOTA_CONTROL_PANEL_URL = "https://eodhd.com/cp/dashboard"
 QUOTA_PRICING_URL = "https://eodhd.com/pricing"
 
 QUOTA_EXHAUSTED_HINT = (
-    "The daily API-call quota for this EODHD API key is spent. It resets on its own at "
-    "00:00 UTC. Two self-serve options are available right now, neither needs support: "
-    "(1) buy extra API calls — a one-off top-up that is spent automatically whenever the "
-    "daily limit is reached, and does not expire; (2) raise the daily limit by changing "
-    f"the plan. Both live in the Daily usage panel at {QUOTA_CONTROL_PANEL_URL} "
-    f"(plan comparison: {QUOTA_PRICING_URL}). Relay both options and the link to the user, "
-    "and do not retry the request until the quota is topped up or reset."
+    "The daily API-call quota for this EODHD API key is used up. It resets on its own at "
+    "00:00 UTC. Contacting support is not necessary — but what can be done before the reset "
+    "depends on the plan, so check it first with the get_user_details tool, which does not "
+    "consume quota. Paid plans: buy extra API calls (a one-off top-up, spent automatically "
+    "whenever the daily limit is reached, and it does not expire), or raise the daily limit "
+    f"itself — both are in the Daily usage panel of {QUOTA_CONTROL_PANEL_URL}. Free plan: extra "
+    "API calls can be bought in that same panel, but the daily limit cannot be raised without "
+    f"moving to a paid plan ({QUOTA_PRICING_URL}). Give the user only the options that apply to "
+    "them, with the link, and do not retry the request until the quota is topped up or reset."
 )
-
 # Zero-width spaces, bidi overrides, word joiners, BOM, and similar invisible
 # formatting characters that can hide instruction-like text from readers.
 _INVISIBLE_RE = re.compile("[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]")
@@ -139,6 +141,12 @@ def raise_on_api_error(data: Any) -> None:
     if status_code is not None:
         message_parts.append(f"status_code={status_code}")
 
+    # A spent daily quota needs no upstream detail: EODHD's text only points at support,
+    # and the hint already says what happened and what the user can do about it.
+    if status_code == 402:
+        message_parts.append(QUOTA_EXHAUSTED_HINT)
+        raise ToolError(" | ".join(message_parts))
+
     error_code, detail = _extract_error_context(data)
     if error_code:
         message_parts.append(f"code={error_code}")
@@ -152,9 +160,6 @@ def raise_on_api_error(data: Any) -> None:
             fallback = str(response_text).strip()
             if fallback and fallback != str(error):
                 message_parts.append(fallback)
-
-    if status_code == 402:
-        message_parts.append(QUOTA_EXHAUSTED_HINT)
 
     raise ToolError(" | ".join(message_parts))
 

@@ -9,7 +9,8 @@ Covers:
   - get_user_agent: identifies MCP traffic, optional per-deployment edition
   - outbound requests carry that User-Agent
   - 402 increments the local quota counter; other statuses do not
-  - raise_on_api_error appends the self-serve options only on 402
+  - raise_on_api_error swaps the upstream support text for the self-serve options,
+    on 402 only, and names the free and paid paths separately
   - version stays in sync across config / pyproject / manifest
 """
 
@@ -28,6 +29,7 @@ from app.config import SERVER_VERSION, get_user_agent
 from app.response_formatter import (
     QUOTA_CONTROL_PANEL_URL,
     QUOTA_EXHAUSTED_HINT,
+    QUOTA_PRICING_URL,
     raise_on_api_error,
 )
 from fastmcp.exceptions import ToolError
@@ -162,7 +164,9 @@ class TestQuotaHint:
         assert "extra API calls" in message
         assert "00:00 UTC" in message
 
-    def test_402_keeps_the_upstream_message(self):
+    def test_402_replaces_the_upstream_support_text(self):
+        # Keeping it would have the agent relay "contact support" and "support is not
+        # necessary" in the same breath.
         payload = {
             "error": "EODHD API request failed with 402 Payment Required.",
             "status_code": 402,
@@ -172,8 +176,35 @@ class TestQuotaHint:
         with pytest.raises(ToolError) as exc:
             raise_on_api_error(payload)
 
-        assert QUOTA_402_BODY in str(exc.value)
-        assert "status_code=402" in str(exc.value)
+        message = str(exc.value)
+        assert QUOTA_402_BODY not in message
+        assert "support@eodhistoricaldata.com" not in message
+        assert "status_code=402" in message
+
+    def test_402_upstream_detail_fields_are_dropped_too(self):
+        payload = {
+            "error": "EODHD API request failed with 402 Payment Required.",
+            "status_code": 402,
+            "upstream_message": "Please, contact our support team.",
+            "error_code": "RATE_LIMIT",
+        }
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        assert "contact our support team" not in str(exc.value)
+
+    def test_402_names_both_plan_paths(self):
+        payload = {"error": "402", "status_code": 402, "text": QUOTA_402_BODY}
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        message = str(exc.value)
+        assert "Paid plans:" in message
+        assert "Free plan:" in message
+        assert QUOTA_PRICING_URL in message  # free plan needs an upgrade, not a top-up
+        assert "get_user_details" in message  # how the agent finds out which one applies
 
     @pytest.mark.parametrize("status_code", [400, 401, 403, 404, 422, 429, 500])
     def test_other_statuses_get_no_upsell(self, status_code):
