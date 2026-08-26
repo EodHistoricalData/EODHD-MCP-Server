@@ -67,6 +67,13 @@ server.py             - entry point, transport selection, argparse
 - Retries disabled by default unless `EODHD_RETRY_ENABLED=true`
 - Auth resolution order: URL `api_token` > HTTP request auth/header/query params > env var
 - API token values are redacted in logs
+- Every request carries `User-Agent: EODHD-MCP-Server/<version>[ (<EODHD_MCP_EDITION>)]`
+  so MCP traffic is identifiable in EODHD's own request logs
+- HTTP 402 means the daily API-call quota is spent (EODHD raises it from its rate
+  limiters only). It is counted in `eodhd-mcp.quota` — EODHD's request log drops 402
+  before writing, so this server is the only place those hits are measurable — and
+  `raise_on_api_error` appends the self-serve options (extra calls / higher daily
+  limit) so the agent can relay them instead of the upstream "contact support" text
 
 ### Error handling — by design `make_request()` returns dicts, not exceptions
 `make_request()` returns `{"error": ...}` dicts on failure **by design**. This is

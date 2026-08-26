@@ -19,6 +19,23 @@ from pydantic import AnyUrl
 ResourceResponse = list[EmbeddedResource]
 JsonResponse = ResourceResponse
 
+# EODHD returns HTTP 402 from one place only — the daily-quota rate limiters
+# (App\Services\RateLimit\*) — so 402 always means "daily API-call quota spent".
+# Its upstream text points at support, which is a dead end for an agent: both ways
+# out are self-serve. This hint gives the agent the options and the link to relay.
+QUOTA_CONTROL_PANEL_URL = "https://eodhd.com/cp/dashboard"
+QUOTA_PRICING_URL = "https://eodhd.com/pricing"
+
+QUOTA_EXHAUSTED_HINT = (
+    "The daily API-call quota for this EODHD API key is spent. It resets on its own at "
+    "00:00 UTC. Two self-serve options are available right now, neither needs support: "
+    "(1) buy extra API calls — a one-off top-up that is spent automatically whenever the "
+    "daily limit is reached, and does not expire; (2) raise the daily limit by changing "
+    f"the plan. Both live in the Daily usage panel at {QUOTA_CONTROL_PANEL_URL} "
+    f"(plan comparison: {QUOTA_PRICING_URL}). Relay both options and the link to the user, "
+    "and do not retry the request until the quota is topped up or reset."
+)
+
 # Zero-width spaces, bidi overrides, word joiners, BOM, and similar invisible
 # formatting characters that can hide instruction-like text from readers.
 _INVISIBLE_RE = re.compile("[\u200b-\u200f\u2028-\u202f\u2060-\u206f\ufeff]")
@@ -135,6 +152,9 @@ def raise_on_api_error(data: Any) -> None:
             fallback = str(response_text).strip()
             if fallback and fallback != str(error):
                 message_parts.append(fallback)
+
+    if status_code == 402:
+        message_parts.append(QUOTA_EXHAUSTED_HINT)
 
     raise ToolError(" | ".join(message_parts))
 
