@@ -67,7 +67,15 @@ def register(mcp: FastMCP):
 
         symbol_clean = sanitize_ticker(symbol, param_name="symbol")
 
-        query = urlencode({"market": market_clean, "symbol": symbol_clean})
+        # Forward a per-call token when the caller supplies one. make_request injects the
+        # env (or request-header) token only when the URL carries none, so omitting the
+        # argument here silently spent the server's own credentials on a caller who had
+        # passed their own — while the docstring promised an override.
+        params = {"market": market_clean, "symbol": symbol_clean}
+        if api_token:
+            params["api_token"] = api_token
+
+        query = urlencode(params)
         url = f"{REALTIME_HOST}/history?{query}"
 
         logger.info("get_realtime_minute_bars market=%s symbol=%s", market_clean, symbol_clean)

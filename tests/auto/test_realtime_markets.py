@@ -64,3 +64,58 @@ async def test_minute_bars_rejects_a_market_without_bars(mcp_with_tools):
     with pytest.raises(ToolError) as exc:
         await captured["fn"](market="crypto", symbol="BTC-USD")
     assert "market" in str(exc.value)
+
+
+def _minute_bars_tool():
+    """Return the registered tool function, without a live FastMCP instance."""
+    from app.tools.get_realtime_minute_bars import register
+
+    captured = {}
+
+    class _Mcp:
+        def tool(self, **_kwargs):
+            def deco(fn):
+                captured["fn"] = fn
+                return fn
+
+            return deco
+
+    register(_Mcp())
+    return captured["fn"]
+
+
+@pytest.mark.asyncio
+async def test_minute_bars_forwards_a_per_call_token():
+    """The documented per-call override has to actually reach the URL.
+
+    ``make_request`` injects the env or request-header token only when the URL carries none,
+    so dropping the argument here does not fail loudly — it quietly answers the caller using
+    the server's own credentials, against the entitlements of the wrong account.
+    """
+    from unittest.mock import AsyncMock, patch
+
+    tool = _minute_bars_tool()
+    with patch(
+        "app.tools.get_realtime_minute_bars.make_request",
+        new_callable=AsyncMock,
+        return_value=[],
+    ) as mock:
+        await tool(market="us", symbol="AAPL", api_token="CALLER_SUPPLIED_KEY")
+
+    assert "api_token=CALLER_SUPPLIED_KEY" in str(mock.call_args_list[0].args[0])
+
+
+@pytest.mark.asyncio
+async def test_minute_bars_leaves_an_absent_token_to_the_client():
+    """With no override, the URL must carry no token at all so make_request supplies it."""
+    from unittest.mock import AsyncMock, patch
+
+    tool = _minute_bars_tool()
+    with patch(
+        "app.tools.get_realtime_minute_bars.make_request",
+        new_callable=AsyncMock,
+        return_value=[],
+    ) as mock:
+        await tool(market="us", symbol="AAPL")
+
+    assert "api_token=" not in str(mock.call_args_list[0].args[0])
