@@ -91,7 +91,11 @@ class _AccountState:
 
     snapshot: QuotaSnapshot | None = None
     fetched_at: float = 0.0
-    attempted_at: float = 0.0
+    # None until a reading has actually been attempted. A sentinel of 0.0 would be
+    # read as "attempted at monotonic zero", which is *recent* on a machine whose
+    # clock starts at boot — that suppressed the very first reading for the first
+    # minute of uptime.
+    attempted_at: float | None = None
     calls_since_check: int = 0
     announced: set[float] = field(default_factory=set)
     announced_on: str = ""
@@ -205,9 +209,9 @@ def _due_for_check(state: _AccountState, now: float) -> bool:
 
     state.calls_since_check = 0
 
-    # Nothing was learned last time either. Waiting out the TTL keeps an outage at one
-    # attempt a minute instead of one every interval.
-    if state.snapshot is None and now - state.attempted_at < SNAPSHOT_TTL_SECONDS:
+    # A previous attempt learned nothing. Waiting out the TTL keeps an outage at one
+    # attempt a minute instead of one every interval; a first attempt is never delayed.
+    if state.snapshot is None and state.attempted_at is not None and now - state.attempted_at < SNAPSHOT_TTL_SECONDS:
         return False
 
     return True

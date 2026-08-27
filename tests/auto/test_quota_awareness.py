@@ -235,6 +235,22 @@ class TestObserve:
         assert len(quota._accounts) == quota.MAX_TRACKED_ACCOUNTS
 
     @pytest.mark.asyncio
+    async def test_first_reading_is_not_suppressed_on_a_freshly_booted_machine(self, monkeypatch):
+        # time.monotonic() counts from boot on Linux, so on a machine up for less than
+        # the TTL the "wait out a failed attempt" guard used to swallow the first
+        # reading — it read the never-attempted sentinel as a recent attempt. CI's
+        # cold runners caught this; a long-running laptop never would.
+        monkeypatch.setattr(quota.time, "monotonic", lambda: 4.0)
+        calls: list[str] = []
+        fetch = await fetch_returning(account_payload(96_000), calls)
+
+        for _ in range(quota.CHECK_EVERY_N_CALLS):
+            await quota.observe("https://eodhd.com/api/eod/AAPL.US?api_token=t", fetch)
+
+        assert len(calls) == 1
+        assert "96%" in (quota.take_pending_note() or "")
+
+    @pytest.mark.asyncio
     async def test_a_failed_reading_is_not_retried_every_interval(self):
         attempts: list[str] = []
 
