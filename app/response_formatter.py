@@ -16,8 +16,32 @@ from fastmcp.exceptions import ToolError
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
 from pydantic import AnyUrl
 
+from . import quota
+
 ResourceResponse = list[EmbeddedResource]
 JsonResponse = ResourceResponse
+
+# EODHD returns HTTP 402 from one place only — the daily-quota rate limiters
+# (App\Services\RateLimit\*) — so 402 always means "daily API-call quota spent".
+# Its upstream text sends the user to support, which is a dead end: both ways out are
+# self-serve. On 402 that text is replaced by this hint rather than stacked next to it,
+# so the agent does not relay "contact support" and "support is not needed" together.
+# Phrased as statements, never as instructions to the agent: an agent that parrots the
+# text verbatim then still reads as a sensible message to the person on the other end.
+QUOTA_CONTROL_PANEL_URL = "https://eodhd.com/cp/dashboard"
+QUOTA_PRICING_URL = "https://eodhd.com/pricing"
+
+QUOTA_EXHAUSTED_HINT = (
+    "The daily API-call quota for this EODHD API key is used up. It resets on its own at "
+    "00:00 UTC, and a retry before then fails again. Support does not need to be contacted: "
+    "on a paid plan there are two self-serve options — extra API calls (a one-off top-up, "
+    "spent automatically whenever the daily limit is reached, and it does not expire) and "
+    f"raising the daily limit itself, both in the Daily usage panel of {QUOTA_CONTROL_PANEL_URL}; "
+    "on the free plan extra API calls can be bought in that same panel, but raising the daily "
+    f"limit requires moving to a paid plan ({QUOTA_PRICING_URL}). Which of the two applies "
+    "depends on the plan this key is on, which the get_user_details tool reports without "
+    "consuming quota."
+)
 
 # Zero-width spaces, bidi overrides, word joiners, BOM, and similar invisible
 # formatting characters that can hide instruction-like text from readers.
@@ -122,6 +146,12 @@ def raise_on_api_error(data: Any) -> None:
     if status_code is not None:
         message_parts.append(f"status_code={status_code}")
 
+    # A spent daily quota needs no upstream detail: EODHD's text only points at support,
+    # and the hint already says what happened and what the user can do about it.
+    if status_code == 402:
+        message_parts.append(QUOTA_EXHAUSTED_HINT)
+        raise ToolError(" | ".join(message_parts))
+
     error_code, detail = _extract_error_context(data)
     if error_code:
         message_parts.append(f"code={error_code}")
@@ -141,30 +171,34 @@ def raise_on_api_error(data: Any) -> None:
 
 def format_text_response(text: str, mime_type: str, *, resource_path: str = "response") -> ResourceResponse:
     """Return textual API data as an EmbeddedResource with its MIME type."""
-    return [
-        EmbeddedResource(
-            type="resource",
-            resource=TextResourceContents(
-                uri=_resource_uri(resource_path),
-                mimeType=mime_type,
-                text=_strip_invisible_chars(text),
-            ),
-        )
-    ]
+    return _with_quota_notice(
+        [
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri=_resource_uri(resource_path),
+                    mimeType=mime_type,
+                    text=_strip_invisible_chars(text),
+                ),
+            )
+        ]
+    )
 
 
 def format_binary_response(data: bytes, mime_type: str, *, resource_path: str = "response") -> ResourceResponse:
     """Return binary API data as a base64-encoded EmbeddedResource."""
-    return [
-        EmbeddedResource(
-            type="resource",
-            resource=BlobResourceContents(
-                uri=_resource_uri(resource_path),
-                mimeType=mime_type,
-                blob=base64.b64encode(data).decode("ascii"),
-            ),
-        )
-    ]
+    return _with_quota_notice(
+        [
+            EmbeddedResource(
+                type="resource",
+                resource=BlobResourceContents(
+                    uri=_resource_uri(resource_path),
+                    mimeType=mime_type,
+                    blob=base64.b64encode(data).decode("ascii"),
+                ),
+            )
+        ]
+    )
 
 
 def format_json_response(data: Any, *, resource_path: str = "response") -> JsonResponse:
@@ -173,13 +207,40 @@ def format_json_response(data: Any, *, resource_path: str = "response") -> JsonR
     if data is None:
         raise ToolError("No response from API.")
     sanitized = _sanitize_data(data)
+    return _with_quota_notice(
+        [
+            EmbeddedResource(
+                type="resource",
+                resource=TextResourceContents(
+                    uri=_resource_uri(resource_path),
+                    mimeType="application/json",
+                    text=json.dumps(sanitized, indent=2),
+                ),
+            )
+        ]
+    )
+
+
+def _with_quota_notice(response: ResourceResponse) -> ResourceResponse:
+    """Carry a pending quota notice alongside the data, as its own resource.
+
+    It rides on whatever tool happened to run, which is the point: the user learns the
+    quota is running low during the work, without having to ask. Every formatter drains
+    it, so a notice raised during a CSV or image request is delivered there rather than
+    waiting for the next JSON one.
+    """
+    notice = quota.take_pending_note()
+    if not notice:
+        return response
+
     return [
+        *response,
         EmbeddedResource(
             type="resource",
             resource=TextResourceContents(
-                uri=_resource_uri(resource_path),
-                mimeType="application/json",
-                text=json.dumps(sanitized, indent=2),
+                uri=_resource_uri("quota-notice"),
+                mimeType="text/plain",
+                text=notice,
             ),
-        )
+        ),
     ]

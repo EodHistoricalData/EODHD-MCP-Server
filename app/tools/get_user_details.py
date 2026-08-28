@@ -6,6 +6,7 @@ from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app import quota
 from app.api_client import make_request
 from app.input_formatter import build_url
 from app.response_formatter import ResourceResponse, format_json_response
@@ -44,14 +45,25 @@ def register(mcp: FastMCP):
             - inviteToken (str): referral invite token
             - inviteTokenClicked (int): invite link click count
             - subscriptionMode (str): subscription billing mode
+            - quota (object): derived usage state — used, limit, remaining,
+              extraCallsInReserve, percentUsed, resetsAt (next 00:00 UTC),
+              and status (ok / near_limit / critical / exhausted)
 
         Examples:
             "What plan am I on?" → get_user_details()
             "How many API calls have I used today?" → get_user_details()
+            "How much of my daily limit is left?" → get_user_details()
         """
         url = build_url("user", {"api_token": api_token})
 
         data = await make_request(url)
+
+        # The raw account payload answers "how many calls have I used" but leaves the
+        # question behind it — how much is left, and when does it come back — as
+        # arithmetic for the reader. Do it here instead.
+        snapshot = quota.snapshot_from_payload(data)
+        if snapshot is not None:
+            data = {**data, "quota": quota.describe(snapshot)}
 
         try:
             return format_json_response(data)

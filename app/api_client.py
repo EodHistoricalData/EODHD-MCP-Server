@@ -11,9 +11,15 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import httpx
 from fastmcp.server.dependencies import get_http_request
 
-from .config import EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key
+from . import quota
+from .config import EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key, get_user_agent
 
 logger = logging.getLogger("eodhd-mcp.api_client")
+
+# Dedicated logger for daily-quota exhaustion (HTTP 402). EODHD's own request log
+# drops 402 before writing, so this server's log is the only place MCP quota hits
+# are counted.
+quota_logger = logging.getLogger("eodhd-mcp.quota")
 
 # Shared HTTP client — created lazily inside a running event loop
 _http_client: httpx.AsyncClient | None = None
@@ -48,9 +54,40 @@ def _get_client_lock() -> asyncio.Lock:
     return _http_client_lock
 
 
+# Count of daily-quota exhaustions (HTTP 402) seen since this process started.
+# Best-effort and per-process: it resets on restart and is not shared across workers.
+# The durable record is the eodhd-mcp.quota log line, one per hit — aggregate from there.
+_quota_exhausted_hits = 0
+
+
+def get_quota_exhausted_hits() -> int:
+    """How many times this process hit the EODHD daily quota since start (best-effort)."""
+    return _quota_exhausted_hits
+
+
+def _record_quota_exhausted(redacted_url: str) -> None:
+    """Log and count one daily-quota exhaustion, so MCP quota hits are measurable."""
+    global _quota_exhausted_hits
+    _quota_exhausted_hits += 1
+
+    quota_logger.warning(
+        "EODHD daily quota exhausted (402) | hits_since_start=%d | %s",
+        _quota_exhausted_hits,
+        redacted_url,
+    )
+
+
+async def _observe_quota(url: str) -> None:
+    """Let the quota watcher read the account, never at the cost of the caller's request."""
+    try:
+        await quota.observe(url, lambda account_url: make_request(account_url, retry_enabled=False))
+    except Exception:
+        logger.debug("Quota observation failed", exc_info=True)
+
+
 def _create_http_client() -> httpx.AsyncClient:
     """Create the shared HTTP client."""
-    return httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+    return httpx.AsyncClient(timeout=httpx.Timeout(30.0), headers={"User-Agent": get_user_agent()})
 
 
 async def _get_http_client() -> httpx.AsyncClient:
@@ -642,6 +679,10 @@ async def make_request(
 
             response.raise_for_status()
 
+            # A successful call is the only moment the quota is worth reading: it tells
+            # the user they are running out while they can still do something about it.
+            await _observe_quota(url)
+
             if response_mode == "bytes":
                 return response.content
 
@@ -650,7 +691,10 @@ async def make_request(
 
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
-                return response.json()
+                payload = response.json()
+                quota.remember(url, payload)
+
+                return payload
             except ValueError:
                 ct = response.headers.get("content-type", "")
                 text = _truncate_text(response.text)
@@ -675,6 +719,9 @@ async def make_request(
 
             # 4xx (except 429 which is handled above) are not retryable
             if 400 <= status < 500:
+                if status == HTTPStatus.PAYMENT_REQUIRED:
+                    _record_quota_exhausted(redacted_url)
+
                 log_parts = [f"Client error {status} for {m} {redacted_url}"]
                 if error_code:
                     log_parts.append(f"code={error_code}")

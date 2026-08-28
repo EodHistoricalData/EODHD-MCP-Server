@@ -86,6 +86,8 @@ MCP_PATH=/mcp
 LOG_LEVEL=INFO
 # Optional:
 EODHD_RETRY_ENABLED=false
+# Deployment label added to the outbound User-Agent (e.g. v1 / v2):
+EODHD_MCP_EDITION=
 ```
 
 ## Running the Server
