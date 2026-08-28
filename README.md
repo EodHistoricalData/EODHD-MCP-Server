@@ -88,6 +88,9 @@ LOG_LEVEL=INFO
 EODHD_RETRY_ENABLED=false
 # Deployment label added to the outbound User-Agent (e.g. v1 / v2):
 EODHD_MCP_EDITION=
+# Usage telemetry — both are required, and nothing is emitted unless both are set:
+EODHD_MCP_TELEMETRY_URL=
+EODHD_MCP_TELEMETRY_KEY=
 ```
 
 ## Running the Server

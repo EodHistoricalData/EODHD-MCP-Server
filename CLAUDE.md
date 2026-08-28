@@ -75,6 +75,22 @@ server.py             - entry point, transport selection, argparse
   `raise_on_api_error` appends the self-serve options (extra calls / higher daily
   limit) so the agent can relay them instead of the upstream "contact support" text
 
+
+## Usage telemetry (`app/telemetry.py`, `app/telemetry_middleware.py`)
+- FastMCP middleware records every tool call, prompt render and resource read — one
+  place, so nothing is missed when a new tool is written and no tool needs editing
+- An event carries: kind and name, outcome (ok / tool_error / api_error /
+  quota_exhausted / error), duration, upstream status, server edition and version,
+  hashed account and session, the client name and version from the MCP `initialize`
+  handshake, and a summary of enumerable arguments
+- Never recorded: tokens (the account is a hash), emails, free-text arguments. Symbols
+  and queries are counted, not kept — see `REPORTED_ARGS`
+- Off unless both `EODHD_MCP_TELEMETRY_URL` and `EODHD_MCP_TELEMETRY_KEY` are set
+- Fire-and-forget by design: bounded queue (oldest dropped, `dropped_events()` counts
+  the blind spot), batched by a background task every 30 s or 200 events, every failure
+  swallowed. A collector that is down or slow must never delay or fail a tool call —
+  which also means the numbers are a floor, not a ledger
+- Collector is Cerebro (DEV-2168); design: eodhdocs `docs/plans/2026-08-27-mcp-usage-analytics.md`
 ## Quota awareness (`app/quota.py`)
 - Every 25th successful call re-reads `GET /api/user` (costs no quota; cached 60s per
   token) and, at 80% and 95% of the daily limit, attaches a plain-text notice as an

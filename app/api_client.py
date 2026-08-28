@@ -12,7 +12,7 @@ import httpx
 from fastmcp.server.dependencies import get_http_request
 
 from . import quota
-from .config import EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key, get_user_agent
+from .config import EODHD_API_BASE, EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key, get_user_agent
 
 logger = logging.getLogger("eodhd-mcp.api_client")
 
@@ -541,6 +541,24 @@ def _ensure_api_token(url: str) -> str:
         return url  # best-effort; caller may have other auth patterns
 
     return url + (f"&api_token={token}" if "?" in url else f"?api_token={token}")
+
+
+def resolve_account_hash() -> str | None:
+    """The account behind the current request, as a hash, or None when unauthenticated.
+
+    Token resolution differs between the two servers, so it is reused rather than
+    reimplemented: ask this repo's own ``_ensure_api_token`` to fill a URL and read back
+    what it put there. The raw token never leaves this function.
+    """
+    try:
+        url = _ensure_api_token(f"{EODHD_API_BASE}/user")
+        token = parse_qs(urlsplit(url).query).get("api_token", [""])[0]
+    except Exception:
+        logger.debug("Account resolution for telemetry failed", exc_info=True)
+
+        return None
+
+    return quota.account_hash(token) if token else None
 
 
 def _normalize_query_string(url: str) -> str:

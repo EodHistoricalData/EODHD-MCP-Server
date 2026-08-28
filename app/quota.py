@@ -117,6 +117,11 @@ def _cache_key(url: str) -> str | None:
     if not token:
         return None
 
+    return account_hash(token)
+
+
+def account_hash(token: str) -> str:
+    """The account's identity for bookkeeping: derived from the token, never the token."""
     return hashlib.sha256(token.encode()).hexdigest()[:16]
 
 
