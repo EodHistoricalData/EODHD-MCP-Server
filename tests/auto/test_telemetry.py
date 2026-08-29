@@ -214,6 +214,9 @@ class TestShipping:
         request = route.calls[0].request
         assert request.headers["X-Admin-Api-Secret"] == "collector-secret"
         assert request.headers["User-Agent"].startswith("EODHD-MCP-Server/")
+        # Without this the collector answers a rejected batch with a 302 to HTML
+        # rather than a 422 that says which field was wrong.
+        assert request.headers["Accept"] == "application/json"
         assert [event["name"] for event in json.loads(request.content)["events"]] == ["get_eod_data"]
         assert telemetry.queued_events() == []
 

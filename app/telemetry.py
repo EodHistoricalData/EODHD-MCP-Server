@@ -245,7 +245,11 @@ async def _post(batch: list[dict[str, Any]]) -> None:
     if _client is None:
         _client = httpx.AsyncClient(
             timeout=httpx.Timeout(REQUEST_TIMEOUT_SECONDS),
-            headers={"User-Agent": get_user_agent()},
+            # Accept is not decoration: the collector is a Laravel app, and without it a
+            # rejected batch comes back as a 302 to an HTML page instead of a 422 naming
+            # the field that was wrong. We drop the batch either way — but one of those
+            # two is readable in a log and the other is not.
+            headers={"User-Agent": get_user_agent(), "Accept": "application/json"},
         )
 
     url = get_collector_url()
