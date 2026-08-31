@@ -78,16 +78,35 @@ def _record_quota_exhausted(redacted_url: str) -> None:
 
 
 async def _observe_quota(url: str) -> None:
-    """Let the quota watcher read the account, never at the cost of the caller's request."""
+    """Let the quota watcher read the account, never at the cost of the caller's request.
+
+    The read stays inside the caller's call on purpose: the notice it may raise travels in
+    a ContextVar and can only reach the response being built right now. Moved to a
+    background task it would set that variable in a context nobody reads, and the feature
+    would go quiet without failing. What it must not do is make the caller wait on a slow
+    upstream, so it carries a timeout of its own — seconds, not the 30 a normal call gets.
+    """
     try:
-        await quota.observe(url, lambda account_url: make_request(account_url, retry_enabled=False))
+        await quota.observe(
+            url,
+            lambda account_url: make_request(
+                account_url,
+                retry_enabled=False,
+                timeout=quota.READ_TIMEOUT_SECONDS,
+            ),
+        )
     except Exception:
         logger.debug("Quota observation failed", exc_info=True)
 
 
 def _create_http_client() -> httpx.AsyncClient:
-    """Create the shared HTTP client."""
-    return httpx.AsyncClient(timeout=httpx.Timeout(30.0), headers={"User-Agent": get_user_agent()})
+    """Create the shared HTTP client.
+
+    Deliberately without a User-Agent default: this client is created once and outlives
+    every later change to EODHD_MCP_EDITION, so a UA frozen here would be the deployment
+    label as it stood at the first request. make_request sets it per request instead.
+    """
+    return httpx.AsyncClient(timeout=httpx.Timeout(30.0))
 
 
 async def _get_http_client() -> httpx.AsyncClient:
@@ -640,6 +659,14 @@ async def make_request(
     req_headers: dict = {}
     if headers:
         req_headers.update(headers)
+
+    # Per request, not per client: the shared client is built once and lives for the whole
+    # process, so a UA set there would freeze EODHD_MCP_EDITION at the first call. A label
+    # that only takes effect after a restart is the label someone sets on a live process
+    # and believes is done — leaving both servers indistinguishable in the logs, which is
+    # the one thing the label exists to prevent.
+    if "user-agent" not in (key.lower() for key in req_headers):
+        req_headers["User-Agent"] = get_user_agent()
 
     # Ensure Content-Type for JSON bodies
     if json_body is not None:

@@ -383,6 +383,30 @@ class TestReachesTheAgent:
 
     @pytest.mark.asyncio
     @respx.mock
+    async def test_the_account_read_cannot_hold_up_the_caller_for_long(self):
+        """The read happens inside a user's call, so it gets seconds, not the usual 30.
+
+        It has to stay in the caller's call: the notice travels in a ContextVar and only
+        reaches the response being built right now. That makes its timeout the whole of
+        the protection — swallowing the error keeps a slow account read from breaking a
+        tool call, but nothing except this stops it from making one crawl.
+        """
+        account = respx.get(url__startswith="https://eodhd.com/api/user").mock(
+            return_value=Response(200, json=account_payload(96_000))
+        )
+        data_route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        for _ in range(quota.CHECK_EVERY_N_CALLS):
+            await make_request("https://eodhd.com/api/eod/AAPL.US?api_token=t")
+
+        assert account.called
+        assert account.calls[0].request.extensions["timeout"]["read"] == quota.READ_TIMEOUT_SECONDS
+        assert quota.READ_TIMEOUT_SECONDS < data_route.calls[0].request.extensions["timeout"]["read"]
+
+    @pytest.mark.asyncio
+    @respx.mock
     async def test_a_calm_account_gets_the_data_alone(self):
         respx.get(url__startswith="https://eodhd.com/api/user").mock(
             return_value=Response(200, json=account_payload(100))

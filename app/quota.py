@@ -35,6 +35,11 @@ logger = logging.getLogger("eodhd-mcp.quota")
 # How long a reading stays fresh, and how many calls pass between readings. Together
 # they bound the overhead at one extra request per minute per account, or one per 25
 # calls, whichever is rarer.
+# The account read runs inside a user's call (see api_client._observe_quota), so it gets a
+# far tighter timeout than a normal request: the notice it may raise is a courtesy, and a
+# courtesy must never be why a tool call feels slow. A read that times out costs one notice.
+READ_TIMEOUT_SECONDS = 3.0
+
 SNAPSHOT_TTL_SECONDS = 60.0
 CHECK_EVERY_N_CALLS = 25
 

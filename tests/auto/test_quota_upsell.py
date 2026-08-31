@@ -93,6 +93,47 @@ class TestUserAgent:
 
     @pytest.mark.asyncio
     @respx.mock
+    async def test_edition_change_reaches_the_wire_without_a_restart(self, monkeypatch):
+        """The property the test above only looks like it covers.
+
+        get_user_agent reading the env every time buys nothing if its one caller runs
+        once. It used to: the UA lived in the shared client's defaults, so the edition
+        was whatever it had been at the first request for the rest of the process —
+        set it on a live server and both deployments stayed indistinguishable in the
+        logs, which is the single thing the label exists to prevent.
+        """
+        await close_client()
+        route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v1")
+        await make_request("https://eodhd.com/api/eod/AAPL.US")
+
+        # No close_client() here on purpose: the same client must carry the new label.
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        await make_request("https://eodhd.com/api/eod/AAPL.US")
+        await close_client()
+
+        assert route.calls[0].request.headers["User-Agent"].endswith("(v1)")
+        assert route.calls[1].request.headers["User-Agent"].endswith("(v2)")
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_caller_supplied_user_agent_is_left_alone(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v1")
+        await close_client()
+        route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        await make_request("https://eodhd.com/api/eod/AAPL.US", headers={"User-Agent": "caller/1.0"})
+        await close_client()
+
+        assert route.calls[0].request.headers["User-Agent"] == "caller/1.0"
+
+    @pytest.mark.asyncio
+    @respx.mock
     async def test_sent_on_outbound_requests(self, monkeypatch):
         monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
         await close_client()  # drop any client built with a different UA
@@ -164,9 +205,12 @@ class TestQuotaHint:
         assert "extra API calls" in message
         assert "00:00 UTC" in message
 
-    def test_402_replaces_the_upstream_support_text(self):
-        # Keeping it would have the agent relay "contact support" and "support is not
-        # necessary" in the same breath.
+    def test_402_leads_with_our_hint_and_keeps_the_upstream_text_behind_it(self):
+        # The hint answers 402 on an assumption about a system that is not ours: that it
+        # comes from the daily-quota limiters and nowhere else. Ours goes first, so an
+        # agent relaying the message explains the quota rather than sending anyone to
+        # support — but the upstream text stays, so a second source of 402 could never
+        # leave the user with only a confident wrong answer.
         payload = {
             "error": "EODHD API request failed with 402 Payment Required.",
             "status_code": 402,
@@ -177,11 +221,11 @@ class TestQuotaHint:
             raise_on_api_error(payload)
 
         message = str(exc.value)
-        assert QUOTA_402_BODY not in message
-        assert "support@eodhistoricaldata.com" not in message
         assert "status_code=402" in message
+        assert message.index(QUOTA_EXHAUSTED_HINT) < message.index(QUOTA_402_BODY)
+        assert f"upstream={QUOTA_402_BODY}" in message
 
-    def test_402_upstream_detail_fields_are_dropped_too(self):
+    def test_402_keeps_upstream_detail_fields_too(self):
         payload = {
             "error": "EODHD API request failed with 402 Payment Required.",
             "status_code": 402,
@@ -192,7 +236,9 @@ class TestQuotaHint:
         with pytest.raises(ToolError) as exc:
             raise_on_api_error(payload)
 
-        assert "contact our support team" not in str(exc.value)
+        message = str(exc.value)
+        assert "upstream=Please, contact our support team." in message
+        assert message.index(QUOTA_EXHAUSTED_HINT) < message.index("upstream=")
 
     def test_hint_is_written_as_statements_not_instructions(self):
         # An agent may parrot the text verbatim; a command reads absurd to the person

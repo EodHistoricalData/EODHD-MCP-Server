@@ -249,7 +249,10 @@ async def _post(batch: list[dict[str, Any]]) -> None:
             # rejected batch comes back as a 302 to an HTML page instead of a 422 naming
             # the field that was wrong. We drop the batch either way — but one of those
             # two is readable in a log and the other is not.
-            headers={"User-Agent": get_user_agent(), "Accept": "application/json"},
+            #
+            # The User-Agent is set per request instead, for the same reason as in
+            # api_client: this client outlives any change to EODHD_MCP_EDITION.
+            headers={"Accept": "application/json"},
         )
 
     url = get_collector_url()
@@ -257,7 +260,11 @@ async def _post(batch: list[dict[str, Any]]) -> None:
     if url is None or key is None:
         return
 
-    response = await _client.post(url, json={"events": batch}, headers={"X-Admin-Api-Secret": key})
+    response = await _client.post(
+        url,
+        json={"events": batch},
+        headers={"X-Admin-Api-Secret": key, "User-Agent": get_user_agent()},
+    )
     response.raise_for_status()
 
 
