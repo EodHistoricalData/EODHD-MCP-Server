@@ -45,8 +45,22 @@ def get_user_agent() -> str:
     the two servers can be told apart; read at call time, like ``get_api_key()``,
     because the env may be set after import, and sanitized because it is deployment
     input that ends up in a request header.
+
+    "At call time" is only worth anything if the callers call it often, so they do: the
+    UA goes on each request rather than into a long-lived client's defaults. Freezing it
+    at client creation looked equivalent and was not — the edition would have been
+    whatever it was at the first request, for the life of the process.
     """
-    edition = _EDITION_ALLOWED_RE.sub("", os.environ.get("EODHD_MCP_EDITION", "").strip())[:_EDITION_MAX_LEN]
+    edition = get_edition()
     base = f"EODHD-MCP-Server/{SERVER_VERSION}"
 
     return f"{base} ({edition})" if edition else base
+
+
+def get_edition() -> str:
+    """The deployment label ("v1" / "v2"), sanitized. Empty when unset.
+
+    Read at call time and stripped to a safe token: it is deployment input that ends up
+    both in a request header and in telemetry.
+    """
+    return _EDITION_ALLOWED_RE.sub("", os.environ.get("EODHD_MCP_EDITION", "").strip())[:_EDITION_MAX_LEN]

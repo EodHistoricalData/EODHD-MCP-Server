@@ -146,10 +146,21 @@ def raise_on_api_error(data: Any) -> None:
     if status_code is not None:
         message_parts.append(f"status_code={status_code}")
 
-    # A spent daily quota needs no upstream detail: EODHD's text only points at support,
-    # and the hint already says what happened and what the user can do about it.
+    # The hint above is built on an assumption about someone else's system — that 402
+    # comes from the daily-quota limiters and nowhere else. That assumption lives in our
+    # code and the system it describes is theirs to change, so the upstream text is kept
+    # as a subordinate detail rather than dropped: should a second source of 402 ever
+    # appear, the user gets a confident explanation AND the real one, not only the wrong
+    # one. Our sentence already says support is not needed, so a relayed "contact
+    # support" below it does not read as advice.
     if status_code == 402:
         message_parts.append(QUOTA_EXHAUSTED_HINT)
+
+        _, upstream_detail = _extract_error_context(data)
+        upstream = upstream_detail or str(data.get("text") or "").strip()
+        if upstream and upstream != str(error):
+            message_parts.append(f"upstream={upstream}")
+
         raise ToolError(" | ".join(message_parts))
 
     error_code, detail = _extract_error_context(data)
