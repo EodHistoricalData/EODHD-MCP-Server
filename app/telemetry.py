@@ -201,7 +201,7 @@ async def flush() -> int:
     if not _queue or not is_enabled():
         return 0
 
-    global _consecutive_failures
+    global _consecutive_failures, _dropped
 
     batch = [_queue.popleft() for _ in range(min(BATCH_SIZE, len(_queue)))]
     try:
@@ -213,10 +213,23 @@ async def flush() -> int:
 
         return 0
     except Exception:
-        # Unreachable, timed out, TLS trouble — transient by nature. Put the batch back
-        # at the front and let the next flush try again; the ring bounds how far this
-        # can grow, and fresher events still win when it overflows.
-        _queue.extendleft(reversed(batch))
+        # Unreachable, timed out, TLS trouble — transient by nature, so the batch goes
+        # back to the front for the next flush to try again.
+        #
+        # Only as much of it as still fits, though. `extendleft` on a full ring evicts
+        # from the RIGHT, and the right is where record() appends — so a blind requeue
+        # discards the freshest events to make room for the stalest, and does it
+        # silently, because _dropped only ever grew in record(). With an unreachable
+        # collector and a live stream of calls that is exactly the case that happens.
+        # The oldest of the batch are the ones to lose, and the loss gets counted.
+        room = max((_queue.maxlen or len(batch)) - len(_queue), 0)
+        if room < len(batch):
+            _dropped += len(batch) - room
+            batch = batch[len(batch) - room :]
+
+        if batch:
+            _queue.extendleft(reversed(batch))
+
         _note_failure(f"collector unreachable, {len(batch)} events requeued")
 
         return 0
@@ -298,14 +311,27 @@ async def shutdown() -> None:
 
 
 def reset_state() -> None:
-    """Drop the queue, the counters and the task handles. For tests."""
+    """Drop the queue, the counters and the task handles. For tests.
+
+    Unlike `shutdown()` this is synchronous and so cannot await `aclose()`. Dropping the
+    reference alone left a connection pool behind on every call — harmless in production,
+    where nothing calls this, but it is a leak per test that touches telemetry. Closed on
+    the running loop when there is one; when there is not, there is no client to close
+    either, since one can only have been created from inside a coroutine.
+    """
     global _worker, _flush_task, _dropped, _consecutive_failures, _client
     _queue.clear()
     _dropped = 0
     _consecutive_failures = 0
     _worker = None
     _flush_task = None
-    _client = None
+
+    client, _client = _client, None
+    if client is not None:
+        try:
+            asyncio.get_running_loop().create_task(client.aclose())
+        except RuntimeError:
+            pass
 
 
 def queued_events() -> list[dict[str, Any]]:

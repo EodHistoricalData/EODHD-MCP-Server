@@ -10,7 +10,6 @@ the recording itself is swallowed.
 """
 
 import logging
-import re
 import time
 from typing import Any
 
@@ -22,12 +21,10 @@ from .api_client import resolve_account_hash
 
 logger = logging.getLogger("eodhd-mcp.telemetry")
 
-_STATUS_RE = re.compile(r"status_code=(\d{3})")
-
 # EODHD raises 402 from its daily-quota limiters and nowhere else, so the status is the
-# reliable signal; the wording is only a fallback for a message that lost it. Keeping a
-# spent quota apart from ordinary tool errors is the difference between "this user needs
-# a bigger plan" and "this tool is broken".
+# reliable signal; the wording is only a fallback for an error that carries no status at
+# all. Keeping a spent quota apart from ordinary tool errors is the difference between
+# "this user needs a bigger plan" and "this tool is broken".
 _QUOTA_STATUS = 402
 _QUOTA_MARKER = "daily API-call quota"
 
@@ -58,12 +55,14 @@ class TelemetryMiddleware(Middleware):
             result = await call_next(context)
         except ToolError as error:
             message = str(error)
-            status_code = _status_from(message)
+            status_code = _status_of(error)
 
-            if status_code == _QUOTA_STATUS or _QUOTA_MARKER in message:
+            if status_code == _QUOTA_STATUS:
                 outcome = "quota_exhausted"
             elif status_code is not None:
                 outcome = "api_error"
+            elif _QUOTA_MARKER in message:
+                outcome = "quota_exhausted"
             else:
                 outcome = "tool_error"
 
@@ -107,17 +106,18 @@ class TelemetryMiddleware(Middleware):
             logger.debug("Recording a telemetry event failed", exc_info=True)
 
 
-def _status_from(message: str) -> int | None:
-    """The upstream status, when the message carries one this server put there.
+def _status_of(error: ToolError) -> int | None:
+    """The upstream status the error carries, if it carries one.
 
-    Bounded to real HTTP codes so a tool that happens to echo "status_code=999" back
-    from user content cannot invent an API failure in the dashboard.
+    Read from the exception rather than from its text: `raise_on_api_error` attaches it
+    where it is known, and the message now also carries the upstream reply, which is not
+    ours to trust. Still bounded to real HTTP codes — the field is typed, but it comes
+    from a JSON body over the wire.
     """
-    match = _STATUS_RE.search(message)
-    if match is None:
-        return None
+    status = getattr(error, "status_code", None)
 
-    status = int(match.group(1))
+    if not isinstance(status, int) or isinstance(status, bool):
+        return None
 
     return status if 100 <= status <= 599 else None
 

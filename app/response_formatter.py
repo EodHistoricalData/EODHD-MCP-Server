@@ -21,6 +21,24 @@ from . import quota
 ResourceResponse = list[EmbeddedResource]
 JsonResponse = ResourceResponse
 
+
+class UpstreamToolError(ToolError):
+    """A ToolError that still knows the upstream HTTP status behind it.
+
+    The telemetry middleware used to recover that status by running a regex over the
+    message text. That worked only while this server wrote the whole message itself,
+    and it no longer does: the upstream response is kept in there now, so a reply that
+    happened to contain "status_code=402" would have been filed as a spent quota. The
+    code travels as a field, and nobody has to read prose to classify a call.
+
+    Subclass rather than a new type, so every existing `except ToolError` still catches
+    it and tools that only render the message are untouched.
+    """
+
+    def __init__(self, message: str, status_code: int | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
 # EODHD returns HTTP 402 from one place only — the daily-quota rate limiters
 # (App\Services\RateLimit\*) — so 402 always means "daily API-call quota spent".
 # Its upstream text sends the user to support, which is a dead end: both ways out are
@@ -161,7 +179,7 @@ def raise_on_api_error(data: Any) -> None:
         if upstream and upstream != str(error):
             message_parts.append(f"upstream={upstream}")
 
-        raise ToolError(" | ".join(message_parts))
+        raise UpstreamToolError(" | ".join(message_parts), status_code)
 
     error_code, detail = _extract_error_context(data)
     if error_code:
@@ -177,7 +195,7 @@ def raise_on_api_error(data: Any) -> None:
             if fallback and fallback != str(error):
                 message_parts.append(fallback)
 
-    raise ToolError(" | ".join(message_parts))
+    raise UpstreamToolError(" | ".join(message_parts), status_code)
 
 
 def format_text_response(text: str, mime_type: str, *, resource_path: str = "response") -> ResourceResponse:
