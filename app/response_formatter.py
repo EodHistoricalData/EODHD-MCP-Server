@@ -39,6 +39,7 @@ class UpstreamToolError(ToolError):
         super().__init__(message)
         self.status_code = status_code
 
+
 # EODHD returns HTTP 402 from one place only — the daily-quota rate limiters
 # (App\Services\RateLimit\*) — so 402 always means "daily API-call quota spent".
 # Its upstream text sends the user to support, which is a dead end: both ways out are
