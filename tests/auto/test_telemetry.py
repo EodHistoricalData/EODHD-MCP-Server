@@ -388,6 +388,46 @@ class TestEditionLabel:
 
         assert event["server"] == "unknown"
 
+    def test_a_long_edition_is_cut_to_what_the_collector_accepts(self, collector, monkeypatch):
+        """The collector refuses the whole batch, not the field.
+
+        `mcp_events.server` is varchar(16) and ingest validates max:16, while the sender
+        caps the env label at 32. A deployment label of, say, "production-us-east-1"
+        therefore passed here and came back 422 — taking up to 200 events with it, and
+        silently, because delivery is fire-and-forget.
+        """
+        monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
+        telemetry.record(**an_event(), server="production-us-east-1")
+
+        [event] = telemetry.queued_events()
+
+        assert len(event["server"]) <= 16
+        assert event["server"] == "production-us-ea"
+
+    def test_a_long_environment_label_is_cut_too(self, collector, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "production-us-east-1")
+        telemetry.record(**an_event())
+
+        [event] = telemetry.queued_events()
+
+        assert len(event["server"]) <= 16
+
+    def test_an_explicit_label_that_sanitises_to_nothing_does_not_borrow_the_environment(
+        self, collector, monkeypatch
+    ):
+        """A missing edition is better than someone else's.
+
+        Falling through to the env here would answer "this mount did not say" with the
+        label of the other mount — the exact confident mislabelling this mechanism was
+        added to stop.
+        """
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        telemetry.record(**an_event(), server="   ")
+
+        [event] = telemetry.queued_events()
+
+        assert event["server"] == "unknown"
+
     def test_the_label_is_sanitised_like_any_other(self, collector, monkeypatch):
         monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
         telemetry.record(**an_event(), server="v1\r\nX-Injected: 1")

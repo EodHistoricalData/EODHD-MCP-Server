@@ -82,15 +82,39 @@ def hash_identifier(value: str) -> str:
 
 MAX_LABEL_LENGTH = 64
 
+# The collector's contract, not ours: mcp_events.server is varchar(16) and the ingest
+# endpoint validates max:16. Exceeding it costs the whole batch, not one field.
+MAX_EDITION_LENGTH = 16
 
-def clean_label(value: Any) -> str | None:
+
+def clean_label(value: Any, max_length: int = MAX_LABEL_LENGTH) -> str | None:
     """Bound a self-reported client name or version — it is untrusted input."""
     if not isinstance(value, str):
         return None
 
-    cleaned = "".join(char for char in value if char.isprintable()).strip()[:MAX_LABEL_LENGTH]
+    cleaned = "".join(char for char in value if char.isprintable()).strip()[:max_length]
 
     return cleaned or None
+
+
+def _edition_label(explicit: str | None) -> str:
+    """Which edition produced this event.
+
+    An explicit label wins outright — including when it sanitises to nothing. The reason
+    it is passed in at all is that the environment cannot tell two mounts apart, so
+    falling back to it would answer a missing edition with a confidently wrong one, and
+    that is the failure this whole mechanism exists to avoid.
+
+    Bounded to what the collector accepts. `mcp_events.server` is varchar(16) and the
+    ingest endpoint validates `max:16`, while the sender's own caps are looser — 32 for
+    the env label, 64 for a generic one. A longer value would therefore be refused
+    together with the entire batch it travelled in, and since delivery is
+    fire-and-forget, up to 200 events would disappear without a word.
+    """
+    if explicit is not None:
+        return clean_label(explicit, MAX_EDITION_LENGTH) or "unknown"
+
+    return clean_label(get_edition(), MAX_EDITION_LENGTH) or "unknown"
 
 
 def summarise_args(arguments: Any) -> dict[str, Any]:
@@ -137,12 +161,7 @@ def record(
         {
             "event_id": str(uuid.uuid4()),
             "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            # An explicit label beats the environment: one process can serve more than one
-            # edition. On prod it does — a single container answers both /v1/mcp and
-            # /v2/mcp — and EODHD_MCP_EDITION is per process, so reading it here would
-            # stamp every event with whichever edition the container calls itself and
-            # quietly mislabel half the traffic. The caller that owns the mount knows.
-            "server": clean_label(server) or get_edition() or "unknown",
+            "server": _edition_label(server),
             "server_version": SERVER_VERSION,
             "client_name": clean_label(client_name),
             "client_version": clean_label(client_version),
