@@ -5,7 +5,7 @@ This folder contains one stub file per endpoint.
 ## Using `retrieve_description_by_id` for Endpoints
 
 - **Type**: `2` (Endpoints)
-- **ID range**: `1` to `83`
+- **ID range**: `1` to `84`
 - **Get this README**: `type=2, id=0`
 - **Get global README**: `type=0`
 
@@ -96,6 +96,7 @@ This folder contains one stub file per endpoint.
 | 81 | Real Estate Detailed Series |
 | 82 | Real Estate Selected Prices |
 | 83 | Congressional Trades |
+| 84 | SEC Filings |
 
 ## Endpoints
 
@@ -181,3 +182,4 @@ This folder contains one stub file per endpoint.
 - Real Estate Data API - Selected Property Prices (real-estate-selected-prices.md)
 - Real Estate Data API - Detailed Property Prices (real-estate-detailed-prices.md)
 - Real Estate Data API - Detailed Series Catalogue (real-estate-detailed-series.md)
+- SEC Filings API (sec-filings.md)

@@ -318,6 +318,7 @@ _PAGE_REGISTRY: dict[int, dict[int, tuple[str, str]]] = {
         81: ("endpoints", "real-estate-detailed-series.md"),
         82: ("endpoints", "real-estate-selected-prices.md"),
         83: ("endpoints", "congressional-trades.md"),
+        84: ("endpoints", "sec-filings.md"),
     },
     # type 3 — general reference
     3: {
@@ -391,7 +392,7 @@ def register(mcp: FastMCP):
         Types:
           0 — Global README / help
           1 — Subscription plans (ids 1-7; id 0 = subscriptions README)
-          2 — Endpoint documentation (ids 1-83; id 0 = endpoints README)
+          2 — Endpoint documentation (ids 1-84; id 0 = endpoints README)
           3 — General reference (ids 1-28; id 0 = general README)
 
         Subscription plan pages (type=1):
