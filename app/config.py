@@ -1,5 +1,6 @@
 # app/config.py
 import os
+import re
 
 from dotenv import load_dotenv
 
@@ -22,3 +23,44 @@ EODHD_RETRY_ENABLED: bool = os.environ.get("EODHD_RETRY_ENABLED", "").lower() in
 # Per-connection rate-limit delay in seconds.  Disabled (0.0) by default.
 # Set EODHD_RATE_LIMIT_DELAY to a positive float (e.g. "0.1") to enable.
 EODHD_RATE_LIMIT_DELAY: float = float(os.environ.get("EODHD_RATE_LIMIT_DELAY", "0.0"))
+
+# Server version — keep in sync with pyproject.toml and manifest.json.
+# tests/auto/test_quota_upsell.py fails the build if the three drift apart.
+SERVER_VERSION = "2.3.2"
+
+
+# Characters allowed in the edition label. The value reaches an HTTP header, so a
+# stray newline in the deployment env would otherwise break every outbound request.
+_EDITION_ALLOWED_RE = re.compile(r"[^A-Za-z0-9._-]")
+_EDITION_MAX_LEN = 32
+
+
+def get_user_agent() -> str:
+    """User-Agent sent on every EODHD API request.
+
+    Identifies MCP traffic in EODHD's own request logs, which otherwise sees the
+    default httpx UA and cannot tell MCP apart from any other Python client.
+
+    ``EODHD_MCP_EDITION`` (e.g. "v1" / "v2") is optional and set per deployment so
+    the two servers can be told apart; read at call time, like ``get_api_key()``,
+    because the env may be set after import, and sanitized because it is deployment
+    input that ends up in a request header.
+
+    "At call time" is only worth anything if the callers call it often, so they do: the
+    UA goes on each request rather than into a long-lived client's defaults. Freezing it
+    at client creation looked equivalent and was not — the edition would have been
+    whatever it was at the first request, for the life of the process.
+    """
+    edition = get_edition()
+    base = f"EODHD-MCP-Server/{SERVER_VERSION}"
+
+    return f"{base} ({edition})" if edition else base
+
+
+def get_edition() -> str:
+    """The deployment label ("v1" / "v2"), sanitized. Empty when unset.
+
+    Read at call time and stripped to a safe token: it is deployment input that ends up
+    both in a request header and in telemetry.
+    """
+    return _EDITION_ALLOWED_RE.sub("", os.environ.get("EODHD_MCP_EDITION", "").strip())[:_EDITION_MAX_LEN]

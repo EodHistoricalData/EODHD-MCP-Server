@@ -11,9 +11,15 @@ from urllib.parse import parse_qs, unquote, urlsplit
 import httpx
 from fastmcp.server.dependencies import get_http_request
 
-from .config import EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key
+from . import quota
+from .config import EODHD_API_BASE, EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key, get_user_agent
 
 logger = logging.getLogger("eodhd-mcp.api_client")
+
+# Dedicated logger for daily-quota exhaustion (HTTP 402). EODHD's own request log
+# drops 402 before writing, so this server's log is the only place MCP quota hits
+# are counted.
+quota_logger = logging.getLogger("eodhd-mcp.quota")
 
 # Shared HTTP client — created lazily inside a running event loop
 _http_client: httpx.AsyncClient | None = None
@@ -48,8 +54,58 @@ def _get_client_lock() -> asyncio.Lock:
     return _http_client_lock
 
 
+# Count of daily-quota exhaustions (HTTP 402) seen since this process started.
+# Best-effort and per-process: it resets on restart and is not shared across workers.
+# The durable record is the eodhd-mcp.quota log line, one per hit — aggregate from there.
+_quota_exhausted_hits = 0
+
+
+def get_quota_exhausted_hits() -> int:
+    """How many times this process hit the EODHD daily quota since start (best-effort)."""
+    return _quota_exhausted_hits
+
+
+def _record_quota_exhausted(redacted_url: str) -> None:
+    """Log and count one daily-quota exhaustion, so MCP quota hits are measurable."""
+    global _quota_exhausted_hits
+    _quota_exhausted_hits += 1
+
+    quota_logger.warning(
+        "EODHD daily quota exhausted (402) | hits_since_start=%d | %s",
+        _quota_exhausted_hits,
+        redacted_url,
+    )
+
+
+async def _observe_quota(url: str) -> None:
+    """Let the quota watcher read the account, never at the cost of the caller's request.
+
+    The read stays inside the caller's call on purpose: the notice it may raise travels in
+    a ContextVar and can only reach the response being built right now. Moved to a
+    background task it would set that variable in a context nobody reads, and the feature
+    would go quiet without failing. What it must not do is make the caller wait on a slow
+    upstream, so it carries a timeout of its own — seconds, not the 30 a normal call gets.
+    """
+    try:
+        await quota.observe(
+            url,
+            lambda account_url: make_request(
+                account_url,
+                retry_enabled=False,
+                timeout=quota.READ_TIMEOUT_SECONDS,
+            ),
+        )
+    except Exception:
+        logger.debug("Quota observation failed", exc_info=True)
+
+
 def _create_http_client() -> httpx.AsyncClient:
-    """Create the shared HTTP client."""
+    """Create the shared HTTP client.
+
+    Deliberately without a User-Agent default: this client is created once and outlives
+    every later change to EODHD_MCP_EDITION, so a UA frozen here would be the deployment
+    label as it stood at the first request. make_request sets it per request instead.
+    """
     return httpx.AsyncClient(timeout=httpx.Timeout(30.0))
 
 
@@ -506,6 +562,24 @@ def _ensure_api_token(url: str) -> str:
     return url + (f"&api_token={token}" if "?" in url else f"?api_token={token}")
 
 
+def resolve_account_hash() -> str | None:
+    """The account behind the current request, as a hash, or None when unauthenticated.
+
+    Token resolution differs between the two servers, so it is reused rather than
+    reimplemented: ask this repo's own ``_ensure_api_token`` to fill a URL and read back
+    what it put there. The raw token never leaves this function.
+    """
+    try:
+        url = _ensure_api_token(f"{EODHD_API_BASE}/user")
+        token = parse_qs(urlsplit(url).query).get("api_token", [""])[0]
+    except Exception:
+        logger.debug("Account resolution for telemetry failed", exc_info=True)
+
+        return None
+
+    return quota.account_hash(token) if token else None
+
+
 def _normalize_query_string(url: str) -> str:
     """Promote the first ``&``-joined query param to ``?`` when the URL has no
     query start yet.
@@ -586,6 +660,14 @@ async def make_request(
     if headers:
         req_headers.update(headers)
 
+    # Per request, not per client: the shared client is built once and lives for the whole
+    # process, so a UA set there would freeze EODHD_MCP_EDITION at the first call. A label
+    # that only takes effect after a restart is the label someone sets on a live process
+    # and believes is done — leaving both servers indistinguishable in the logs, which is
+    # the one thing the label exists to prevent.
+    if "user-agent" not in (key.lower() for key in req_headers):
+        req_headers["User-Agent"] = get_user_agent()
+
     # Ensure Content-Type for JSON bodies
     if json_body is not None:
         if "content-type" not in (k.lower() for k in req_headers):
@@ -642,6 +724,10 @@ async def make_request(
 
             response.raise_for_status()
 
+            # A successful call is the only moment the quota is worth reading: it tells
+            # the user they are running out while they can still do something about it.
+            await _observe_quota(url)
+
             if response_mode == "bytes":
                 return response.content
 
@@ -650,7 +736,10 @@ async def make_request(
 
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
-                return response.json()
+                payload = response.json()
+                quota.remember(url, payload)
+
+                return payload
             except ValueError:
                 ct = response.headers.get("content-type", "")
                 text = _truncate_text(response.text)
@@ -675,6 +764,9 @@ async def make_request(
 
             # 4xx (except 429 which is handled above) are not retryable
             if 400 <= status < 500:
+                if status == HTTPStatus.PAYMENT_REQUIRED:
+                    _record_quota_exhausted(redacted_url)
+
                 log_parts = [f"Client error {status} for {m} {redacted_url}"]
                 if error_code:
                     log_parts.append(f"code={error_code}")

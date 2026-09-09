@@ -29,6 +29,7 @@ MAIN_TOOLS: list[str] = [
     "get_congressional_trades",
     "sec_filings",
     "capture_realtime_ws",
+    "get_realtime_minute_bars",
     "get_us_tick_data",
     "get_stock_screener_data",
     "get_economic_events",

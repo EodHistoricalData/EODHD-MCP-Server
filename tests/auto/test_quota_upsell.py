@@ -1,0 +1,293 @@
+# tests/auto/test_quota_upsell.py
+"""Tests for the daily-quota (HTTP 402) path.
+
+EODHD returns 402 from its rate limiters only, and its own request log drops 402
+before writing, so this server is where a quota hit becomes visible and where the
+agent is told what the user can actually do about it.
+
+Covers:
+  - get_user_agent: identifies MCP traffic, optional per-deployment edition
+  - outbound requests carry that User-Agent
+  - 402 increments the local quota counter; other statuses do not
+  - raise_on_api_error swaps the upstream support text for the self-serve options,
+    on 402 only, and names the free and paid paths separately
+  - version stays in sync across config / pyproject / manifest
+"""
+
+import json
+import pathlib
+import re
+
+import pytest
+import respx
+from app.api_client import (
+    close_client,
+    get_quota_exhausted_hits,
+    make_request,
+)
+from app.config import SERVER_VERSION, get_user_agent
+from app.response_formatter import (
+    QUOTA_CONTROL_PANEL_URL,
+    QUOTA_EXHAUSTED_HINT,
+    QUOTA_PRICING_URL,
+    raise_on_api_error,
+)
+from fastmcp.exceptions import ToolError
+from httpx import Response
+
+QUOTA_402_BODY = "API Rate Limit Exceeded. Please, contact our support team: support@eodhistoricaldata.com"
+
+REPO_ROOT = pathlib.Path(__file__).resolve().parents[2]
+
+
+# ---------------------------------------------------------------------------
+# get_user_agent
+# ---------------------------------------------------------------------------
+
+
+class TestUserAgent:
+    def test_identifies_the_mcp_server(self, monkeypatch):
+        monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
+        assert get_user_agent() == f"EODHD-MCP-Server/{SERVER_VERSION}"
+
+    def test_edition_suffix_when_set(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        assert get_user_agent() == f"EODHD-MCP-Server/{SERVER_VERSION} (v2)"
+
+    def test_blank_edition_is_ignored(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "   ")
+        assert get_user_agent() == f"EODHD-MCP-Server/{SERVER_VERSION}"
+
+    def test_control_characters_are_stripped(self, monkeypatch):
+        # A newline in the deployment env would otherwise make httpx reject the header.
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2\r\nX-Injected: 1")
+        agent = get_user_agent()
+
+        assert "\n" not in agent and "\r" not in agent
+        assert agent == f"EODHD-MCP-Server/{SERVER_VERSION} (v2X-Injected1)"
+
+    def test_edition_is_length_capped(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v" * 100)
+        assert get_user_agent() == f"EODHD-MCP-Server/{SERVER_VERSION} ({'v' * 32})"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_sanitized_edition_still_builds_a_client(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v1\nbad")
+        await close_client()
+
+        route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        await make_request("https://eodhd.com/api/eod/AAPL.US")
+        await close_client()
+
+        assert route.calls[0].request.headers["User-Agent"] == f"EODHD-MCP-Server/{SERVER_VERSION} (v1bad)"
+
+    def test_read_at_call_time(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v1")
+        first = get_user_agent()
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        assert get_user_agent() != first
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_edition_change_reaches_the_wire_without_a_restart(self, monkeypatch):
+        """The property the test above only looks like it covers.
+
+        get_user_agent reading the env every time buys nothing if its one caller runs
+        once. It used to: the UA lived in the shared client's defaults, so the edition
+        was whatever it had been at the first request for the rest of the process —
+        set it on a live server and both deployments stayed indistinguishable in the
+        logs, which is the single thing the label exists to prevent.
+        """
+        await close_client()
+        route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v1")
+        await make_request("https://eodhd.com/api/eod/AAPL.US")
+
+        # No close_client() here on purpose: the same client must carry the new label.
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        await make_request("https://eodhd.com/api/eod/AAPL.US")
+        await close_client()
+
+        assert route.calls[0].request.headers["User-Agent"].endswith("(v1)")
+        assert route.calls[1].request.headers["User-Agent"].endswith("(v2)")
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_caller_supplied_user_agent_is_left_alone(self, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v1")
+        await close_client()
+        route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        await make_request("https://eodhd.com/api/eod/AAPL.US", headers={"User-Agent": "caller/1.0"})
+        await close_client()
+
+        assert route.calls[0].request.headers["User-Agent"] == "caller/1.0"
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_sent_on_outbound_requests(self, monkeypatch):
+        monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
+        await close_client()  # drop any client built with a different UA
+
+        route = respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(200, json=[{"close": 150.0}])
+        )
+
+        await make_request("https://eodhd.com/api/eod/AAPL.US")
+        await close_client()
+
+        assert route.calls[0].request.headers["User-Agent"] == f"EODHD-MCP-Server/{SERVER_VERSION}"
+
+
+# ---------------------------------------------------------------------------
+# quota counter
+# ---------------------------------------------------------------------------
+
+
+class TestQuotaCounter:
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_402_is_counted_and_logged(self, caplog):
+        respx.get(url__startswith="https://eodhd.com/api/eod/AAPL.US").mock(
+            return_value=Response(402, text=QUOTA_402_BODY)
+        )
+
+        before = get_quota_exhausted_hits()
+        with caplog.at_level("WARNING", logger="eodhd-mcp.quota"):
+            result = await make_request("https://eodhd.com/api/eod/AAPL.US?api_token=SECRET123")
+
+        assert result["status_code"] == 402
+        assert get_quota_exhausted_hits() == before + 1
+        assert "EODHD daily quota exhausted (402)" in caplog.text
+        assert "SECRET123" not in caplog.text  # the URL is redacted before logging
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_other_client_errors_are_not_counted(self):
+        respx.get(url__startswith="https://eodhd.com/api/eod/BAD").mock(
+            return_value=Response(403, json={"error": "Forbidden"})
+        )
+
+        before = get_quota_exhausted_hits()
+        await make_request("https://eodhd.com/api/eod/BAD")
+
+        assert get_quota_exhausted_hits() == before
+
+
+# ---------------------------------------------------------------------------
+# raise_on_api_error — what the agent reads
+# ---------------------------------------------------------------------------
+
+
+class TestQuotaHint:
+    def test_402_carries_the_self_serve_options(self):
+        payload = {
+            "error": "EODHD API request failed with 402 Payment Required.",
+            "status_code": 402,
+            "text": QUOTA_402_BODY,
+        }
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        message = str(exc.value)
+        assert QUOTA_EXHAUSTED_HINT in message
+        assert QUOTA_CONTROL_PANEL_URL in message
+        assert "extra API calls" in message
+        assert "00:00 UTC" in message
+
+    def test_402_leads_with_our_hint_and_keeps_the_upstream_text_behind_it(self):
+        # The hint answers 402 on an assumption about a system that is not ours: that it
+        # comes from the daily-quota limiters and nowhere else. Ours goes first, so an
+        # agent relaying the message explains the quota rather than sending anyone to
+        # support — but the upstream text stays, so a second source of 402 could never
+        # leave the user with only a confident wrong answer.
+        payload = {
+            "error": "EODHD API request failed with 402 Payment Required.",
+            "status_code": 402,
+            "text": QUOTA_402_BODY,
+        }
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        message = str(exc.value)
+        assert "status_code=402" in message
+        assert message.index(QUOTA_EXHAUSTED_HINT) < message.index(QUOTA_402_BODY)
+        assert f"upstream={QUOTA_402_BODY}" in message
+
+    def test_402_keeps_upstream_detail_fields_too(self):
+        payload = {
+            "error": "EODHD API request failed with 402 Payment Required.",
+            "status_code": 402,
+            "upstream_message": "Please, contact our support team.",
+            "error_code": "RATE_LIMIT",
+        }
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        message = str(exc.value)
+        assert "upstream=Please, contact our support team." in message
+        assert message.index(QUOTA_EXHAUSTED_HINT) < message.index("upstream=")
+
+    def test_hint_is_written_as_statements_not_instructions(self):
+        # An agent may parrot the text verbatim; a command reads absurd to the person
+        # on the other end, a statement does not.
+        for imperative in ("Relay ", "Give the user", "Tell the user", "do not retry", "check it first"):
+            assert imperative not in QUOTA_EXHAUSTED_HINT
+
+    def test_402_names_both_plan_paths(self):
+        payload = {"error": "402", "status_code": 402, "text": QUOTA_402_BODY}
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        message = str(exc.value)
+        assert "on a paid plan" in message
+        assert "on the free plan" in message
+        assert QUOTA_PRICING_URL in message  # free plan needs an upgrade, not a top-up
+        assert "get_user_details" in message  # how the agent finds out which one applies
+
+    @pytest.mark.parametrize("status_code", [400, 401, 403, 404, 422, 429, 500])
+    def test_other_statuses_get_no_upsell(self, status_code):
+        payload = {
+            "error": f"EODHD API request failed with {status_code}.",
+            "status_code": status_code,
+        }
+
+        with pytest.raises(ToolError) as exc:
+            raise_on_api_error(payload)
+
+        assert QUOTA_CONTROL_PANEL_URL not in str(exc.value)
+
+    def test_successful_payload_is_untouched(self):
+        assert raise_on_api_error({"close": 150.0}) is None
+
+
+# ---------------------------------------------------------------------------
+# version sync — the User-Agent is only useful if the version is truthful
+# ---------------------------------------------------------------------------
+
+
+class TestVersionSync:
+    def test_matches_pyproject(self):
+        pyproject = (REPO_ROOT / "pyproject.toml").read_text()
+        match = re.search(r'^version = "([^"]+)"', pyproject, re.MULTILINE)
+
+        assert match is not None
+        assert match.group(1) == SERVER_VERSION
+
+    def test_matches_manifest(self):
+        manifest = json.loads((REPO_ROOT / "manifest.json").read_text())
+
+        assert manifest["version"] == SERVER_VERSION
