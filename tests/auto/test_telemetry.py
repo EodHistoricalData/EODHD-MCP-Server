@@ -355,6 +355,117 @@ def server_with_telemetry() -> FastMCP:
     return mcp
 
 
+class TestEditionLabel:
+    """Which edition an event is stamped with, and who decides.
+
+    Production runs one container that answers both /v1/mcp and /v2/mcp. The edition is
+    therefore a property of the mount, not of the process, and EODHD_MCP_EDITION alone
+    cannot express that — set it and half the traffic is mislabelled, which is worse than
+    the "unknown" it replaces.
+    """
+
+    def test_an_explicit_edition_wins_over_the_environment(self, collector, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        telemetry.record(**an_event(), server="v1")
+
+        [event] = telemetry.queued_events()
+
+        assert event["server"] == "v1"
+
+    def test_the_environment_still_decides_when_nothing_is_passed(self, collector, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        telemetry.record(**an_event())
+
+        [event] = telemetry.queued_events()
+
+        assert event["server"] == "v2"
+
+    def test_unknown_when_neither_is_set(self, collector, monkeypatch):
+        monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
+        telemetry.record(**an_event())
+
+        [event] = telemetry.queued_events()
+
+        assert event["server"] == "unknown"
+
+    def test_a_long_edition_is_cut_to_what_the_collector_accepts(self, collector, monkeypatch):
+        """The collector refuses the whole batch, not the field.
+
+        `mcp_events.server` is varchar(16) and ingest validates max:16, while the sender
+        caps the env label at 32. A deployment label of, say, "production-us-east-1"
+        therefore passed here and came back 422 — taking up to 200 events with it, and
+        silently, because delivery is fire-and-forget.
+        """
+        monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
+        telemetry.record(**an_event(), server="production-us-east-1")
+
+        [event] = telemetry.queued_events()
+
+        assert len(event["server"]) <= 16
+        assert event["server"] == "production-us-ea"
+
+    def test_a_long_environment_label_is_cut_too(self, collector, monkeypatch):
+        monkeypatch.setenv("EODHD_MCP_EDITION", "production-us-east-1")
+        telemetry.record(**an_event())
+
+        [event] = telemetry.queued_events()
+
+        assert len(event["server"]) <= 16
+
+    def test_an_explicit_label_that_sanitises_to_nothing_does_not_borrow_the_environment(
+        self, collector, monkeypatch
+    ):
+        """A missing edition is better than someone else's.
+
+        Falling through to the env here would answer "this mount did not say" with the
+        label of the other mount — the exact confident mislabelling this mechanism was
+        added to stop.
+        """
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+        telemetry.record(**an_event(), server="   ")
+
+        [event] = telemetry.queued_events()
+
+        assert event["server"] == "unknown"
+
+    def test_the_label_is_sanitised_like_any_other(self, collector, monkeypatch):
+        monkeypatch.delenv("EODHD_MCP_EDITION", raising=False)
+        telemetry.record(**an_event(), server="v1\r\nX-Injected: 1")
+
+        [event] = telemetry.queued_events()
+
+        assert "\n" not in event["server"] and "\r" not in event["server"]
+
+    @pytest.mark.asyncio
+    async def test_two_mounts_in_one_process_get_their_own_labels(self, collector, monkeypatch):
+        """The case that made this necessary: one process, two editions.
+
+        The environment says "v2" throughout, as it would in the container; each mount
+        still reports itself correctly.
+        """
+        monkeypatch.setenv("EODHD_MCP_EDITION", "v2")
+
+        from app.telemetry_middleware import install as install_telemetry
+
+        def a_server(edition: str) -> FastMCP:
+            mcp: FastMCP = FastMCP(f"probe-{edition}")
+
+            @mcp.tool
+            def ping() -> str:
+                """A tool that touches nothing."""
+                return "pong"
+
+            install_telemetry(mcp, edition)
+
+            return mcp
+
+        for edition in ("v1", "v2"):
+            async with Client(a_server(edition)) as client:
+                await client.call_tool("ping", {})
+
+        assert [event["server"] for event in telemetry.queued_events()] == ["v1", "v2"]
+
+
 class TestRequeue:
     """What happens to a batch the collector could not take."""
 
