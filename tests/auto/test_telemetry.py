@@ -14,11 +14,14 @@ Covers:
 import asyncio
 import json
 
+from collections import deque
+
 import httpx
 import pytest
 import respx
 from app import telemetry
 from app.config import SERVER_VERSION
+from app.response_formatter import UpstreamToolError
 from app.telemetry_middleware import TelemetryMiddleware
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
@@ -321,12 +324,23 @@ def server_with_telemetry() -> FastMCP:
     @mcp.tool
     def broken_tool() -> str:
         """A tool that fails."""
-        raise ToolError("EODHD API request failed with 403 Forbidden. | status_code=403")
+        raise UpstreamToolError("EODHD API request failed with 403 Forbidden. | status_code=403", 403)
 
     @mcp.tool
     def out_of_quota() -> str:
         """A tool that hits the daily limit."""
-        raise ToolError("status_code=402 | The daily API-call quota for this EODHD API key is used up.")
+        raise UpstreamToolError(
+            "status_code=402 | The daily API-call quota for this EODHD API key is used up.", 402
+        )
+
+    @mcp.tool
+    def upstream_echoes_a_quota_code() -> str:
+        """A tool whose upstream reply happens to contain a quota-looking status."""
+        raise UpstreamToolError(
+            "EODHD API request failed with 500. | status_code=500 | "
+            "upstream=service unavailable, see status_code=402 in the docs",
+            500,
+        )
 
     @mcp.resource("eodhd://docs/{page}")
     def docs(page: str) -> str:
@@ -339,6 +353,59 @@ def server_with_telemetry() -> FastMCP:
         return f"Analyse {ticker}"
 
     return mcp
+
+
+class TestRequeue:
+    """What happens to a batch the collector could not take."""
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_a_requeue_keeps_the_freshest_and_counts_what_it_cannot(self, collector, monkeypatch):
+        """A full ring plus a returning batch used to lose events without saying so.
+
+        `extendleft` evicts from the right, and the right is where record() appends —
+        so putting a stale batch back discarded the newest events to make room for the
+        oldest, and `_dropped` never noticed, because it only grew in record(). The
+        trigger is the ordinary one: an unreachable collector while calls keep coming.
+        """
+        monkeypatch.setattr(telemetry, "_queue", deque(maxlen=4))
+
+        def fill_the_queue_then_fail(request: httpx.Request) -> Response:
+            # Events keep arriving while we wait on a collector that will not answer.
+            # This is the only moment the queue can be full when the batch comes back.
+            for index in range(4):
+                telemetry.record(**an_event(name=f"fresh_{index}"))
+
+            raise httpx.ConnectError("collector unreachable")
+
+        respx.post(COLLECTOR).mock(side_effect=fill_the_queue_then_fail)
+
+        telemetry.record(**an_event(name="stale_0"))
+        telemetry.record(**an_event(name="stale_1"))
+
+        shipped = await telemetry.flush()
+
+        assert shipped == 0
+        assert [event["name"] for event in telemetry.queued_events()] == [
+            "fresh_0",
+            "fresh_1",
+            "fresh_2",
+            "fresh_3",
+        ]
+        assert telemetry.dropped_events() == 2
+
+    @pytest.mark.asyncio
+    @respx.mock
+    async def test_a_requeue_with_room_loses_nothing(self, collector, monkeypatch):
+        monkeypatch.setattr(telemetry, "_queue", deque(maxlen=8))
+        respx.post(COLLECTOR).mock(side_effect=httpx.ConnectError("collector unreachable"))
+
+        telemetry.record(**an_event(name="a"))
+        telemetry.record(**an_event(name="b"))
+
+        assert await telemetry.flush() == 0
+        assert [event["name"] for event in telemetry.queued_events()] == ["a", "b"]
+        assert telemetry.dropped_events() == 0
 
 
 @pytest.mark.usefixtures("collector")
@@ -379,6 +446,25 @@ class TestMiddleware:
 
         assert event["outcome"] == "quota_exhausted"
         assert event["status_code"] == 402
+
+    @pytest.mark.asyncio
+    async def test_an_upstream_reply_cannot_pass_itself_off_as_a_spent_quota(self):
+        """The reason the status stopped being read out of the message text.
+
+        The upstream response now travels inside the message, and it is not ours to
+        vouch for. While the outcome was decided by a regex over that text, a reply
+        that merely mentioned status_code=402 was filed as a spent quota — a call that
+        failed for an unrelated reason would have shown up in the dashboard as a user
+        who needs a bigger plan.
+        """
+        with pytest.raises(ToolError):
+            async with Client(server_with_telemetry()) as client:
+                await client.call_tool("upstream_echoes_a_quota_code", {})
+
+        [event] = telemetry.queued_events()
+
+        assert event["status_code"] == 500
+        assert event["outcome"] == "api_error"
 
     @pytest.mark.asyncio
     async def test_records_a_prompt(self):
