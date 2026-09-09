@@ -1180,6 +1180,29 @@ SUCCESS_TOOLS = [
         {"data": [{"title": "Whole country"}], "meta": {"country_code": "US", "total": 1}},
     ),
     ("mp_indices_list", {}, "get_mp_indices_list", [{"symbol": "GSPC"}]),
+    # Restored after prod and main turned out to be different lineages: these three
+    # answered on prod for months while main had never carried them. Registration alone
+    # would not have caught the port — the tools imported fine and every call raised,
+    # because format_json_response is sync here and was awaitable on the branch they
+    # came from. A success-path case is what proves a tool actually returns.
+    (
+        "get_asx_corporate_actions",
+        {"limit": 2},
+        "get_asx_corporate_actions",
+        {"data": [{"code": "WMX.AU", "date": "2026-12-16", "value": 0.0068}]},
+    ),
+    (
+        "get_historical_commodity_prices",
+        {"code": "BRENT"},
+        "get_historical_commodity_prices",
+        {"meta": {"name": "Crude Oil Prices: Brent - Europe"}, "data": [{"date": "2026-08-01", "value": 89.75}]},
+    ),
+    (
+        "get_insider_transactions_form4",
+        {"symbol": "AAPL"},
+        "get_insider_transactions_form4",
+        {"data": [{"accession_number": "0001140361-26-035636", "filed_at": "2026-09-03"}]},
+    ),
 ]
 
 
