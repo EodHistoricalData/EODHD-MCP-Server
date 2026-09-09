@@ -30,7 +30,17 @@ _QUOTA_MARKER = "daily API-call quota"
 
 
 class TelemetryMiddleware(Middleware):
-    """Records what was called, by whom, how long it took and how it ended."""
+    """Records what was called, by whom, how long it took and how it ended.
+
+    ``edition`` labels the events this instance produces ("v1" / "v2"). It is passed in
+    rather than read from the environment because a single process can host more than
+    one edition: in production one container serves both /v1/mcp and /v2/mcp, and an
+    env var cannot tell them apart. Left unset, the environment still decides, which
+    keeps the single-server and stdio cases working unchanged.
+    """
+
+    def __init__(self, edition: str | None = None) -> None:
+        self.edition = edition
 
     async def on_call_tool(self, context: MiddlewareContext, call_next: Any) -> Any:
         return await self._observe("tool", getattr(context.message, "name", "unknown"), context, call_next)
@@ -100,6 +110,7 @@ class TelemetryMiddleware(Middleware):
                 client_version=client_version,
                 status_code=status_code,
                 args=telemetry.summarise_args(getattr(context.message, "arguments", None)),
+                server=self.edition,
             )
         except Exception:
             # Telemetry is never worth breaking a call that already succeeded.
@@ -149,6 +160,9 @@ def _session_facts(context: MiddlewareContext) -> tuple[str | None, str | None, 
     return getattr(client_info, "name", None), getattr(client_info, "version", None), session_hash
 
 
-def install(mcp: Any) -> None:
-    """Attach the middleware to a FastMCP instance."""
-    mcp.add_middleware(TelemetryMiddleware())
+def install(mcp: Any, edition: str | None = None) -> None:
+    """Attach the middleware to a FastMCP instance.
+
+    Pass ``edition`` where one process hosts several — see TelemetryMiddleware.
+    """
+    mcp.add_middleware(TelemetryMiddleware(edition))

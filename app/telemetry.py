@@ -123,6 +123,7 @@ def record(
     client_version: str | None = None,
     status_code: int | None = None,
     args: dict[str, Any] | None = None,
+    server: str | None = None,
 ) -> None:
     """Queue one event. Cheap, synchronous, and silent when telemetry is off."""
     if not is_enabled():
@@ -136,7 +137,12 @@ def record(
         {
             "event_id": str(uuid.uuid4()),
             "occurred_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
-            "server": get_edition() or "unknown",
+            # An explicit label beats the environment: one process can serve more than one
+            # edition. On prod it does — a single container answers both /v1/mcp and
+            # /v2/mcp — and EODHD_MCP_EDITION is per process, so reading it here would
+            # stamp every event with whichever edition the container calls itself and
+            # quietly mislabel half the traffic. The caller that owns the mount knows.
+            "server": clean_label(server) or get_edition() or "unknown",
             "server_version": SERVER_VERSION,
             "client_name": clean_label(client_name),
             "client_version": clean_label(client_version),
