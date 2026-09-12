@@ -9,7 +9,7 @@ from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
 from app.input_formatter import build_url, sanitize_ticker
-from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
+from app.response_formatter import format_text_response, raise_on_api_error
 
 logger = logging.getLogger(__name__)
 
@@ -31,13 +31,19 @@ def _normalize_symbols(symbols: Iterable[str] | None) -> list[str]:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Live (Delayed) Prices", readOnlyHint=True))
+@mcp.tool(
+    annotations=ToolAnnotations(
+        title="Live (Delayed) Prices",
+        readOnlyHint=True,
+        destructiveHint=False,
+    )
+)
     async def get_live_price_data(
         ticker: str,
         additional_symbols: Sequence[str] | None = None,
         fmt: str = "json",
         api_token: str | None = None,
-    ) -> ResourceResponse:
+      ):
         """
 
         Get the current (delayed ~15-20 min) price snapshot for one or more tickers.
@@ -115,4 +121,4 @@ def register(mcp: FastMCP):
                 raise ToolError("Unexpected CSV response format from API.")
             return format_text_response(data, "text/csv", resource_path=f"real-time/{ticker}.csv")
 
-        return format_json_response(data)
+       return data
