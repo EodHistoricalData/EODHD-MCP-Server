@@ -166,9 +166,31 @@ class TestSummariseArgs:
         assert summary == {"tenor_count": 3}
 
     def test_free_text_is_dropped_entirely(self):
-        summary = telemetry.summarise_args({"query": "Apple Inc", "api_token": "secret", "symbol": "AAPL.US"})
+        summary = telemetry.summarise_args({"query": "Apple Inc", "api_token": "secret"})
 
         assert summary == {}
+
+    def test_the_instrument_is_kept(self):
+        summary = telemetry.summarise_args({"ticker": "AAPL.US", "symbol": "BTC-USD.CC", "code": "SOFR"})
+
+        assert summary == {"ticker": "AAPL.US", "symbol": "BTC-USD.CC", "code": "SOFR"}
+
+    def test_an_instrument_argument_holding_a_sentence_is_only_counted(self):
+        # Free text does not become recordable by arriving under the name of a ticker.
+        summary = telemetry.summarise_args({"ticker": "the apple one", "symbol": "Tesla Inc"})
+
+        assert summary == {}
+
+    def test_an_instrument_is_normalised(self):
+        # Same instrument, three spellings, one row on the dashboard.
+        summary = telemetry.summarise_args({"ticker": " aapl.us ", "code": "us", "symbol": "AAPL.US"})
+
+        assert summary == {"ticker": "AAPL.US", "code": "US", "symbol": "AAPL.US"}
+
+    def test_several_instruments_are_still_only_counted(self):
+        summary = telemetry.summarise_args({"symbols": "AAPL.US,MSFT.US"})
+
+        assert summary == {"symbols_count": 2}
 
     def test_long_values_are_truncated(self):
         summary = telemetry.summarise_args({"exchange": "X" * 100})
@@ -342,6 +364,16 @@ def server_with_telemetry() -> FastMCP:
             500,
         )
 
+    @mcp.tool
+    def fails_without_a_status() -> str:
+        """A tool that fails with nothing to blame upstream for."""
+        raise ToolError("the server could not build the request")
+
+    @mcp.tool
+    def explodes() -> str:
+        """A tool that raises an ordinary exception."""
+        raise ValueError("unexpected")
+
     @mcp.resource("eodhd://docs/{page}")
     def docs(page: str) -> str:
         """A resource that never touches the API."""
@@ -467,6 +499,34 @@ class TestMiddleware:
         assert event["outcome"] == "api_error"
 
     @pytest.mark.asyncio
+    async def test_a_failure_with_no_upstream_status_is_a_tool_error(self):
+        with pytest.raises(ToolError):
+            async with Client(server_with_telemetry()) as client:
+                await client.call_tool("fails_without_a_status", {})
+
+        [event] = telemetry.queued_events()
+
+        assert event["outcome"] == "tool_error"
+        assert event["status_code"] is None
+
+    @pytest.mark.asyncio
+    async def test_an_unexpected_exception_is_the_same_outcome(self):
+        """One name for a failure that ended here.
+
+        This path used to report `error` while the ToolError path above reported
+        `tool_error`: two bars on the dashboard for the same thing, neither carrying a
+        status code, and nothing in the data to tell a reader which was which.
+        """
+        with pytest.raises(ToolError):
+            async with Client(server_with_telemetry()) as client:
+                await client.call_tool("explodes", {})
+
+        [event] = telemetry.queued_events()
+
+        assert event["outcome"] == "tool_error"
+        assert event["status_code"] is None
+
+    @pytest.mark.asyncio
     async def test_records_a_prompt(self):
         async with Client(server_with_telemetry()) as client:
             await client.get_prompt("analyze_stock", {"ticker": "AAPL.US"})
@@ -475,7 +535,7 @@ class TestMiddleware:
 
         assert event["kind"] == "prompt"
         assert event["name"] == "analyze_stock"
-        assert event["args"] == {}  # the ticker is content, and content is not recorded
+        assert event["args"] == {"ticker": "AAPL.US"}  # which instrument, never why
 
     @pytest.mark.asyncio
     async def test_records_a_resource_read(self):

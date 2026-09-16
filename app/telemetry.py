@@ -13,7 +13,8 @@ stays off unless both ``EODHD_MCP_TELEMETRY_URL`` and ``EODHD_MCP_TELEMETRY_KEY`
 set, so a deployment without a collector emits nothing at all.
 
 What is deliberately not collected: tokens (an account is a hash), emails, and free-text
-arguments. Only enumerable argument values are kept — see ``REPORTED_ARGS``.
+arguments. What is kept: the enumerable argument values (``REPORTED_ARGS``) and the
+instrument an argument names when it is ticker-shaped (``INSTRUMENT_ARGS``).
 """
 
 import asyncio
@@ -21,6 +22,7 @@ import contextlib
 import hashlib
 import logging
 import os
+import re
 import time
 import uuid
 from collections import deque
@@ -44,10 +46,21 @@ MAX_QUEUED_EVENTS = 2_000
 REQUEST_TIMEOUT_SECONDS = 5.0
 
 # Argument names worth keeping. Every one of them is a short enumerable value — an
-# exchange, a market, an interval. Symbols, queries and anything else free-text are
-# counted, never recorded: they are user content, and this is a usage metric.
+# exchange, a market, an interval.
 REPORTED_ARGS = frozenset({"exchange", "market", "interval", "period", "order", "fmt", "asset_type", "type"})
+
+# Arguments that name an instrument rather than describe one: a ticker, a series code.
+# These are not enumerable, but they are not user content either — a market identifier is
+# a public name for a security, and it is the one argument that says which markets people
+# come to the MCP for. Without it the recorded arguments answer no product question at all.
+# The guard is the pair of conditions: the argument carries one of these names AND the
+# value is a single token from the charset tickers are written in. That is a shape check,
+# not a validator — it stops sentences, addresses and anything with a space, not a one-word
+# string someone chose to send as a ticker. Values are upper-cased because that is how
+# EODHD writes them, so `AAPL.US` and `aapl.us` do not become two rows on the dashboard.
+INSTRUMENT_ARGS = frozenset({"ticker", "symbol", "symbols", "code"})
 MAX_ARG_LENGTH = 24
+TICKER_PATTERN = re.compile(rf"^[A-Za-z0-9._:^=-]{{1,{MAX_ARG_LENGTH}}}$")
 
 # Every mutation below happens between awaits on one event loop, so the module state
 # needs no lock; the only concurrency is the shipping task, which yields only inside the
@@ -94,7 +107,7 @@ def clean_label(value: Any) -> str | None:
 
 
 def summarise_args(arguments: Any) -> dict[str, Any]:
-    """Keep the enumerable arguments, count the rest, record nothing that is content."""
+    """Keep the enumerable arguments and the instrument, count the rest, record no content."""
     if not isinstance(arguments, dict):
         return {}
 
@@ -107,6 +120,11 @@ def summarise_args(arguments: Any) -> dict[str, Any]:
         elif isinstance(value, str) and "," in value:
             # Comma-separated lists are how several tools take multiple symbols.
             summary[f"{name}_count"] = len([part for part in value.split(",") if part.strip()])
+        elif name in INSTRUMENT_ARGS and isinstance(value, str):
+            # Last, so that a multi-symbol request is still only counted, never listed.
+            instrument = value.strip().upper()
+            if TICKER_PATTERN.match(instrument):
+                summary[name] = instrument
 
     return summary
 
