@@ -147,7 +147,7 @@ The API returns standard HTTP status codes to indicate success or failure:
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Unauthorized | Invalid API key. Check your `api_token` parameter. |
+| **403** | Forbidden | The plan on this API key does not include News. News comes with All-In-One, the Fundamentals Data Feed and EOD Historical Data, as the standalone Corporate Events Calendar & News Feed package, and on the free plan within its daily allowance. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
 
 ### Error Response Format

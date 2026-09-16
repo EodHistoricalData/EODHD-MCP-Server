@@ -10,7 +10,7 @@ minimal text sanitization:
 import base64
 import json
 import re
-from typing import Any
+from typing import Any, NoReturn
 
 from fastmcp.exceptions import ToolError
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
@@ -61,6 +61,44 @@ QUOTA_EXHAUSTED_HINT = (
     "depends on the plan this key is on, which the get_user_details tool reports without "
     "consuming quota."
 )
+
+# EODHD answers 403 when the plan behind the key does not cover the data an endpoint
+# serves. A missing or mistyped token answers 401 and a spent daily quota answers 402, so
+# 403 is the one status a retry or a key check never fixes — yet the upstream text for it
+# says "invalid API key", which sends the user to inspect a token that is fine. Our own
+# sentence goes ahead of that upstream text rather than replacing it, so a second source
+# of 403 could never leave the user with only a confident wrong answer (as for 402 below).
+# Statements, never instructions to the agent: it may relay the text verbatim.
+PLAN_GATED_HINT = (
+    "This EODHD API key's plan does not cover the data this tool reads — that is what a 403 means "
+    "here, and a retry with the same key fails the same way. A missing or mistyped api_token "
+    "answers 401 instead, and a spent daily quota answers 402. The plan this key is on is reported "
+    "by the get_user_details tool without consuming quota, and what each plan covers is at "
+    f"{QUOTA_PRICING_URL}."
+)
+
+PLAN_NEWS_URL = "https://eodhd.com/financial-apis/stock-market-financial-news-api"
+PLAN_BULK_FUNDAMENTALS_URL = "https://eodhd.com/financial-apis/bulk-fundamentals-api-via-extended-fundamentals-plan"
+
+# Added after the sentence above for the endpoints whose data is packaged separately, where
+# "this plan does not include it" leaves the obvious follow-up question unanswered: which plan
+# does, and is there a cheaper way to the same numbers. Keyed by tool name — a tool passes its
+# own name to raise_on_api_error(); a tool without an entry gets the generic sentence alone.
+PLAN_HINTS: dict[str, str] = {
+    "get_company_news": (
+        "News is included with the All-In-One plan, the Fundamentals Data Feed and the EOD Historical "
+        "Data plan, is sold on its own as the Corporate Events Calendar & News Feed package, and is "
+        "available on the free plan within its daily allowance — so a refusal here means a key narrower "
+        f"than any of those. What the feed contains: {PLAN_NEWS_URL}"
+    ),
+    "get_bulk_fundamentals": (
+        "Bulk Fundamentals sits behind the Extended Fundamentals subscription, which no self-serve plan "
+        "includes on its own — the All-In-One package included. Terms are quoted on request at "
+        "support@eodhistoricaldata.com. For a handful of tickers rather than a whole exchange, the "
+        "get_fundamentals_data tool reads them one at a time on the ordinary fundamentals plans. What "
+        f"the endpoint returns: {PLAN_BULK_FUNDAMENTALS_URL}"
+    ),
+}
 
 # Zero-width spaces, bidi overrides, word joiners, BOM, and similar invisible
 # formatting characters that can hide instruction-like text from readers.
@@ -150,8 +188,27 @@ def is_client_error(data: Any) -> bool:
     return isinstance(status_code, int) and 400 <= status_code < 500
 
 
-def raise_on_api_error(data: Any) -> None:
-    """Raise ToolError when make_request() returned a structured API error."""
+def _raise_with_upstream_behind(
+    message_parts: list[str],
+    data: dict[str, Any],
+    error: Any,
+    status_code: int,
+) -> NoReturn:
+    """Raise with our own explanation already in place and the upstream text after it."""
+    _, upstream_detail = _extract_error_context(data)
+    upstream = upstream_detail or str(data.get("text") or "").strip()
+    if upstream and upstream != str(error):
+        message_parts.append(f"upstream={upstream}")
+
+    raise UpstreamToolError(" | ".join(message_parts), status_code)
+
+
+def raise_on_api_error(data: Any, *, tool: str | None = None) -> None:
+    """Raise ToolError when make_request() returned a structured API error.
+
+    ``tool`` names the calling tool, so a 403 can carry the packaging detail written for
+    that endpoint (PLAN_HINTS). Left out, a 403 carries the generic plan sentence alone.
+    """
     if not isinstance(data, dict):
         return
 
@@ -174,13 +231,19 @@ def raise_on_api_error(data: Any) -> None:
     # support" below it does not read as advice.
     if status_code == 402:
         message_parts.append(QUOTA_EXHAUSTED_HINT)
+        _raise_with_upstream_behind(message_parts, data, error, status_code)
 
-        _, upstream_detail = _extract_error_context(data)
-        upstream = upstream_detail or str(data.get("text") or "").strip()
-        if upstream and upstream != str(error):
-            message_parts.append(f"upstream={upstream}")
+    # 403 is about packaging, not about the key, and the upstream text claims the opposite.
+    # The per-tool sentence is added only where the data is sold outside the ordinary plans;
+    # everywhere else the generic one already answers the question the agent will be asked.
+    if status_code == 403:
+        message_parts.append(PLAN_GATED_HINT)
 
-        raise UpstreamToolError(" | ".join(message_parts), status_code)
+        plan_hint = PLAN_HINTS.get(tool or "")
+        if plan_hint:
+            message_parts.append(plan_hint)
+
+        _raise_with_upstream_behind(message_parts, data, error, status_code)
 
     error_code, detail = _extract_error_context(data)
     if error_code:

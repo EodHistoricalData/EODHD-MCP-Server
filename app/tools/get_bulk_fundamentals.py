@@ -115,7 +115,7 @@ def register(mcp: FastMCP):
         )
 
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
-        raise_on_api_error(data)
+        raise_on_api_error(data, tool="get_bulk_fundamentals")
 
         if fmt == "csv":
             if not isinstance(data, str):

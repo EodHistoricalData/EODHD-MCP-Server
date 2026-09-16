@@ -117,7 +117,7 @@ def register(mcp: FastMCP):
 
         # --- Request ---
         data = await make_request(url, response_mode="text" if fmt == "xml" else "json")
-        raise_on_api_error(data)
+        raise_on_api_error(data, tool="get_company_news")
 
         # --- Normalize / return ---
 
