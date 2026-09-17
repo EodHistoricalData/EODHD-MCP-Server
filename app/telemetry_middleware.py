@@ -14,6 +14,7 @@ import time
 from typing import Any
 
 from fastmcp.exceptions import ToolError
+from fastmcp.server.dependencies import get_http_request
 from fastmcp.server.middleware import Middleware, MiddlewareContext
 
 from . import telemetry
@@ -136,28 +137,71 @@ def _status_of(error: ToolError) -> int | None:
 def _session_facts(context: MiddlewareContext) -> tuple[str | None, str | None, str | None]:
     """Client name, client version and a hashed session id, as far as they are known.
 
-    The client identifies itself once, in the MCP initialize handshake, and that is the
-    only place this is ever available — no HTTP log can recover it afterwards.
+    The client identifies itself in the MCP initialize handshake. Where that handshake
+    is remembered it is the better source — it is the client naming itself to MCP. It is
+    not always remembered: see `_client_from_user_agent`.
     """
     fastmcp_context = getattr(context, "fastmcp_context", None)
-    if fastmcp_context is None:
-        return None, None, None
 
     session_hash = None
-    session_id = getattr(fastmcp_context, "session_id", None)
-    if session_id:
-        session_hash = telemetry.hash_identifier(str(session_id))
+    if fastmcp_context is not None:
+        session_id = getattr(fastmcp_context, "session_id", None)
+        if session_id:
+            session_hash = telemetry.hash_identifier(str(session_id))
 
-    client_info = None
+        client_info = None
+        try:
+            client_info = fastmcp_context.session.client_params.clientInfo
+        except Exception:
+            logger.debug("Client info unavailable for this session", exc_info=True)
+
+        if client_info is not None:
+            name = getattr(client_info, "name", None)
+            if name:
+                return name, getattr(client_info, "version", None), session_hash
+
+    client_name, client_version = _client_from_user_agent()
+
+    return client_name, client_version, session_hash
+
+
+def _client_from_user_agent() -> tuple[str | None, str | None]:
+    """The caller's name as the HTTP transport saw it, when the handshake is gone.
+
+    Production runs with `FASTMCP_STATELESS_HTTP=1`: every request is answered on a
+    fresh session, so `initialize` is never replayed and `clientInfo` is empty on every
+    single call — which is why the first 1280 recorded events carried no client at all.
+
+    The User-Agent is the only thing left that names the caller. It is a weaker signal,
+    and deliberately a fallback rather than a replacement: it is not part of MCP, a
+    client may send nothing or something generic (`python-httpx`), and it describes the
+    HTTP library as often as the product. The handshake, where present, still wins.
+    """
     try:
-        client_info = fastmcp_context.session.client_params.clientInfo
+        request = get_http_request()
+    except RuntimeError:
+        # No HTTP request in scope — stdio, or a direct in-process client.
+        return None, None
     except Exception:
-        logger.debug("Client info unavailable for this session", exc_info=True)
+        logger.debug("Unexpected error resolving the HTTP request context", exc_info=True)
 
-    if client_info is None:
-        return None, None, session_hash
+        return None, None
 
-    return getattr(client_info, "name", None), getattr(client_info, "version", None), session_hash
+    agent = (request.headers.get("user-agent") or "").strip()
+    if not agent:
+        return None, None
+
+    # "Cursor/1.4.2 (darwin)" -> ("Cursor", "1.4.2"). Only the leading product token is
+    # read; the comment and any further products say more about the stack than the client.
+    # What comes back is a transport-level hint, not an identity: a header is whatever the
+    # caller cared to send, and it names the HTTP library as readily as the product.
+    name, _, version = agent.split()[0].partition("/")
+
+    # A version with nothing to attach it to says less than nothing on a dashboard.
+    if not name:
+        return None, None
+
+    return name, version or None
 
 
 def install(mcp: Any, edition: str | None = None) -> None:

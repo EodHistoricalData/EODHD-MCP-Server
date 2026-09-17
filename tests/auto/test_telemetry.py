@@ -15,6 +15,8 @@ import asyncio
 import json
 
 from collections import deque
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
@@ -22,7 +24,7 @@ import respx
 from app import telemetry
 from app.config import SERVER_VERSION
 from app.response_formatter import UpstreamToolError
-from app.telemetry_middleware import TelemetryMiddleware
+from app.telemetry_middleware import TelemetryMiddleware, _client_from_user_agent, _session_facts
 from fastmcp import Client, FastMCP
 from fastmcp.exceptions import ToolError
 from httpx import Response
@@ -612,3 +614,108 @@ class TestMiddlewareWithoutCollector:
 
         assert result is not None  # the call still works
         assert telemetry.queued_events() == []
+
+
+class TestClientFromUserAgent:
+    """Production answers every call on a fresh stateless session, so the handshake is
+    gone and the transport header is the only thing that names the caller."""
+
+    @staticmethod
+    def _request(user_agent):
+        request = MagicMock()
+        request.headers = {} if user_agent is None else {"user-agent": user_agent}
+
+        return request
+
+    def test_reads_product_and_version(self):
+        with patch("app.telemetry_middleware.get_http_request", return_value=self._request("Cursor/1.4.2 (darwin)")):
+            assert _client_from_user_agent() == ("Cursor", "1.4.2")
+
+    def test_a_product_without_a_version_still_names_the_client(self):
+        with patch("app.telemetry_middleware.get_http_request", return_value=self._request("node")):
+            assert _client_from_user_agent() == ("node", None)
+
+    def test_a_version_with_no_product_is_not_a_client(self):
+        with patch("app.telemetry_middleware.get_http_request", return_value=self._request("/1.0")):
+            assert _client_from_user_agent() == (None, None)
+
+    def test_a_generic_agent_is_recorded_as_it_came(self):
+        # python-httpx or a browser probe is a poor answer, but it is an honest one: the
+        # header is a hint about the transport, never proof of which client called.
+        with patch("app.telemetry_middleware.get_http_request", return_value=self._request("python-httpx/0.27.0")):
+            assert _client_from_user_agent() == ("python-httpx", "0.27.0")
+
+    def test_a_missing_or_blank_header_yields_nothing(self):
+        for agent in (None, "   "):
+            with patch("app.telemetry_middleware.get_http_request", return_value=self._request(agent)):
+                assert _client_from_user_agent() == (None, None)
+
+    def test_no_http_context_yields_nothing(self):
+        # stdio, or an in-process client: there is no request to read.
+        with patch("app.telemetry_middleware.get_http_request", side_effect=RuntimeError):
+            assert _client_from_user_agent() == (None, None)
+
+    def test_an_unexpected_failure_yields_nothing(self):
+        with patch("app.telemetry_middleware.get_http_request", side_effect=ValueError("boom")):
+            assert _client_from_user_agent() == (None, None)
+
+
+class TestSessionFacts:
+    """Which of the two sources wins, and what is left when neither is there."""
+
+    @staticmethod
+    def _context(*, client_info=..., session_id="session-1"):
+        context = MagicMock()
+        context.fastmcp_context.session_id = session_id
+
+        if client_info is ...:
+            client_info = SimpleNamespace(name="Claude Desktop", version="1.2.3")
+
+        if client_info is None:
+            type(context.fastmcp_context).session = property(
+                lambda self: (_ for _ in ()).throw(AttributeError("no session"))
+            )
+        else:
+            context.fastmcp_context.session.client_params.clientInfo = client_info
+
+        return context
+
+    def test_the_handshake_wins_over_the_user_agent(self):
+        with patch(
+            "app.telemetry_middleware.get_http_request",
+            return_value=MagicMock(headers={"user-agent": "python-httpx/0.27"}),
+        ):
+            name, version, session_hash = _session_facts(self._context())
+
+        assert (name, version) == ("Claude Desktop", "1.2.3")
+        assert session_hash
+
+    def test_falls_back_to_the_user_agent_without_a_handshake(self):
+        context = MagicMock()
+        context.fastmcp_context = None
+
+        with patch(
+            "app.telemetry_middleware.get_http_request",
+            return_value=MagicMock(headers={"user-agent": "ChatGPT-User/1.0"}),
+        ):
+            assert _session_facts(context) == ("ChatGPT-User", "1.0", None)
+
+    def test_a_nameless_handshake_falls_back_too(self):
+        # fastmcp keeps a session object in stateless mode; what it does not keep is a
+        # client that ever named itself.
+        context = self._context(client_info=SimpleNamespace(name=None, version=None))
+
+        with patch(
+            "app.telemetry_middleware.get_http_request", return_value=MagicMock(headers={"user-agent": "Cursor/1.4.2"})
+        ):
+            name, version, session_hash = _session_facts(context)
+
+        assert (name, version) == ("Cursor", "1.4.2")
+        assert session_hash
+
+    def test_neither_source_is_survivable(self):
+        context = MagicMock()
+        context.fastmcp_context = None
+
+        with patch("app.telemetry_middleware.get_http_request", side_effect=RuntimeError):
+            assert _session_facts(context) == (None, None, None)
