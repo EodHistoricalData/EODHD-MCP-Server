@@ -29,6 +29,12 @@ logger = logging.getLogger("eodhd-mcp.telemetry")
 _QUOTA_STATUS = 402
 _QUOTA_MARKER = "daily API-call quota"
 
+# A failure carrying no upstream status ended inside this server, and that is the whole of
+# what a usage panel can say about it. Whether it arrived as a ToolError or as an
+# unexpected exception is a question for the stack trace; reported as two outcomes it drew
+# two bars that mean the same thing and invited the reader to tell them apart.
+_LOCAL_FAILURE = "tool_error"
+
 
 class TelemetryMiddleware(Middleware):
     """Records what was called, by whom, how long it took and how it ended.
@@ -75,13 +81,13 @@ class TelemetryMiddleware(Middleware):
             elif _QUOTA_MARKER in message:
                 outcome = "quota_exhausted"
             else:
-                outcome = "tool_error"
+                outcome = _LOCAL_FAILURE
 
             self._record(kind, name, context, outcome, started_at, status_code)
 
             raise
         except Exception:
-            self._record(kind, name, context, "error", started_at, None)
+            self._record(kind, name, context, _LOCAL_FAILURE, started_at, None)
 
             raise
 
