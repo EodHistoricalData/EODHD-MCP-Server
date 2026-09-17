@@ -101,7 +101,7 @@ The API returns standard HTTP status codes to indicate success or failure:
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up, or your plan lacks endpoint access. |
-| **403** | Forbidden | Invalid API key or plan lacks endpoint access. Check your `api_token`. |
+| **403** | Forbidden | The plan on this API key does not include this data. A missing or wrong `api_token` answers 401. |
 | **422** | Unprocessable Entity | Validation error (e.g. bad filter or pagination parameter). |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
 

@@ -267,7 +267,7 @@ The API returns standard HTTP status codes to indicate success or failure:
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Unauthorized | Invalid API key. Check your `api_token` parameter. |
+| **403** | Forbidden | The plan on this API key does not include Extended Fundamentals, which this endpoint requires. No self-serve plan carries it; terms are quoted on request at support@eodhistoricaldata.com. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
 
 ### Error Response Format

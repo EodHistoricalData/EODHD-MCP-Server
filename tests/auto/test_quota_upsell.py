@@ -258,7 +258,8 @@ class TestQuotaHint:
         assert QUOTA_PRICING_URL in message  # free plan needs an upgrade, not a top-up
         assert "get_user_details" in message  # how the agent finds out which one applies
 
-    @pytest.mark.parametrize("status_code", [400, 401, 403, 404, 422, 429, 500])
+    # 403 is missing on purpose: it carries its own plan hint (tests/auto/test_plan_gate_upsell.py).
+    @pytest.mark.parametrize("status_code", [400, 401, 404, 422, 429, 500])
     def test_other_statuses_get_no_upsell(self, status_code):
         payload = {
             "error": f"EODHD API request failed with {status_code}.",

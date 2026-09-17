@@ -88,7 +88,7 @@ The API returns standard HTTP status codes to indicate success or failure:
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Forbidden | Invalid API key, or the `demo` key used for a non-WTI code. |
+| **403** | Forbidden | The plan on this API key does not include this data, or the `demo` key was used for a non-WTI code. A missing or wrong `api_token` answers 401. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
 
 ### Error Response Format
@@ -117,7 +117,7 @@ def make_api_request(url, params):
         if e.response.status_code == 402:
             print("Error: API limit exceeded. Please upgrade your plan.")
         elif e.response.status_code == 403:
-            print("Error: Invalid API key, or demo key used for a non-WTI commodity.")
+            print("Error: the plan on this key does not cover this data, or demo key used for a non-WTI commodity.")
         elif e.response.status_code == 429:
             print("Error: Rate limit exceeded. Please slow down your requests.")
         else:
