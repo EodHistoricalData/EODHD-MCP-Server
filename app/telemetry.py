@@ -131,7 +131,13 @@ def _edition_label(explicit: str | None) -> str:
 
 
 def summarise_args(arguments: Any) -> dict[str, Any]:
-    """Keep the enumerable arguments and the instrument, count the rest, record no content."""
+    """Keep the enumerable arguments and the instrument, count the rest, record no content.
+
+    Every value is a string, the counts included. The collector validates ``args.*`` as
+    a string and refuses the whole batch otherwise, and a refused batch is dropped, not
+    retried — so one multi-symbol call sent as a number took up to 200 events down with
+    it, silently.
+    """
     if not isinstance(arguments, dict):
         return {}
 
@@ -140,10 +146,10 @@ def summarise_args(arguments: Any) -> dict[str, Any]:
         if name in REPORTED_ARGS and isinstance(value, str | int | float | bool):
             summary[name] = str(value)[:MAX_ARG_LENGTH]
         elif isinstance(value, (list, tuple)):
-            summary[f"{name}_count"] = len(value)
+            summary[f"{name}_count"] = str(len(value))
         elif isinstance(value, str) and "," in value:
             # Comma-separated lists are how several tools take multiple symbols.
-            summary[f"{name}_count"] = len([part for part in value.split(",") if part.strip()])
+            summary[f"{name}_count"] = str(len([part for part in value.split(",") if part.strip()]))
         elif name in INSTRUMENT_ARGS and isinstance(value, str):
             # Last, so that a multi-symbol request is still only counted, never listed.
             instrument = value.strip().upper()

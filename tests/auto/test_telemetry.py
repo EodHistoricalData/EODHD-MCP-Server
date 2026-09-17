@@ -160,12 +160,12 @@ class TestSummariseArgs:
     def test_counts_content_instead_of_recording_it(self):
         summary = telemetry.summarise_args({"symbols": ["AAPL.US", "MSFT.US", "TSLA.US"]})
 
-        assert summary == {"symbols_count": 3}
+        assert summary == {"symbols_count": "3"}
 
     def test_counts_comma_separated_lists(self):
         summary = telemetry.summarise_args({"tenor": "1Y,5Y,10Y"})
 
-        assert summary == {"tenor_count": 3}
+        assert summary == {"tenor_count": "3"}
 
     def test_free_text_is_dropped_entirely(self):
         summary = telemetry.summarise_args({"query": "Apple Inc", "api_token": "secret"})
@@ -192,7 +192,16 @@ class TestSummariseArgs:
     def test_several_instruments_are_still_only_counted(self):
         summary = telemetry.summarise_args({"symbols": "AAPL.US,MSFT.US"})
 
-        assert summary == {"symbols_count": 2}
+        assert summary == {"symbols_count": "2"}
+
+    def test_every_recorded_value_is_a_string(self):
+        # The collector validates args.* as strings and refuses the whole batch otherwise.
+        # A count sent as a number cost every event travelling with it, not only its own.
+        summary = telemetry.summarise_args(
+            {"exchange": "US", "symbols": ["AAPL.US", "MSFT.US"], "tenor": "1Y,5Y", "ticker": "AAPL.US"}
+        )
+
+        assert summary and all(isinstance(value, str) for value in summary.values())
 
     def test_long_values_are_truncated(self):
         summary = telemetry.summarise_args({"exchange": "X" * 100})

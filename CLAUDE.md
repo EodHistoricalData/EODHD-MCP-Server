@@ -82,9 +82,12 @@ server.py             - entry point, transport selection, argparse
 - An event carries: kind and name, outcome (ok / tool_error / api_error /
   quota_exhausted / error), duration, upstream status, server edition and version,
   hashed account and session, the client name and version from the MCP `initialize`
-  handshake, and a summary of enumerable arguments
-- Never recorded: tokens (the account is a hash), emails, free-text arguments. Symbols
-  and queries are counted, not kept — see `REPORTED_ARGS`
+  handshake (or, when the handshake is not remembered, from the User-Agent), and a
+  summary of arguments
+- Never recorded: tokens (the account is a hash), emails, free-text arguments. Kept:
+  enumerable values (`REPORTED_ARGS`) and a single ticker-shaped instrument
+  (`INSTRUMENT_ARGS`); symbol lists and queries are counted, not kept. Every value is
+  sent as a string — the collector refuses a whole batch over one non-string
 - Off unless both `EODHD_MCP_TELEMETRY_URL` and `EODHD_MCP_TELEMETRY_KEY` are set
 - Fire-and-forget by design: bounded queue (oldest dropped, `dropped_events()` counts
   the blind spot), batched by a background task every 30 s or 200 events, every failure
