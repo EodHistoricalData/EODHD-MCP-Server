@@ -1,43 +1,32 @@
-#get_symbol_change_history.py
+# app/tools/get_symbol_change_history.py
 
-import json
-import re
-from datetime import datetime
-from typing import Optional
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+logger = logging.getLogger(__name__)
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
-def _valid_date(d: Optional[str]) -> bool:
-    if d is None:
-        return True
-    if not DATE_RE.match(d):
-        return False
-    try:
-        datetime.strptime(d, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Symbol Change History", readOnlyHint=True))
     async def get_symbol_change_history(
-        start_date: Optional[str] = None,  # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,    # maps to 'to'   (YYYY-MM-DD)
-        fmt: str = "json",                 # API returns json here; we gate to json
-        api_token: Optional[str] = None,   # per-call token override
-    ) -> str:
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to'   (YYYY-MM-DD)
+        fmt: str = "json",  # API returns json here; we gate to json
+        api_token: str | None = None,  # per-call token override
+    ) -> ResourceResponse:
         """
-        Symbol Change History (US-only for now)
-        GET /api/symbol-change-history
+
+        Get ticker symbol change history -- tracks when US stocks changed their ticker symbol or company name.
+        Returns old symbol, new symbol, company name, exchange, and effective date. Data available from 2022-07-22, US exchanges only.
+        Use when the user asks about ticker renames, symbol changes, rebranding events, or needs to map old tickers to new ones.
+        This is the only tool for symbol/ticker change tracking.
 
         Args:
             start_date (str, optional): 'from' in YYYY-MM-DD (e.g., '2022-10-01').
@@ -45,46 +34,56 @@ def register(mcp: FastMCP):
             fmt (str): 'json' (default).
             api_token (str, optional): Per-call token override; env token used if omitted.
 
-        Notes:
-            - History starts from 2022-07-22; endpoint updated daily.
-            - Only **US** exchanges are supported currently.
         Returns:
-            str: JSON array of changes with fields:
-                 exchange, old_symbol, new_symbol, company_name, effective
+            Array of symbol change records, each with:
+            - old_code (str): previous ticker symbol
+            - old_exchange (str): previous exchange code
+            - old_country (str): previous country code
+            - new_code (str): new ticker symbol
+            - new_exchange (str): new exchange code
+            - new_country (str): new country code
+            - date (str): effective date of change
+
+        Examples:
+            "Symbol changes this month" → start_date="2026-03-01", end_date="2026-03-06"
+            "Ticker renames in 2025" → start_date="2025-01-01", end_date="2025-12-31"
+            "Recent symbol changes last 90 days" → start_date="2025-12-06", end_date="2026-03-06"
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # Validate inputs
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
-        if not _valid_date(start_date):
-            return _err("'start_date' must be YYYY-MM-DD when provided.")
-        if not _valid_date(end_date):
-            return _err("'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                return _err("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         # Build URL
         # Example:
         # /api/symbol-change-history?from=2022-10-01&to=2022-11-01&fmt=json
-        url = f"{EODHD_API_BASE}/symbol-change-history?fmt={fmt}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
+        url = build_url(
+            "symbol-change-history",
+            {
+                "fmt": fmt,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         # Request
         data = await make_request(url)
 
         # Normalize / return
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
 
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

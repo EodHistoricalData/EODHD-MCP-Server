@@ -1,24 +1,24 @@
-#get_us_live_extended_quotes.py
+# app/tools/get_us_live_extended_quotes.py
 
-import json
-from typing import Iterable, Optional, Sequence, Union
+import logging
+from collections.abc import Iterable, Sequence
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_query_param, build_url, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FMT = {"json", "csv"}
 MAX_PAGE_LIMIT = 100  # per spec
 DEFAULT_FMT = "json"
 
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
-
-def _normalize_symbols(symbols: Optional[Union[str, Iterable[str]]]) -> list[str]:
+def _normalize_symbols(symbols: str | Iterable[str] | None) -> list[str]:
     """
     Accepts a single comma-separated string or an iterable of strings.
     Strips whitespace, removes empties, preserves order, and de-duplicates.
@@ -42,6 +42,7 @@ def _normalize_symbols(symbols: Optional[Union[str, Iterable[str]]]) -> list[str
     for p in parts:
         if not p:
             continue
+        p = sanitize_ticker(p, param_name="symbols")
         if p not in seen:
             out.append(p)
             seen.add(p)
@@ -49,21 +50,22 @@ def _normalize_symbols(symbols: Optional[Union[str, Iterable[str]]]) -> list[str
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Live Extended-Hours Quotes", readOnlyHint=True))
     async def get_us_live_extended_quotes(
-        symbols: Union[str, Sequence[str]],   # one or more (e.g., "AAPL.US,TSLA.US" or ["AAPL.US","TSLA.US"])
-        fmt: str = DEFAULT_FMT,               # 'json' (default) or 'csv'
-        page_limit: Optional[int] = None,     # page[limit] (max 100)
-        page_offset: Optional[int] = None,    # page[offset] (>= 0)
-        api_token: Optional[str] = None,      # per-call override
-    ) -> str:
+        symbols: str | Sequence[str],  # one or more (e.g., "AAPL.US,TSLA.US" or ["AAPL.US","TSLA.US"])
+        fmt: str = DEFAULT_FMT,  # 'json' (default) or 'csv'
+        page_limit: int | None = None,  # page[limit] (max 100)
+        page_offset: int | None = None,  # page[offset] (>= 0)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Live v2 for US Stocks: Extended Quotes (Delayed, exchange-compliant)
-        GET /api/us-quote-delayed
 
-        - 1 API call per ticker (batching supported via 's').
-        - Returns a per-symbol quote snapshot with last trade, bid/ask (+ sizes & event times),
-          rolling averages, 52w high/low, market cap, basic fundamentals, etc.
+        Get extended delayed quotes for US stocks with rich detail beyond basic live prices.
+        Returns last trade, bid/ask with sizes and event timestamps, rolling averages (50d/200d),
+        52-week high/low, market cap, EPS, PE ratio, dividend yield, and more per symbol.
+        Supports batching multiple US tickers in one call. 1 API call per ticker.
+        For non-US tickers or basic global live prices, use get_live_price_data instead.
+        For historical end-of-day data, use get_historical_stock_prices instead.
 
         Args:
           symbols: A single comma-separated string or a sequence of tickers (e.g., ["AAPL.US","TSLA.US"]).
@@ -73,55 +75,75 @@ def register(mcp: FastMCP):
           api_token: Optional token; if omitted, env is used via make_request().
 
         Returns:
-          Pretty-printed JSON string on success, or {"error": "..."} on failure.
-          If fmt='csv' and your make_request() returns raw text, it's wrapped as {"csv": "..."}.
+            Array of extended quote snapshots, each with:
+            - code (str): ticker symbol
+            - timestamp (int): Unix epoch seconds of last trade
+            - open, high, low, close (float): session OHLC
+            - volume (int): session volume
+            - previousClose (float): prior session close
+            - change (float): absolute change from previousClose
+            - change_p (float): percent change
+            - 50day_ma, 200day_ma (float): rolling moving averages
+            - yearHigh, yearLow (float): 52-week high/low
+            - marketCapitalization (float): market cap in USD
+            - epsEstimateCurrentYear (float): consensus EPS estimate
+            - eps (float): trailing EPS
+            - pe (float): trailing P/E ratio
+            - dividend_yield_percent (float): indicated annual dividend yield %
+            - bid, ask (float): current bid/ask prices
+            - bidSize, askSize (int): bid/ask lot sizes
+
+            Prices are delayed ~15-20 min (exchange-compliant).
+
+        Examples:
+            "Extended quote for Apple" → symbols="AAPL.US"
+            "Batch quotes for FAANG stocks" → symbols=["META.US", "AAPL.US", "AMZN.US", "NFLX.US", "GOOG.US"]
+            "Tesla and Nvidia with pagination" → symbols=["TSLA.US", "NVDA.US"], page_limit=10, page_offset=0
+
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate inputs ---
         syms = _normalize_symbols(symbols)
         if not syms:
-            return _err("Parameter 'symbols' must contain at least one ticker (e.g., 'AAPL.US').")
+            raise ToolError("Parameter 'symbols' must contain at least one ticker (e.g., 'AAPL.US').")
 
         fmt = (fmt or DEFAULT_FMT).lower()
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         if page_limit is not None:
             if not isinstance(page_limit, int) or page_limit <= 0 or page_limit > MAX_PAGE_LIMIT:
-                return _err(f"'page_limit' must be an integer between 1 and {MAX_PAGE_LIMIT}.")
+                raise ToolError(f"'page_limit' must be an integer between 1 and {MAX_PAGE_LIMIT}.")
 
         if page_offset is not None:
             if not isinstance(page_offset, int) or page_offset < 0:
-                return _err("'page_offset' must be an integer >= 0.")
+                raise ToolError("'page_offset' must be an integer >= 0.")
 
         # --- Build URL ---
-        # Example:
-        #   /api/us-quote-delayed?s=AAPL.US,TSLA.US&fmt=json&page[limit]=100&page[offset]=0
-        base = f"{EODHD_API_BASE}/us-quote-delayed"
-        query = f"?s={','.join(syms)}&fmt={fmt}"
-
-        if page_limit is not None:
-            query += f"&page[limit]={page_limit}"
-        if page_offset is not None:
-            query += f"&page[offset]={page_offset}"
-        if api_token:
-            query += f"&api_token={api_token}"
-
-        url = f"{base}{query}"
+        url = build_url(
+            "us-quote-delayed",
+            {
+                "s": ",".join(syms),
+                "fmt": fmt,
+                "api_token": api_token,
+            },
+        )
+        url += build_query_param("page[limit]", page_limit)
+        url += build_query_param("page[offset]", page_offset)
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- Normalize / return ---
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            # If make_request() was adapted to return raw text for CSV:
-            if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="us-quote-delayed/quotes.csv")
 
+        return format_json_response(data)

@@ -1,23 +1,24 @@
-# get_mp_praams_smart_investment_screener_equity.py
+# app/tools/get_mp_praams_smart_investment_screener_equity.py
 
-import json
-from typing import Optional, Any, Dict, Tuple
+import logging
+from typing import Any
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+logger = logging.getLogger(__name__)
 
 
 def _is_int(v: Any) -> bool:
     return isinstance(v, int) and not isinstance(v, bool)
 
 
-def _canon_list_ints(v: Any) -> Optional[list[int]]:
+def _canon_list_ints(v: Any) -> list[int] | None:
     if v is None:
         return None
     if not isinstance(v, (list, tuple)):
@@ -33,7 +34,7 @@ def _canon_list_ints(v: Any) -> Optional[list[int]]:
     return out
 
 
-def _canon_list_strs(v: Any) -> Optional[list[str]]:
+def _canon_list_strs(v: Any) -> list[str] | None:
     if v is None:
         return None
     if not isinstance(v, (list, tuple)):
@@ -48,7 +49,7 @@ def _canon_list_strs(v: Any) -> Optional[list[str]]:
     return out if out else None
 
 
-def _canon_range_1_7(_name: str, v: Any) -> Optional[int]:
+def _canon_range_1_7(_name: str, v: Any) -> int | None:
     """
     Canonicalize scoring filters that must be int in [1..7].
     Returns:
@@ -63,13 +64,14 @@ def _canon_range_1_7(_name: str, v: Any) -> Optional[int]:
     try:
         iv = int(v)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
     if 1 <= iv <= 7:
         return iv
     return -1
 
 
-def _validate_skip_take(skip: Any, take: Any) -> Optional[str]:
+def _validate_skip_take(skip: Any, take: Any) -> str | None:
     if skip is None:
         return None
     if not _is_int(skip) or skip < 0:
@@ -116,11 +118,11 @@ def _build_body(
     sectors: Any = None,
     industries: Any = None,
     capitalisation: Any = None,  # 1/2/3
-    currency: Any = None,        # ISO Alpha-3 strings
+    currency: Any = None,  # ISO Alpha-3 strings
     # sorting
     order_by: Any = None,
-) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-    body: Dict[str, Any] = {}
+) -> tuple[dict[str, Any] | None, str | None]:
+    body: dict[str, Any] = {}
 
     # --- 1..7 scoring fields ---
     scale_fields = [
@@ -156,7 +158,7 @@ def _build_body(
         if v is None:
             continue
         if v == -1:
-            return None, "Parameter '{}' must be an integer in [1..7].".format(key)
+            return None, f"Parameter '{key}' must be an integer in [1..7]."
         body[key] = v
 
     # --- list fields ---
@@ -215,18 +217,19 @@ def _build_body(
 
 
 async def _run_explore_equity(
-    skip: Optional[int],
-    take: Optional[int],
-    body: Dict[str, Any],
-    api_token: Optional[str],
-) -> str:
-    url = "{}/mp/praams/explore/equity?1=1".format(EODHD_API_BASE)
-    if skip is not None:
-        url += "&skip={}".format(int(skip))
-    if take is not None:
-        url += "&take={}".format(int(take))
-    if api_token:
-        url += "&api_token={}".format(api_token)
+    skip: int | None,
+    take: int | None,
+    body: dict[str, Any],
+    api_token: str | None,
+) -> list:
+    url = build_url(
+        "mp/praams/explore/equity",
+        {
+            "skip": int(skip) if skip is not None else None,
+            "take": int(take) if take is not None else None,
+            "api_token": api_token,
+        },
+    )
 
     data = await make_request(
         url,
@@ -235,84 +238,107 @@ async def _run_explore_equity(
         headers={"Content-Type": "application/json"},
     )
 
-    if data is None:
-        return _err("No response from API.")
-
     try:
-        return json.dumps(data, indent=2)
-    except Exception:
-        return _err("Unexpected JSON response format from API.")
+        return format_json_response(data)
+    except ToolError:
+        raise
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Smart Equity Screener", readOnlyHint=True))
     async def get_mp_praams_smart_screener_equity(
         # pagination
-        skip: Optional[int] = 0,
-        take: Optional[int] = 50,
+        skip: int | None = 0,
+        take: int | None = 50,
         # geography / classification
-        regions: Optional[list[int]] = None,
-        countries: Optional[list[int]] = None,
-        sectors: Optional[list[int]] = None,
-        industries: Optional[list[int]] = None,
-        capitalisation: Optional[list[int]] = None,  # 1=small,2=mid,3=large
-        currency: Optional[list[str]] = None,        # ISO Alpha-3
+        regions: list[int] | None = None,
+        countries: list[int] | None = None,
+        sectors: list[int] | None = None,
+        industries: list[int] | None = None,
+        capitalisation: list[int] | None = None,  # 1=small,2=mid,3=large
+        currency: list[str] | None = None,  # ISO Alpha-3
         # ratio / return factors (1..7)
-        mainRatioMin: Optional[int] = None,
-        mainRatioMax: Optional[int] = None,
-        valuationMin: Optional[int] = None,
-        valuationMax: Optional[int] = None,
-        performanceMin: Optional[int] = None,
-        performanceMax: Optional[int] = None,
-        profitabilityMin: Optional[int] = None,
-        profitabilityMax: Optional[int] = None,
-        growthMomMin: Optional[int] = None,
-        growthMomMax: Optional[int] = None,
-        otherMin: Optional[int] = None,
-        otherMax: Optional[int] = None,
-        analystViewMin: Optional[int] = None,
-        analystViewMax: Optional[int] = None,
-        dividendsMin: Optional[int] = None,
-        dividendsMax: Optional[int] = None,
+        mainRatioMin: int | None = None,
+        mainRatioMax: int | None = None,
+        valuationMin: int | None = None,
+        valuationMax: int | None = None,
+        performanceMin: int | None = None,
+        performanceMax: int | None = None,
+        profitabilityMin: int | None = None,
+        profitabilityMax: int | None = None,
+        growthMomMin: int | None = None,
+        growthMomMax: int | None = None,
+        otherMin: int | None = None,
+        otherMax: int | None = None,
+        analystViewMin: int | None = None,
+        analystViewMax: int | None = None,
+        dividendsMin: int | None = None,
+        dividendsMax: int | None = None,
         # risk factors (1..7)
-        countryRiskMin: Optional[int] = None,
-        countryRiskMax: Optional[int] = None,
-        liquidityMin: Optional[int] = None,
-        liquidityMax: Optional[int] = None,
-        stressTestMin: Optional[int] = None,
-        stressTestMax: Optional[int] = None,
-        volatilityMin: Optional[int] = None,
-        volatilityMax: Optional[int] = None,
-        solvencyMin: Optional[int] = None,
-        solvencyMax: Optional[int] = None,
+        countryRiskMin: int | None = None,
+        countryRiskMax: int | None = None,
+        liquidityMin: int | None = None,
+        liquidityMax: int | None = None,
+        stressTestMin: int | None = None,
+        stressTestMax: int | None = None,
+        volatilityMin: int | None = None,
+        volatilityMax: int | None = None,
+        solvencyMin: int | None = None,
+        solvencyMax: int | None = None,
         # sorting
-        orderBy: Optional[str] = None,
+        orderBy: str | None = None,
         # auth
-        api_token: Optional[str] = None,
-    ) -> str:
+        api_token: str | None = None,
+    ) -> ResourceResponse:
         """
-        Marketplace: Praams Smart Investment Screener (Equity)
-        POST /api/mp/praams/explore/equity?skip={skip}&take={take}
 
-        Matches curl:
-          - Query params: skip, take, api_token
-          - JSON body: filters (countries/sectors/etc) and ratio bounds.
+        [PRAAMS] Screen and filter equities using multi-factor risk-return criteria.
+        Filter by region, country, sector, industry, market cap, currency, and PRAAMS score ranges (1-7)
+        for valuation, performance, profitability, growth, dividends, analyst view, and risk factors.
+        Returns paginated matching equities with scores. Consumes 10 API calls per request.
+        For bond screening, use get_mp_praams_smart_screener_bond.
+        For deep analysis of a single equity, use get_mp_praams_risk_scoring_by_ticker.
 
-        Response shape:
-          {
-            "item": { "peers": [...], "totalCount": N },
-            "success": true,
-            "message": "",
-            "errors": []
-          }
+
+        Returns:
+          JSON object with Praams envelope:
+            - item (object):
+                - peers (array): matching equity instruments, each containing:
+                    - ticker (str): equity ticker symbol
+                    - isin (str): ISIN code
+                    - name (str): company name
+                    - praamsRatio (float): overall PRAAMS score
+                    - totalReturnScore (int): return score (1-7)
+                    - totalRiskScore (int): risk score (1-7)
+                    - valuation (int): valuation score (1-7)
+                    - performance (int): performance score (1-7)
+                    - profitability (int): profitability score (1-7)
+                    - dividends (int): dividends score (1-7)
+                    - country (str): company country
+                    - sector (str): company sector
+                    - capitalisation (int): market cap category (1=small, 2=mid, 3=large)
+                    - currency (str): trading currency
+                - totalCount (int): total matching instruments (for pagination)
+            - success (bool): whether the request succeeded
+            - message (str): status message
+            - errors (array): list of error messages, empty on success
 
         Notes:
           - All *Min/*Max fields are 1..7 scale integers (nullable).
           - Provide at least one filter value in the JSON body.
+
+        Examples:
+            "Large-cap US tech stocks with high dividends" → capitalisation=[3], regions=[1], dividendsMin=5
+            "European equities low volatility risk" → regions=[2], currency=["EUR"], volatilityMax=2
+
+
         """
         st_err = _validate_skip_take(skip, take)
         if st_err:
-            return _err(st_err)
+            raise ToolError(st_err)
 
         body, b_err = _build_body(
             main_ratio_min=mainRatioMin,
@@ -350,39 +376,7 @@ def register(mcp: FastMCP):
             order_by=orderBy,
         )
         if b_err:
-            return _err(b_err)
-
-        return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)
-
-    # Optional alias (compact, mirrors your curl example)
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_smart_screener_equity(
-        skip: Optional[int] = 0,
-        take: Optional[int] = 50,
-        countries: Optional[list[int]] = None,
-        sectors: Optional[list[int]] = None,
-        dividendsMin: Optional[int] = None,
-        dividendsMax: Optional[int] = None,
-        solvencyMin: Optional[int] = None,
-        solvencyMax: Optional[int] = None,
-        api_token: Optional[str] = None,
-    ) -> str:
-        """
-        Convenience alias for the common equity filters shown in docs/examples.
-        """
-        st_err = _validate_skip_take(skip, take)
-        if st_err:
-            return _err(st_err)
-
-        body, b_err = _build_body(
-            countries=countries,
-            sectors=sectors,
-            dividends_min=dividendsMin,
-            dividends_max=dividendsMax,
-            solvency_min=solvencyMin,
-            solvency_max=solvencyMax,
-        )
-        if b_err:
-            return _err(b_err)
+            raise ToolError(b_err)
+        assert body is not None
 
         return await _run_explore_equity(skip=skip, take=take, body=body, api_token=api_token)

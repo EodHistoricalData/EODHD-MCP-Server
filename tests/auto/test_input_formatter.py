@@ -1,0 +1,607 @@
+# tests/auto/test_input_formatter.py
+"""Tests for app.input_formatter — sanitize_ticker, sanitize_exchange, date functions.
+
+Covers:
+  - Security: injection, path traversal, whitespace bypass (BUG-1)
+  - Date parsing: ISO, unix, common formats, ambiguity (BUG-2)
+  - Edge cases: None, empty, non-string types
+"""
+
+import re
+
+import pytest
+from app.input_formatter import (
+    _parse_to_datetime,
+    _to_unix_seconds,
+    coerce_page_params,
+    coerce_quarter_param,
+    format_date,
+    format_date_unix,
+    format_date_ymd,
+    normalize_csv_upper,
+    sanitize_country_code,
+    sanitize_dimension_code,
+    sanitize_email,
+    sanitize_exchange,
+    sanitize_ticker,
+    split_csv,
+    strip_exchange_suffix,
+    validate_quarter_range,
+)
+from fastmcp.exceptions import ToolError
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("USD,EUR", ["USD", "EUR"]),
+        (" USD , EUR ", ["USD", "EUR"]),
+        ("USD", ["USD"]),
+        ("USD,,EUR", ["USD", "EUR"]),
+        (10, ["10"]),
+        ("5,10", ["5", "10"]),
+        ("", []),
+        ("  ,  ", []),
+    ],
+)
+def test_split_csv(value, expected):
+    assert split_csv(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("sofr", "SOFR"),
+        ("fed_target_lower, ecb_dfr", "FED_TARGET_LOWER,ECB_DFR"),
+        (" us ", "US"),
+        (None, None),
+        ("", None),
+        ("  ,  ", None),
+    ],
+)
+def test_normalize_csv_upper(value, expected):
+    assert normalize_csv_upper(value) == expected
+
+
+@pytest.mark.parametrize(
+    "limit,offset,expected",
+    [
+        (None, None, (None, None)),
+        (50, 20, (50, 20)),
+        ("50", "20", (50, 20)),
+        (100, 0, (100, 0)),
+    ],
+)
+def test_coerce_page_params_valid(limit, offset, expected):
+    assert coerce_page_params(limit, offset) == expected
+
+
+@pytest.mark.parametrize(
+    "limit,offset,match",
+    [
+        (0, None, "positive"),
+        (-1, None, "positive"),
+        ("abc", None, "positive"),
+        (101, None, "<= 100"),
+        (None, -1, "non-negative"),
+        (None, "abc", "non-negative"),
+    ],
+)
+def test_coerce_page_params_invalid(limit, offset, match):
+    with pytest.raises(ToolError, match=re.escape(match)):
+        coerce_page_params(limit, offset)
+
+
+def test_coerce_page_params_custom_max():
+    assert coerce_page_params(500, None, max_limit=1000) == (500, None)
+    with pytest.raises(ToolError, match="<= 1000"):
+        coerce_page_params(1001, None, max_limit=1000)
+
+
+# ---------------------------------------------------------------------------
+# sanitize_ticker — valid inputs
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("AAPL", "AAPL"),
+        ("  AAPL  ", "AAPL"),
+        ("BRK.B", "BRK.B"),
+        ("AAPL.US", "AAPL.US"),
+        ("BTC-USD", "BTC-USD"),
+        ("A", "A"),
+        ("GSPC.INDX", "GSPC.INDX"),
+    ],
+    ids=["plain", "whitespace-padded", "dot-class", "dot-exchange", "dash", "single-char", "index"],
+)
+def test_sanitize_ticker_valid(value, expected):
+    assert sanitize_ticker(value) == expected
+
+
+# ---------------------------------------------------------------------------
+# sanitize_ticker — invalid inputs must raise ToolError
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        None,
+        123,
+        "AAPL/US",
+        "AAPL?token=x",
+        "AAPL&x=1",
+        "AAPL#anchor",
+        "AAPL US",
+        "../etc/passwd",
+    ],
+    ids=[
+        "empty",
+        "none",
+        "int",
+        "slash-path-traversal",
+        "question-mark-injection",
+        "ampersand-injection",
+        "hash-injection",
+        "space-in-middle",
+        "path-traversal",
+    ],
+)
+def test_sanitize_ticker_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_ticker(value)
+
+
+def test_sanitize_ticker_whitespace_only_bug():
+    """Whitespace-only input should raise ToolError."""
+    with pytest.raises(ToolError):
+        sanitize_ticker("   ")
+
+
+def test_sanitize_ticker_custom_param_name():
+    """Error message includes custom param_name."""
+    with pytest.raises(ToolError, match="symbol"):
+        sanitize_ticker("", param_name="symbol")
+
+
+# ---------------------------------------------------------------------------
+# strip_exchange_suffix — marketplace providers key on the bare symbol
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("AAPL.US", "AAPL"),
+        ("AAPL", "AAPL"),
+        ("BRK-B.US", "BRK-B"),
+        ("VOD.LSE", "VOD"),
+        ("BMW.XETRA", "BMW"),
+        ("SAP.F", "SAP"),
+        ("BTC-USD.CC", "BTC-USD"),
+        ("EURUSD.FOREX", "EURUSD"),
+        ("BRK.B", "BRK"),
+        ("", ""),
+    ],
+    ids=[
+        "us",
+        "bare",
+        "dash-class-share",
+        "lse",
+        "long-exchange-code",
+        "single-letter-exchange",
+        "crypto",
+        "forex",
+        "dot-class-share-also-stripped",
+        "empty",
+    ],
+)
+def test_strip_exchange_suffix(value, expected):
+    """EODHD writes class shares with a dash (BRK-B.US), so only the exchange part is lost."""
+    assert strip_exchange_suffix(value) == expected
+
+
+def test_strip_exchange_suffix_is_idempotent():
+    assert strip_exchange_suffix(strip_exchange_suffix("AAPL.US")) == "AAPL"
+
+
+# ---------------------------------------------------------------------------
+# sanitize_exchange — mirrors sanitize_ticker behavior
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("US", "US"),
+        ("  NASDAQ  ", "NASDAQ"),
+        ("LSE", "LSE"),
+    ],
+)
+def test_sanitize_exchange_valid(value, expected):
+    assert sanitize_exchange(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", None, 42, "US/UK", "US?x", "US&y", "US#z", "U S"],
+    ids=["empty", "none", "int", "slash", "qmark", "amp", "hash", "space"],
+)
+def test_sanitize_exchange_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_exchange(value)
+
+
+def test_sanitize_exchange_whitespace_only_bug():
+    with pytest.raises(ToolError):
+        sanitize_exchange("   ")
+
+
+def test_sanitize_exchange_custom_param_name():
+    with pytest.raises(ToolError, match="market"):
+        sanitize_exchange("", param_name="market")
+
+
+# ---------------------------------------------------------------------------
+# _parse_to_datetime — numeric inputs
+# ---------------------------------------------------------------------------
+
+
+class TestParseDatetimeNumeric:
+    def test_unix_seconds_int(self):
+        dt = _parse_to_datetime(1694455200)
+        assert dt is not None
+        assert dt.year >= 2023
+
+    def test_unix_milliseconds(self):
+        dt = _parse_to_datetime(1694455200000)
+        assert dt is not None
+        assert dt.year >= 2023
+
+    def test_unix_seconds_float(self):
+        dt = _parse_to_datetime(1694455200.5)
+        assert dt is not None
+
+    def test_zero_returns_none(self):
+        assert _parse_to_datetime(0) is None
+
+    def test_negative_returns_none(self):
+        assert _parse_to_datetime(-1) is None
+
+    def test_non_string_non_numeric_returns_none(self):
+        assert _parse_to_datetime([2024, 1, 1]) is None  # type: ignore[arg-type]
+
+
+# ---------------------------------------------------------------------------
+# _parse_to_datetime — string inputs
+# ---------------------------------------------------------------------------
+
+
+class TestParseDatetimeString:
+    def test_iso_date(self):
+        dt = _parse_to_datetime("2024-01-15")
+        assert dt is not None
+        assert dt.year == 2024 and dt.month == 1 and dt.day == 15
+
+    def test_iso_with_time(self):
+        dt = _parse_to_datetime("2024-01-15T10:30:00")
+        assert dt is not None
+        assert dt.hour == 10
+
+    def test_iso_with_z(self):
+        dt = _parse_to_datetime("2024-01-15T10:30:00Z")
+        assert dt is not None
+
+    def test_iso_with_offset(self):
+        dt = _parse_to_datetime("2024-01-15T10:30:00+05:00")
+        assert dt is not None
+
+    def test_digit_string_unix(self):
+        dt = _parse_to_datetime("1694455200")
+        assert dt is not None
+        assert dt.year >= 2023
+
+    def test_digit_string_millis(self):
+        dt = _parse_to_datetime("1694455200000")
+        assert dt is not None
+
+    def test_slash_ymd(self):
+        dt = _parse_to_datetime("2024/01/15")
+        assert dt is not None
+        assert dt.day == 15
+
+    def test_dot_ymd(self):
+        dt = _parse_to_datetime("2024.01.15")
+        assert dt is not None
+
+    def test_month_name_mdy(self):
+        dt = _parse_to_datetime("Jan 15, 2024")
+        assert dt is not None
+        assert dt.month == 1
+
+    def test_month_name_dmy(self):
+        dt = _parse_to_datetime("15 Jan 2024")
+        assert dt is not None
+        assert dt.day == 15
+
+    def test_full_month_name(self):
+        dt = _parse_to_datetime("January 15, 2024")
+        assert dt is not None
+
+    def test_empty_string(self):
+        assert _parse_to_datetime("") is None
+
+    def test_whitespace_only(self):
+        assert _parse_to_datetime("   ") is None
+
+    def test_garbage(self):
+        assert _parse_to_datetime("not-a-date") is None
+
+    def test_date_with_time_no_tz(self):
+        dt = _parse_to_datetime("2024-01-15 14:30")
+        assert dt is not None
+        assert dt.hour == 14
+
+    def test_date_with_full_time(self):
+        dt = _parse_to_datetime("2024-01-15 14:30:45")
+        assert dt is not None
+        assert dt.second == 45
+
+
+# ---------------------------------------------------------------------------
+# BUG-2: Date format ambiguity — day-first wins over US month-first
+# ---------------------------------------------------------------------------
+
+
+class TestDateAmbiguity:
+    def test_ambiguous_slash_day_first_wins(self):
+        """'01/02/2024' → day-first format wins → Feb 1, not Jan 2.
+        This documents current behavior (BUG-2). If changed, update this manual."""
+        result = format_date_ymd("01/02/2024")
+        assert result == "2024-02-01"  # day-first: dd/mm/yyyy → Feb 1
+
+    def test_ambiguous_dash_day_first_wins(self):
+        result = format_date_ymd("01-02-2024")
+        assert result == "2024-02-01"
+
+    def test_unambiguous_high_day(self):
+        """Day > 12 is unambiguous — must be dd/mm."""
+        result = format_date_ymd("25/12/2024")
+        assert result == "2024-12-25"
+
+
+# ---------------------------------------------------------------------------
+# _to_unix_seconds
+# ---------------------------------------------------------------------------
+
+
+class TestToUnixSeconds:
+    def test_naive_datetime(self):
+        from datetime import datetime, timezone
+
+        dt = datetime(2024, 1, 1, tzinfo=timezone.utc)
+        ts = _to_unix_seconds(dt)
+        assert isinstance(ts, int)
+        assert ts > 0
+
+    def test_aware_datetime(self):
+        from datetime import datetime, timezone
+
+        dt = datetime(2024, 1, 1, 12, 0, 0, tzinfo=timezone.utc)
+        ts = _to_unix_seconds(dt)
+        assert isinstance(ts, int)
+
+
+# ---------------------------------------------------------------------------
+# format_date
+# ---------------------------------------------------------------------------
+
+
+class TestFormatDate:
+    def test_none_returns_none(self):
+        assert format_date(None) is None
+
+    def test_iso_to_default_ymd(self):
+        assert format_date("2024-01-15") == "2024-01-15"
+
+    def test_custom_output_format(self):
+        result = format_date("2024-01-15", "%d/%m/%Y")
+        assert result == "15/01/2024"
+
+    def test_unix_timestamp(self):
+        result = format_date(1704067200)  # 2024-01-01 00:00 UTC
+        assert result is not None
+        assert result.startswith("2024")
+
+    def test_unparseable_returns_none(self):
+        assert format_date("garbage") is None
+
+    def test_empty_returns_none(self):
+        assert format_date("") is None
+
+
+# ---------------------------------------------------------------------------
+# format_date_ymd
+# ---------------------------------------------------------------------------
+
+
+class TestFormatDateYmd:
+    def test_none(self):
+        assert format_date_ymd(None) is None
+
+    def test_iso(self):
+        assert format_date_ymd("2024-03-15") == "2024-03-15"
+
+    def test_slash(self):
+        assert format_date_ymd("2024/03/15") == "2024-03-15"
+
+    def test_unix(self):
+        result = format_date_ymd(1704067200)
+        assert result is not None
+        assert "2024" in result
+
+
+# ---------------------------------------------------------------------------
+# format_date_unix
+# ---------------------------------------------------------------------------
+
+
+class TestFormatDateUnix:
+    def test_none(self):
+        assert format_date_unix(None) is None
+
+    def test_iso_string(self):
+        result = format_date_unix("2024-01-01")
+        assert result is not None
+        assert isinstance(result, int)
+        assert result > 0
+
+    def test_passthrough_int(self):
+        result = format_date_unix(1704067200)
+        assert result is not None
+        assert isinstance(result, int)
+
+    def test_unparseable(self):
+        assert format_date_unix("nope") is None
+
+    def test_empty(self):
+        assert format_date_unix("") is None
+
+
+# ---------------------------------------------------------------------------
+# sanitize_email — provider-side report delivery
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("user@example.com", "user@example.com"),
+        ("  user@example.com  ", "user@example.com"),
+        ("first.last+tag@sub.example.co.uk", "first.last+tag@sub.example.co.uk"),
+    ],
+    ids=["plain", "whitespace-padded", "plus-and-subdomain"],
+)
+def test_sanitize_email_valid(value, expected):
+    assert sanitize_email(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "",
+        None,
+        123,
+        "   ",
+        "user@example",
+        "user example@mail.com",
+        "user@example.com, other@example.com",
+        "user@example.com;other@example.com",
+        "<user@example.com>",
+        "@example.com",
+    ],
+    ids=[
+        "empty",
+        "none",
+        "int",
+        "whitespace-only",
+        "no-tld",
+        "space-in-local-part",
+        "comma-separated-list",
+        "semicolon-separated-list",
+        "angle-brackets",
+        "missing-local-part",
+    ],
+)
+def test_sanitize_email_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_email(value)
+
+
+def test_sanitize_email_custom_param_name():
+    with pytest.raises(ToolError, match="notify_to"):
+        sanitize_email("", param_name="notify_to")
+
+
+# ---------------------------------------------------------------------------
+# Real Estate helpers — country codes, BIS dimension codes, quarterly periods
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [("US", "US"), ("us", "US"), ("  gb  ", "GB"), ("4T", "4T"), ("5R", "5R"), ("XKX", "XKX")],
+    ids=["iso", "lowercase", "padded", "bis-aggregate", "bis-aggregate-2", "three-letter"],
+)
+def test_sanitize_country_code_valid(value, expected):
+    assert sanitize_country_code(value) == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["", None, 12, "U", "TOOLONGCODE", "US/X", "US?x", "U S", "../etc"],
+    ids=["empty", "none", "int", "single-char", "too-long", "slash", "qmark", "space", "traversal"],
+)
+def test_sanitize_country_code_rejects(value):
+    with pytest.raises(ToolError):
+        sanitize_country_code(value)
+
+
+@pytest.mark.parametrize(
+    "value,max_length,expected",
+    [("0", 1, "0"), ("2", 2, "2"), ("AB", 2, "AB"), (" 1 ", 1, "1")],
+    ids=["vintage", "single-digit-area", "two-chars", "padded"],
+)
+def test_sanitize_dimension_code_valid(value, max_length, expected):
+    assert sanitize_dimension_code(value, "area", max_length) == expected
+
+
+@pytest.mark.parametrize(
+    "value,max_length",
+    [("ABC", 2), ("AB", 1), ("", 2), ("A/B", 2)],
+    ids=["over-limit", "over-limit-vintage", "empty", "url-breaking"],
+)
+def test_sanitize_dimension_code_rejects(value, max_length):
+    with pytest.raises(ToolError):
+        sanitize_dimension_code(value, "area", max_length)
+
+
+@pytest.mark.parametrize(
+    "value,expected",
+    [
+        ("2020-Q1", "2020-Q1"),
+        ("2020-q4", "2020-Q4"),
+        ("  1999-Q2  ", "1999-Q2"),
+        (None, None),
+        ("", None),
+        ("   ", None),
+    ],
+    ids=["plain", "lowercase", "padded", "none", "empty", "whitespace"],
+)
+def test_coerce_quarter_param_valid(value, expected):
+    assert coerce_quarter_param(value, "from_period") == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["2020-01-01", "2020Q1", "2020-Q5", "2020-Q0", "20-Q1", "Q1-2020", 2020],
+    ids=["iso-date", "no-dash", "quarter-5", "quarter-0", "short-year", "reversed", "int"],
+)
+def test_coerce_quarter_param_rejects(value):
+    with pytest.raises(ToolError, match="from_period"):
+        coerce_quarter_param(value, "from_period")
+
+
+def test_validate_quarter_range_accepts_ordered_and_partial():
+    validate_quarter_range("2020-Q1", "2024-Q4")
+    validate_quarter_range("2020-Q1", "2020-Q1")
+    validate_quarter_range(None, "2024-Q4")
+    validate_quarter_range("2020-Q1", None)
+
+
+def test_validate_quarter_range_rejects_inverted():
+    with pytest.raises(ToolError, match="later than"):
+        validate_quarter_range("2024-Q4", "2020-Q1")

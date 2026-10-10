@@ -1,84 +1,117 @@
-#get_stocks_from_search.py
+# app/tools/get_stocks_from_search.py
 
-import json
-from typing import Optional
+import logging
 from urllib.parse import quote
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_exchange
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Symbol Search", readOnlyHint=True))
     async def get_stocks_from_search(
         query: str,
-        limit: int = 15,                         # per docs: default 15, max 500
-        bonds_only: Optional[bool] = None,       # maps to bonds_only=1
-        exchange: Optional[str] = None,          # e.g., "US", "PA", "FOREX", "NYSE", "NASDAQ"
-        type: Optional[str] = None,              # one of ALLOWED_TYPES
-        fmt: str = "json",                       # API supports json here
-        api_token: Optional[str] = None,         # per-call override
-    ) -> str:
+        limit: int = 15,  # per docs: default 15, max 500
+        bonds_only: bool | None = None,  # maps to bonds_only=1
+        exchange: str | None = None,  # e.g., "US", "PA", "FOREX", "NYSE", "NASDAQ"
+        type: str | None = None,  # one of ALLOWED_TYPES
+        fmt: str = "json",  # API supports json here
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Search API for Stocks, ETFs, Mutual Funds, Bonds, and Indices.
+
+        Search for financial instruments by name, ticker, or ISIN. Use when the user wants to
+        find a ticker symbol, look up a company by name, resolve an ISIN, or discover instruments
+        matching a keyword.
+
+        Searches across stocks, ETFs, mutual funds, bonds, indices, and crypto. Returns matching
+        instruments with their ticker codes, exchange, type, and ISIN. Filterable by exchange
+        and instrument type.
+
+        This is the discovery/lookup tool. Once you have a ticker, use other tools (e.g.,
+        get_eod_historical_data, get_fundamentals_data) to fetch actual data.
 
         Args:
-            query (str): Ticker/company/ISIN to search (e.g., 'AAPL', 'Apple Inc', 'US0378331005').
+            query (str): Ticker, company name, or ISIN to search (e.g., 'AAPL', 'Apple Inc', 'US0378331005').
             limit (int): Number of results (default 15, max 500).
-            bonds_only (bool, optional): If True, include only bonds (bonds_only=1).
+            bonds_only (bool, optional): If True, return only bonds.
             exchange (str, optional): Exchange code filter (e.g., 'US', 'PA', 'FOREX', 'NYSE').
             type (str, optional): One of {'all','stock','etf','fund','bond','index','crypto'}.
-                                  Note: when using 'all', bonds are excluded by default; use type='bond'
-                                  or bonds_only=True to include bonds.
             fmt (str): Must be 'json'.
-            api_token (str, optional): Per-call API token override (demo does NOT work for Search).
+            api_token (str, optional): Per-call API token override (demo token does NOT work for Search).
+
 
         Returns:
-            str: JSON-formatted list of instruments or {"error": "..."}.
+            Array of matching instruments, each with:
+            - Code (str): ticker symbol
+            - Exchange (str): exchange code
+            - Name (str): instrument name
+            - Type (str): instrument type (e.g. "Common Stock", "ETF")
+            - Country (str): country of listing
+            - Currency (str): trading currency
+            - ISIN (str): ISIN code
+            - previousClose (float): last closing price
+            - previousCloseDate (str): date of last close (YYYY-MM-DD)
+
+        Examples:
+            "Find Apple stock" → get_stocks_from_search(query="Apple Inc", type="stock")
+            "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
+            "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
+
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate ---
         if not query or not isinstance(query, str):
-            return _err("Parameter 'query' is required and must be a string.")
+            raise ToolError("Parameter 'query' is required and must be a string.")
         if fmt != "json":
-            return _err("Only 'json' is supported for the Search API.")
+            raise ToolError("Only 'json' is supported for the Search API.")
         if not isinstance(limit, int) or not (1 <= limit <= 500):
-            return _err("'limit' must be an integer between 1 and 500.")
+            raise ToolError("'limit' must be an integer between 1 and 500.")
         if type is not None and type not in ALLOWED_TYPES:
-            return _err(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
+            raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
+
+        if isinstance(exchange, str) and not exchange.strip():
+            exchange = None
+        elif exchange is not None:
+            exchange = sanitize_exchange(exchange, param_name="exchange")
 
         # --- Build URL ---
         # Endpoint shape: /api/search/{query_string}?fmt=json&limit=...&bonds_only=1&exchange=...&type=...
         encoded_query = quote(query, safe="")
-        url = f"{EODHD_API_BASE}/search/{encoded_query}?fmt={fmt}&limit={limit}"
-
-        if bonds_only:
-            url += "&bonds_only=1"
-        if exchange:
-            url += f"&exchange={quote(str(exchange))}"
-        if type:
-            url += f"&type={quote(type)}"
-
-        # Per-call token override (note: demo does NOT work for Search)
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"search/{encoded_query}",
+            {
+                "fmt": fmt,
+                "limit": limit,
+                "bonds_only": 1 if bonds_only else None,
+                "exchange": exchange,
+                "type": type,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url)
 
         # --- Normalize / return ---
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
 
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

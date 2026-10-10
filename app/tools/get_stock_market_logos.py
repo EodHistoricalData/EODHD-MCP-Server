@@ -1,64 +1,61 @@
-#get_stock_market_logos.py
+# app/tools/get_stock_market_logos.py
 
-import json
-from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Stock & Market Logos (PNG)", readOnlyHint=True))
     async def get_stock_market_logos(
-        symbol: str,                            # e.g. "AAPL.US", "BMW.XETRA"
-        api_token: Optional[str] = None,        # per-call override
-    ) -> str:
+        symbol: str,  # e.g. "AAPL.US", "BMW.XETRA"
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Stock Market Logos API (PNG)
-        GET /api/logo/{symbol}
 
-        Returns a 200x200 PNG logo with transparency for the given symbol.
-        Coverage: 40,000+ logos across 60+ exchanges.
+        Get a company logo in PNG format (200x200 with transparency). Use when the user needs
+        a raster logo image for a stock or company for display, reports, or UI.
+
+        Covers 40,000+ logos across 60+ exchanges. Costs 10 API calls per request.
+        Symbol must be in TICKER.EXCHANGE format (e.g., 'AAPL.US', 'BMW.XETRA').
+
+        For vector/SVG logos (US and Toronto only), use get_stock_market_logos_svg instead.
 
         Args:
-            symbol (str): Ticker in {TICKER}.{EXCHANGE} format (e.g. 'AAPL.US', 'BMW.XETRA').
-            api_token (str, optional): Per-call token override; env token used otherwise.
+            symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'BMW.XETRA').
+            api_token (str, optional): Per-call token override.
+
+
+        Returns:
+            Binary PNG image data (200x200 with transparency).
+            When returned via JSON wrapper, base64-encoded image string.
 
         Notes:
             - Marketplace product: 10 API calls per request.
             - Response is a binary PNG image.
-            - Supported exchanges include: AS, AT, AU, BA, BK, BR, BSE, CN, CO, CSE,
-              DU, F, HE, HK, HM, IC, IR, IS, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
-              MCX, MI, MU, MX, NEO, NSE, NZ, OL, PA, RG, SA, SG, SHE, SHG, SN, SR,
-              ST, STU, SW, TA, TO, TSE, TW, TWO, US, V, VI, VS, VX, XETRA.
+            - Supported exchanges include: AS, AT, AU, BA, BK, BR, CO, CSE,
+              DU, F, HE, HK, HM, IC, IR, JK, JSE, KLSE, KO, KQ, LS, LSE, MC,
+              MU, MX, NEO, OL, PA, SHE, SHG, SN, SA,
+              ST, STU, SW, TA, TO, TW, TWO, US, V, VI, VS, VX, XETRA.
+
+        Examples:
+            "Apple logo" → get_stock_market_logos(symbol="AAPL.US")
+            "BMW logo from XETRA" → get_stock_market_logos(symbol="BMW.XETRA")
         """
-        if not symbol or not isinstance(symbol, str):
-            return _err(
-                "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format "
-                "(e.g. 'AAPL.US', 'BMW.XETRA')."
-            )
+        symbol = sanitize_ticker(symbol, param_name="symbol").upper()
 
-        symbol = symbol.strip().upper()
+        url = build_url(f"logo/{quote_plus(symbol)}", {"api_token": api_token})
 
-        url = f"{EODHD_API_BASE}/logo/{quote_plus(symbol)}?1=1"
-        if api_token:
-            url += f"&api_token={api_token}"
+        data = await make_request(url, response_mode="bytes")
+        raise_on_api_error(data)
 
-        data = await make_request(url)
+        if not isinstance(data, bytes) or not data:
+            raise ToolError("Unexpected response format from API.")
 
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
-
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+        return format_binary_response(data, "image/png", resource_path=f"logos/{quote_plus(symbol)}.png")

@@ -1,45 +1,60 @@
-#get_exchanges_list.py
+# app/tools/get_exchanges_list.py
 
-import json
-from typing import Optional
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+logger = logging.getLogger(__name__)
+
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Exchanges List", readOnlyHint=True))
     async def get_exchanges_list(
-        fmt: str = "json",                 # API supports csv too; tool defaults to json
-        api_token: Optional[str] = None,   # per-call override (env token otherwise)
-    ) -> str:
+        fmt: str = "json",  # API supports csv too; tool defaults to json
+        api_token: str | None = None,  # per-call override (env token otherwise)
+    ) -> ResourceResponse:
         """
-        Get List of Exchanges (GET /api/exchanges-list/)
+
+        List all available stock exchanges worldwide. Use when the user asks which exchanges
+        are supported, needs exchange codes, or wants to browse markets by country.
+
+        Covers 60+ global exchanges. Returns Name, Code, OperatingMIC, Country, Currency,
+        and ISO country codes for each exchange.
+
+        For tickers listed on a specific exchange, use get_exchange_tickers.
+        For trading hours, holidays, and metadata of one exchange, use get_exchange_details.
 
         Returns:
-            str: JSON array of exchanges, each with fields:
-                 Name, Code, OperatingMIC, Country, Currency, CountryISO2, CountryISO3
+            Array of exchange objects, each with:
+            - Name (str): exchange full name
+            - Code (str): exchange code (e.g. "US", "LSE")
+            - OperatingMIC (str): ISO 10383 operating MIC
+            - Country (str): country name
+            - Currency (str): primary currency code
+            - CountryISO2 (str): ISO 3166-1 alpha-2 country code
+            - CountryISO3 (str): ISO 3166-1 alpha-3 country code
+
+        Examples:
+            "List all available exchanges" → get_exchanges_list()
+            "What stock exchanges does EODHD support?" → get_exchanges_list()
         """
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
-        url = f"{EODHD_API_BASE}/exchanges-list/?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url("exchanges-list/", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
 
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
-
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

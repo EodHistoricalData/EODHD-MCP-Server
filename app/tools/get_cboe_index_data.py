@@ -1,133 +1,122 @@
-#get_cboe_index_data.py
+# app/tools/get_cboe_index_data.py
 
-import json
-from typing import Optional
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="CBOE Index Data", readOnlyHint=True))
     async def get_cboe_index_data(
-        index_code: str,             # e.g., "BDE30P"
-        feed_type: str,              # e.g., "snapshot_official_closing"
-        date: str,                   # YYYY-MM-DD, e.g., "2017-02-01"
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
-    ) -> str:
+        index_code: str,  # e.g., "BDE30P"
+        feed_type: str,  # e.g., "snapshot_official_closing"
+        date: str,  # YYYY-MM-DD, e.g., "2017-02-01"
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Get detailed CBOE index feed (index level + full components)
-        (GET /api/cboe/index)
 
-        Examples:
-            - /api/cboe/index?filter[index_code]=BDE30P
-              &filter[feed_type]=snapshot_official_closing
-              &filter[date]=2017-02-01
+        Fetch detailed data for a specific CBOE index on a given date, including all constituent
+        components. Use when the user needs index close value, divisor, and full component
+        breakdown (symbols, weights, market caps, sectors) for a CBOE index.
 
-        Required filters:
-            - index_code: CBOE index code (e.g., BAT20N, BDE30P).
-            - feed_type: CBOE feed type (e.g., snapshot_official_closing,
-              snapshot_pro_forma_closing, etc.).
-            - date: Trading date in YYYY-MM-DD format.
+        Requires index_code, feed_type, and date. Returns index-level attributes plus an array
+        of components with ISIN, closing price, currency, shares, market cap, weighting, and
+        sector. Costs 10 API calls per request.
+
+        For listing all available CBOE indices, use get_cboe_indices_list first.
+
+        Args:
+            index_code (str): CBOE index code (e.g., 'BDE30P', 'BAT20N').
+            feed_type (str): Feed type (e.g., 'snapshot_official_closing').
+            date (str): Trading date in YYYY-MM-DD format.
+            fmt (str): 'json' only (default).
+            api_token (str, optional): Per-call token override.
+
 
         Returns:
-            JSON-formatted string of the raw API response, e.g.:
-
-            {
-              "meta": { "total": 1 },
-              "data": [
-                {
-                  "id": "BDE30P-2017-02-01-snapshot_official_closing",
-                  "type": "cboe-index",
-                  "attributes": {
-                    "region": "Germany",
-                    "index_code": "BDE30P",
-                    "feed_type": "snapshot_official_closing",
-                    "date": "2017-02-01",
-                    "index_close": 13915.57,
-                    "index_divisor": 68033376.886244,
-                    "effective_date": null,
-                    "review_date": null
-                  },
-                  "components": [
-                    {
-                      "id": "...-HEI.DU",
-                      "type": "cboe-index-component",
-                      "attributes": {
-                        "symbol": "HEI.DU",
-                        "isin": "DE0006047004",
-                        "name": "HEIDELBERGCEMENT AG",
-                        "closing_price": 90.15,
-                        "currency": "EUR",
-                        "total_shares": 198416477,
-                        "market_cap": 17887245401.55,
-                        "index_weighting": 1.360357,
-                        "index_value": 189.301447,
-                        "sector": "Non-Energy Materials",
-                        ...
-                      }
-                    },
-                    ...
-                  ]
-                }
-              ]
-            }
+            Object with:
+            - meta (object): total (int) — number of results
+            - data (array): index feed objects, each with:
+              - id (str): composite key (index_code-date-feed_type)
+              - type (str): "cboe-index"
+              - attributes (object):
+                - region (str): geographic region
+                - index_code (str): CBOE index code
+                - feed_type (str): feed type
+                - date (str): trading date (YYYY-MM-DD)
+                - index_close (float): index closing value
+                - index_divisor (float): index divisor
+                - effective_date (str|null): effective date
+                - review_date (str|null): review date
+              - components (array): index constituents, each with:
+                - id (str): component identifier
+                - type (str): "cboe-index-component"
+                - attributes (object):
+                  - symbol (str): ticker symbol
+                  - isin (str): ISIN code
+                  - name (str): company name
+                  - closing_price (float): component closing price
+                  - currency (str): trading currency
+                  - total_shares (int): total shares outstanding
+                  - market_cap (float): market capitalization
+                  - index_weighting (float): weight in index (%)
+                  - index_value (float): contributed index value
+                  - sector (str): industry sector
 
         Notes:
             - If required filters are missing, the API returns a JSON error
               under the "errors" key.
             - Rate limits: 10 API calls per request (dataset-specific rule of thumb).
+
+        Examples:
+            - /api/cboe/index?filter[index_code]=BDE30P
+              &filter[feed_type]=snapshot_official_closing
+              &filter[date]=2017-02-01
         """
         # Basic validation
         if not index_code or not isinstance(index_code, str):
-            return _err(
-                "Parameter 'index_code' is required and must be a non-empty string "
-                "(e.g., 'BDE30P')."
-            )
+            raise ToolError("Parameter 'index_code' is required and must be a non-empty string (e.g., 'BDE30P').")
 
         if not feed_type or not isinstance(feed_type, str):
-            return _err(
-                "Parameter 'feed_type' is required and must be a non-empty string "
-                "(e.g., 'snapshot_official_closing')."
+            raise ToolError(
+                "Parameter 'feed_type' is required and must be a non-empty string (e.g., 'snapshot_official_closing')."
             )
 
         if not date or not isinstance(date, str):
-            return _err(
+            raise ToolError(
                 "Parameter 'date' is required and must be a non-empty string "
                 "in 'YYYY-MM-DD' format (e.g., '2017-02-01')."
             )
 
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         # Build URL with deep-object-style filter params
-        url = (
-            f"{EODHD_API_BASE}/cboe/index"
-            f"?filter[index_code]={index_code}"
-            f"&filter[feed_type]={feed_type}"
-            f"&filter[date]={date}"
-            f"&fmt={fmt}"
+        url = build_url(
+            "cboe/index",
+            {
+                "filter[index_code]": index_code,
+                "filter[feed_type]": feed_type,
+                "filter[date]": date,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
         )
-        if api_token:
-            url += f"&api_token={api_token}"
 
         data = await make_request(url)
 
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Classic EODHD error envelope
-            return json.dumps({"error": data["error"]}, indent=2)
-
         try:
             # For both success and {"errors": {...}} cases, return pretty JSON
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

@@ -1,61 +1,75 @@
-#get_mp_index_components.py
+# app/tools/get_mp_index_components.py
 
-import json
-from typing import Optional
+import logging
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_json_response
 
-
-def _q(key: str, val: Optional[str]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Index Components", readOnlyHint=True))
     async def mp_index_components(
-        symbol: str,                        # e.g., "GSPC.INDX" from mp_indices_list
-        fmt: str = "json",                  # JSON only (per docs)
-        api_token: Optional[str] = None,    # per-call override
-    ) -> str:
+        symbol: str,  # e.g., "GSPC.INDX" from mp_indices_list
+        fmt: str = "json",  # JSON only (per docs)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Marketplace: Index Components (+ historical changes for major indices)
-        GET /api/mp/unicornbay/spglobal/comp/{symbol}
+
+        [Marketplace] Get constituent stocks of a specific S&P or Dow Jones index, including
+        historical component changes for major indices. Use when asked which stocks are in an
+        index, or to track index rebalancing history.
+        Requires the index symbol from mp_indices_list (e.g. GSPC.INDX for S&P 500).
+        To browse available indices first, use mp_indices_list.
+        Consumes 10 API calls per request.
 
         Args:
           - symbol: index ID from the list endpoint (e.g., GSPC.INDX)
           - fmt: 'json' (only)
           - api_token: optional override API token
 
-        Response:
-          JSON string (pretty-printed) or {"error": "..."} on failure.
+
+        Returns:
+            JSON object with:
+            - Components (array): Current index constituents, each with:
+              - Code (str): Ticker symbol.
+              - Exchange (str): Exchange code.
+              - Name (str): Company name.
+              - Sector (str): GICS sector.
+              - Industry (str): GICS industry.
+              - Weight (float): Index weight.
+            - Historical changes (for major indices): additions/removals over time.
+
+        Examples:
+            "what are the S&P 500 components" → symbol="GSPC.INDX"
+            "Dow Jones Industrial Average constituents" → symbol="DJI.INDX"
+            "S&P 400 MidCap index members" → symbol="SP400.INDX"
+
+
         """
-        if not (symbol and symbol.strip()):
-            return _err("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")
+        symbol = sanitize_ticker(symbol, param_name="symbol")
 
         fmt = (fmt or "json").lower()
         if fmt != "json":
-            return _err("Only JSON is supported for this endpoint.")
+            raise ToolError("Only JSON is supported for this endpoint.")
 
         # Build URL - symbol is in the path
-        path_symbol = quote_plus(symbol.strip())
-        url = f"{EODHD_API_BASE}/mp/unicornbay/spglobal/comp/{path_symbol}?1=1"
-        url += _q("fmt", "json")
-        if api_token:
-            url += _q("api_token", api_token)
+        path_symbol = quote_plus(symbol)
+        url = build_url(f"mp/unicornbay/spglobal/comp/{path_symbol}", {"fmt": "json", "api_token": api_token})
 
         data = await make_request(url)
-        if data is None:
-            return _err("No response from API.")
+
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected JSON response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

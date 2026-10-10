@@ -104,7 +104,7 @@ def download_equity_report_by_isin(isin, email, api_token, is_full=False, output
     return output_path
 
 # Demo usage
-path = download_equity_report_by_isin("US0378331005", "test@test.com", "demo")
+path = download_equity_report_by_isin("US0378331005", "manual@manual.com", "demo")
 print(f"Report saved to: {path}")
 ```
 

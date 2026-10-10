@@ -1,0 +1,7 @@
+.venv/
+tests/
+test/
+__pycache__/
+*.pyc
+entrypoints/
+app/resources/

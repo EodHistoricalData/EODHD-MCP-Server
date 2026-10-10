@@ -1,105 +1,112 @@
-#get_us_tick_data.py
-import json
-from typing import Optional, Union
+# app/tools/get_us_tick_data.py
+
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_timestamp_param, sanitize_ticker, validate_timestamp_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FMT = {"json", "csv"}
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
-def _to_int(name: str, v: Union[int, str, None]) -> Optional[int]:
-    if v is None:
-        return None
-    if isinstance(v, int):
-        return v
-    if isinstance(v, str) and v.isdigit():
-        return int(v)
-    raise ValueError(f"'{name}' must be an integer UNIX timestamp in seconds (UTC).")
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Tick Data", readOnlyHint=True))
     async def get_us_tick_data(
-        ticker: str,                         # maps to s=
-        from_timestamp: Union[int, str],     # UNIX seconds (UTC)
-        to_timestamp: Union[int, str],       # UNIX seconds (UTC)
-        limit: int = 1000,                   # max number of ticks returned
-        fmt: str = "json",                   # 'json' | 'csv'
-        api_token: Optional[str] = None,     # per-call override
-    ) -> str:
+        ticker: str,  # maps to s=
+        from_timestamp: int | str,  # UNIX seconds (UTC)
+        to_timestamp: int | str,  # UNIX seconds (UTC)
+        limit: int = 1000,  # max number of ticks returned
+        fmt: str = "json",  # 'json' | 'csv'
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        US Stock Market Tick Data API (GET /api/ticks)
-        Returns granular trade ticks for US equities across all venues.
+
+        Fetch historical tick-level trade data for US equities. Use when the user needs
+        individual trade records with exact timestamps, prices, volumes, and market venue
+        identifiers at the finest granularity available.
+
+        Returns individual trades (ticks) across all US venues for a given time range.
+        Fields include timestamp (ms), price, shares, market, sub-market, sequence number.
+        US stocks only. Costs 10 API calls per request.
+
+        For real-time streaming ticks, use capture_realtime_ws instead.
+        For daily/intraday OHLCV bars, use get_intraday_historical_data.
 
         Args:
-            ticker (str): e.g., 'AAPL' or 'AAPL.US' (US-only).
-            from_timestamp (int|str): Start UNIX time (seconds, UTC).
-            to_timestamp   (int|str): End   UNIX time (seconds, UTC).
-            limit (int): Max ticks to return. Example in docs uses 5. Default 1000.
+            ticker (str): US ticker, e.g., 'AAPL' or 'AAPL.US'.
+            from_timestamp (int|str): Start UNIX time in seconds (UTC).
+            to_timestamp (int|str): End UNIX time in seconds (UTC).
+            limit (int): Max ticks to return (default 1000).
             fmt (str): 'json' (default) or 'csv'.
-            api_token (str, optional): Per-call token override; env token used otherwise.
+            api_token (str, optional): Per-call token override.
 
-        Notes:
-            • Endpoint shape:
-              /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
-            • Each request costs 10 API calls (any history depth).
-            • Response fields (arrays): mkt, price, seq, shares, sl, sub_mkt, ts (ms).
+
+        Returns:
+            Array of tick objects, each with:
+            - timestamp (int): UNIX timestamp in milliseconds
+            - datetime (str): human-readable datetime
+            - volume (int): tick volume (shares)
+            - price (float): trade price
+            - type (str): tick type (trade/quote)
+            - conditions (str): trade condition codes
+
+        Examples:
+            "AAPL tick data on 2026-03-05 first 100 ticks" → get_us_tick_data(ticker="AAPL", from_timestamp=1772870400, to_timestamp=1772956800, limit=100)
+            "TSLA trades between two timestamps" → get_us_tick_data(ticker="TSLA", from_timestamp=1772870400, to_timestamp=1772874000, limit=500)
+
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate inputs ---
-        if not ticker or not isinstance(ticker, str):
-            return _err("Parameter 'ticker' is required (e.g., 'AAPL' or 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
-        try:
-            f_ts = _to_int("from_timestamp", from_timestamp)
-            t_ts = _to_int("to_timestamp", to_timestamp)
-        except ValueError as ve:
-            return _err(str(ve))
+        f_ts = coerce_timestamp_param(from_timestamp, "from_timestamp")
+        t_ts = coerce_timestamp_param(to_timestamp, "to_timestamp")
 
         if f_ts is None or t_ts is None:
-            return _err("'from_timestamp' and 'to_timestamp' are required (UNIX seconds).")
-        if f_ts < 0 or t_ts < 0:
-            return _err("Timestamps must be non-negative UNIX seconds.")
-        if f_ts > t_ts:
-            return _err("'from_timestamp' cannot be greater than 'to_timestamp'.")
+            raise ToolError("'from_timestamp' and 'to_timestamp' are required (UNIX seconds).")
+
+        validate_timestamp_range(f_ts, t_ts)
 
         if not isinstance(limit, int) or limit <= 0:
-            return _err("'limit' must be a positive integer.")
+            raise ToolError("'limit' must be a positive integer.")
 
         # --- Build URL per docs ---
         # Example:
         # /api/ticks/?s=AAPL&from=1694455200&to=1694541600&limit=5&fmt=json
-        url = (
-            f"{EODHD_API_BASE}/ticks/"
-            f"?s={ticker}"
-            f"&from={f_ts}"
-            f"&to={t_ts}"
-            f"&limit={limit}"
-            f"&fmt={fmt}"
+        url = build_url(
+            "ticks/",
+            {
+                "s": ticker,
+                "from": f_ts,
+                "to": t_ts,
+                "limit": limit,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
         )
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- Normalize / return ---
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
 
-        # For CSV, make_request may return text; wrap if needed. JSON is passed through.
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"ticks/{ticker}.csv")
+
+        return format_json_response(data)

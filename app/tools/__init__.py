@@ -2,7 +2,7 @@
 
 import importlib
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 logger = logging.getLogger("eodhd-mcp.tools")
 
@@ -23,8 +23,16 @@ MAIN_TOOLS: list[str] = [
     "get_exchange_details",
     "get_symbol_change_history",
     "get_historical_market_cap",
+    "get_historical_dividends",
+    "get_historical_splits",
     "get_insider_transactions",
+    "get_insider_transactions_form4",
+    "get_congressional_trades",
+    "sec_filings",
+    "get_asx_corporate_actions",
+    "get_historical_commodity_prices",
     "capture_realtime_ws",
+    "get_realtime_minute_bars",
     "get_us_tick_data",
     "get_stock_screener_data",
     "get_economic_events",
@@ -46,6 +54,30 @@ MAIN_TOOLS: list[str] = [
     "get_ust_real_yield_rates",
     "get_ust_long_term_rates",
     "retrieve_description_by_id",
+    "get_support_resistance_levels",
+    "resolve_ticker",
+    # Credit & Sovereign Risk
+    "get_credit_sovereign_risk_premium",
+    "get_credit_sovereign_credit_ratings",
+    "get_credit_sovereign_cds_spreads",
+    "get_credit_sovereign_default_spreads",
+    "get_credit_corporate_cmdi",
+    "get_credit_corporate_hqm_yields",
+    "get_credit_cds_market_aggregates",
+    # Sanctions / OFAC
+    "get_sanctions_entities",
+    "get_sanctions_vessels",
+    "get_sanctions_programs",
+    "get_sanctions_sources",
+    # Interest Rates
+    "get_rates_reference_rates",
+    "get_rates_policy_rates",
+    "get_rates_funding_stress",
+    # Real Estate Data
+    "get_real_estate_countries",
+    "get_real_estate_selected_prices",
+    "get_real_estate_detailed_prices",
+    "get_real_estate_detailed_series",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [
@@ -62,17 +94,7 @@ MARKETPLACE_TOOLS: list[str] = [
 ]
 
 THIRD_PARTY_TOOLS: list[str] = [
-    #illio endpoints
-    "get_mp_illio_performance_insights",
-    "get_mp_illio_risk_insights",
-    "get_mp_illio_market_insights_performance",
-    "get_mp_illio_market_insights_best_worst",
-    "get_mp_illio_market_insights_volatility",
-    "get_mp_illio_market_insights_risk_return",
-    "get_mp_illio_market_insights_largest_volatility",
-    "get_mp_illio_market_insights_beta_bands",
-
-    #praams endpoints
+    # praams endpoints
     "get_mp_praams_risk_scoring_by_ticker",
     "get_mp_praams_risk_scoring_by_isin",
     "get_mp_praams_bond_analyze_by_isin",
@@ -85,16 +107,13 @@ THIRD_PARTY_TOOLS: list[str] = [
     "get_mp_praams_report_equity_by_ticker",
     "get_mp_praams_report_equity_by_isin",
     "get_mp_praams_report_bond_by_isin",
-    
-    #investverte endpoints
+    # investverte endpoints
     "get_mp_investverte_esg_list_companies",
     "get_mp_investverte_esg_list_countries",
     "get_mp_investverte_esg_view_country",
     "get_mp_investverte_esg_view_company",
     "get_mp_investverte_esg_list_sectors",
-    "get_mp_investverte_esg_view_sector"
-
-
+    "get_mp_investverte_esg_view_sector",
 ]
 
 ALL_TOOLS: list[str] = MAIN_TOOLS + MARKETPLACE_TOOLS + THIRD_PARTY_TOOLS

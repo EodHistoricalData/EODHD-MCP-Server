@@ -1,36 +1,54 @@
-#get_mp_investverte_esg_view_company.py
+# app/tools/get_mp_investverte_esg_view_company.py
 
-import json
-from typing import Optional, Union
+
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_ticker, strip_exchange_suffix
+from app.response_formatter import ResourceResponse, format_json_response, is_client_error
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FREQUENCIES = {"FY", "Q1", "Q2", "Q3", "Q4"}
 
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+async def _fetch_by_symbol_form(url_for, bare: str, as_given: str):
+    """Request the bare symbol first, then the caller's form.
+
+    InvestVerte keys most companies on the bare symbol (``AAPL``) but keys others on
+    the suffixed form (``000039.SZ``), and returns 404 for the wrong one.
+    """
+    data = await make_request(url_for(bare))
+    if bare != as_given and is_client_error(data):
+        logger.debug("Bare symbol %r rejected, retrying as %r", bare, as_given)
+
+        return await make_request(url_for(as_given))
+
+    return data
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Company Detail", readOnlyHint=True))
     async def get_mp_investverte_esg_view_company(
-        symbol: str,                          # e.g., "AAPL" or "000039.SZ"
-        year: Optional[Union[int, str]] = None,   # e.g., 2021
-        frequency: Optional[str] = None,          # one of ALLOWED_FREQUENCIES
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,          # per-call override
-    ) -> str:
+        symbol: str,  # e.g., "AAPL" or "000039.SZ"
+        year: int | str | None = None,  # e.g., 2021
+        frequency: str | None = None,  # one of ALLOWED_FREQUENCIES
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        View ESG ratings for a specific company
-        (GET /api/mp/investverte/esg/{SYMBOL})
 
-        Examples:
-            - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
-            - /api/mp/investverte/esg/000039.SZ
+        [InvestVerte] Get detailed ESG scores (E, S, G, and composite) for a specific company by symbol.
+        Returns Environmental, Social, Governance, and combined ESG scores broken down by year and
+        frequency (FY, Q1-Q4). Optionally filter by year and frequency. Consumes 10 API calls per request.
+        Use get_mp_investverte_esg_list_companies first to discover available symbols.
+        For country-level ESG, use get_mp_investverte_esg_view_country.
+        For sector-level ESG, use get_mp_investverte_esg_view_sector.
+
 
         Returns:
             A JSON-formatted string with an array of objects, e.g.:
@@ -54,40 +72,43 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            - /api/mp/investverte/esg/AAPL?year=2021&frequency=FY
+            - /api/mp/investverte/esg/000039.SZ
+
+
         """
-        if not symbol or not isinstance(symbol, str):
-            return _err("Parameter 'symbol' is required and must be a non-empty string (e.g., 'AAPL').")
+        symbol = sanitize_ticker(symbol, param_name="symbol")
 
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         if frequency is not None and frequency not in ALLOWED_FREQUENCIES:
-            return _err(f"Invalid 'frequency'. Allowed: {sorted(ALLOWED_FREQUENCIES)}")
+            raise ToolError(f"Invalid 'frequency'. Allowed: {sorted(ALLOWED_FREQUENCIES)}")
 
         if year is not None and not isinstance(year, (int, str)):
-            return _err("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
+            raise ToolError("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
 
         # Base URL for Investverte company ESG endpoint
-        url = f"{EODHD_API_BASE}/mp/investverte/esg/{symbol}?fmt={fmt}"
+        def url_for(sym: str) -> str:
+            return build_url(
+                f"mp/investverte/esg/{sym}",
+                {
+                    "fmt": fmt,
+                    "year": year,
+                    "frequency": frequency,
+                    "api_token": api_token,
+                },
+            )
 
-        if year is not None:
-            url += f"&year={year}"
-        if frequency:
-            url += f"&frequency={frequency}"
-        if api_token:
-            url += f"&api_token={api_token}"
-
-        data = await make_request(url)
-
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            return json.dumps({"error": data["error"]}, indent=2)
+        data = await _fetch_by_symbol_form(url_for, strip_exchange_suffix(symbol), symbol)
 
         try:
             # Expected: list of ESG entries for the company
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
-
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

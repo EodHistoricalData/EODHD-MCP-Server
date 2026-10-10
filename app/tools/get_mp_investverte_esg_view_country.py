@@ -1,36 +1,39 @@
-#get_mp_investverte_esg_view_country.py
+# app/tools/get_mp_investverte_esg_view_country.py
 
-import json
-from typing import Optional, Union
+
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_exchange
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FREQUENCIES = {"FY", "Q1", "Q2", "Q3", "Q4"}
 
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
-
-
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Country Detail", readOnlyHint=True))
     async def get_mp_investverte_esg_view_country(
-        symbol: str,                     # e.g., "US"
-        year: Optional[Union[int, str]] = None,  # e.g., 2021
-        frequency: Optional[str] = None,         # one of ALLOWED_FREQUENCIES
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,         # per-call override
-    ) -> str:
+        symbol: str,  # e.g., "US"
+        year: int | str | None = None,  # e.g., 2021
+        frequency: str | None = None,  # one of ALLOWED_FREQUENCIES
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        View ESG ratings for a specific country
-        (GET /api/mp/investverte/country/{SYMBOL})
 
-        Examples:
-            - /api/mp/investverte/country/US?year=2021&frequency=FY
-            - /api/mp/investverte/country/US
+        [InvestVerte] Get detailed ESG ratings for a specific country by country code.
+        Returns mean and median ESG scores broken down by year and frequency (FY, Q1-Q4).
+        Optionally filter by year and frequency. Consumes 10 API calls per request.
+        Use get_mp_investverte_esg_list_countries first to discover available country codes.
+        For company-level ESG, use get_mp_investverte_esg_view_company.
+        For sector-level ESG, use get_mp_investverte_esg_view_sector.
+
 
         Returns:
             A JSON-formatted string with an array of objects, e.g.:
@@ -54,39 +57,42 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            - /api/mp/investverte/country/US?year=2021&frequency=FY
+            - /api/mp/investverte/country/US
+
+
         """
-        if not symbol or not isinstance(symbol, str):
-            return _err("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")
+        symbol = sanitize_exchange(symbol, param_name="symbol")
 
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         if frequency is not None and frequency not in ALLOWED_FREQUENCIES:
-            return _err(f"Invalid 'frequency'. Allowed: {sorted(ALLOWED_FREQUENCIES)}")
+            raise ToolError(f"Invalid 'frequency'. Allowed: {sorted(ALLOWED_FREQUENCIES)}")
 
         if year is not None and not isinstance(year, (int, str)):
-            return _err("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
+            raise ToolError("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
 
         # Base URL for Investverte view-country endpoint
-        url = f"{EODHD_API_BASE}/mp/investverte/country/{symbol}?fmt={fmt}"
-
-        if year is not None:
-            url += f"&year={year}"
-        if frequency:
-            url += f"&frequency={frequency}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"mp/investverte/country/{symbol}",
+            {
+                "fmt": fmt,
+                "year": year,
+                "frequency": frequency,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            return json.dumps({"error": data["error"]}, indent=2)
-
         try:
             # Expected: list of country ESG entries
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

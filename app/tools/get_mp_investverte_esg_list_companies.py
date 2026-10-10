@@ -1,26 +1,33 @@
-#get_mp_investverte_esg_list_companies.py
+# app/tools/get_mp_investverte_esg_list_companies.py
 
-import json
-from typing import Optional
+
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Companies List", readOnlyHint=True))
     async def get_mp_investverte_esg_list_companies(
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
-    ) -> str:
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Get List of Companies available in Investverte ESG dataset
-        (GET /api/mp/investverte/companies)
+
+        [InvestVerte] List all companies available in the ESG dataset.
+        Returns an array of symbol/name pairs for every company with ESG coverage.
+        Use as a reference lookup before calling get_mp_investverte_esg_view_company for detailed ESG scores.
+        Consumes 10 API calls per request.
+        For country or sector reference lists, use get_mp_investverte_esg_list_countries or list_sectors.
+
 
         Returns:
             A JSON-formatted string containing an array of objects:
@@ -36,25 +43,26 @@ def register(mcp: FastMCP):
                 * 100,000 API calls per 24 hours
                 * 1,000 API requests per minute
                 * 1 API request = 10 API calls
+
+        Examples:
+            "List all ESG companies" → (no params needed)
+            "Which companies have ESG data?" → (no params needed)
+
+
         """
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
         # Base URL for Investverte companies list
-        url = f"{EODHD_API_BASE}/mp/investverte/companies?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url("mp/investverte/companies", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
 
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            return json.dumps({"error": data["error"]}, indent=2)
-
         try:
             # Expected: list of {"symbol": ..., "name": ...}
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

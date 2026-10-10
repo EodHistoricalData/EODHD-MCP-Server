@@ -1,87 +1,72 @@
-#get_cboe_indices_list.py
+# app/tools/get_cboe_indices_list.py
 
-import json
-from typing import Optional
+import logging
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="CBOE Indices List", readOnlyHint=True))
     async def get_cboe_indices_list(
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
-    ) -> str:
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
-        Get list of CBOE indices (Europe & regional families)
-        (GET /api/cboe/indices)
 
-        This endpoint returns:
-            - EODHD index identifier (id, type)
-            - CBOE index code
-            - Region (country / market)
-            - Latest feed type and date
-            - Latest close value and index divisor
-            - Pagination info via 'links.next'
+        List all available CBOE indices with their latest values. Use when the user wants to
+        browse CBOE European and regional index families, check which CBOE indices are available,
+        or find a CBOE index code.
 
-        Example:
-            /api/cboe/indices?api_token=XXXX&fmt=json
+        Returns index codes, regions, latest close values, index divisors, and feed metadata
+        for ~38 CBOE indices. Paginated via 'links.next'. Costs 10 API calls per request.
 
-        Response example (trimmed):
+        For detailed component-level data on a specific CBOE index, use get_cboe_index_data.
 
-            {
-              "meta": {"total": 38},
-              "data": [
-                {
-                  "id": "BEZ50N",
-                  "type": "cboe-index",
-                  "attributes": {
-                    "region": "Eurozone",
-                    "index_code": "BEZ50N",
-                    "feed_type": "snapshot_official_closing",
-                    "date": "2017-07-11",
-                    "index_close": 15340.93,
-                    "index_divisor": 149428673.477155
-                  }
-                },
-                ...
-              ],
-              "links": {
-                "next": null    # or URL to the next page
-              }
-            }
+        Returns:
+            Object with:
+            - meta (object): total (int) — total number of indices
+            - data (array): index objects, each with:
+              - id (str): CBOE index identifier
+              - type (str): always "cboe-index"
+              - attributes (object):
+                - region (str): geographic region (e.g. "Eurozone", "Germany")
+                - index_code (str): CBOE index code
+                - feed_type (str): feed type (e.g. "snapshot_official_closing")
+                - date (str): latest date (YYYY-MM-DD)
+                - index_close (float): latest closing value
+                - index_divisor (float): index divisor
+            - links (object): next (str|null) — URL for next page, null if last
 
         Notes:
             - Pagination:
               If 'links.next' is not null, call that URL to get the next page.
             - Rate limits:
                 * 10 API calls per request (CBOE dataset rule of thumb).
+
+        Examples:
+            "List all CBOE indices" → get_cboe_indices_list()
+            "What CBOE European indices are available?" → get_cboe_indices_list()
         """
         if fmt != "json":
-            return _err("Only 'json' is supported by this tool.")
+            raise ToolError("Only 'json' is supported by this tool.")
 
-        # Base URL for CBOE indices list
-        url = f"{EODHD_API_BASE}/cboe/indices?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url("cboe/indices", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
 
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            return json.dumps({"error": data["error"]}, indent=2)
-
         try:
             # Expected: dict with 'meta', 'data', 'links'
-            return json.dumps(data, indent=2)
-        except Exception:
-            return _err("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

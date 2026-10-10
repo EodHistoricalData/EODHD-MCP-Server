@@ -1,13 +1,17 @@
-#get_macro_indicator.py
+# app/tools/get_macro_indicator.py
 
-import json
+import logging
 import re
-from typing import Optional
 
 from fastmcp import FastMCP
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
+from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 ISO3_RE = re.compile(r"^[A-Z]{3}$")
 ALLOWED_FMT = {"json", "csv"}
@@ -55,19 +59,26 @@ ALLOWED_INDICATORS = {
     "unemployment_total_percent",
 }
 
-def _err(msg: str) -> str:
-    return json.dumps({"error": msg}, indent=2)
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Macroeconomic Indicators", readOnlyHint=True))
     async def get_macro_indicator(
-        country: str,                          # ISO-3, e.g., USA, FRA, DEU
-        indicator: Optional[str] = None,       # default: gdp_current_usd
-        fmt: str = "json",                     # 'json' or 'csv' (API default json here)
-        api_token: Optional[str] = None,       # per-call override; env otherwise
-    ) -> str:
+        country: str,  # ISO-3, e.g., USA, FRA, DEU
+        indicator: str | None = None,  # default: gdp_current_usd
+        fmt: str = "json",  # 'json' or 'csv' (API default json here)
+        api_token: str | None = None,  # per-call override; env otherwise
+    ) -> ResourceResponse:
         """
-        Macro Indicators API (GET /api/macro-indicator/{COUNTRY})
+
+        Fetch macroeconomic indicators for a country over time. Use when the user asks about
+        country-level economic data: GDP, inflation, CPI, unemployment, population, trade
+        balance, debt-to-GDP, life expectancy, and 30+ other World Bank-style indicators.
+
+        Returns a historical time series for one indicator in one country. Country is specified
+        by ISO-3 alpha code (e.g., USA, DEU, FRA). Defaults to GDP if no indicator specified.
+
+        This is for country-level macro data only. For company fundamentals, use
+        get_fundamentals_data (single ticker) or get_bulk_fundamentals (entire exchange).
 
         Args:
             country (str): Alpha-3 ISO country code (e.g., 'USA', 'FRA', 'DEU').
@@ -75,47 +86,59 @@ def register(mcp: FastMCP):
             fmt (str): 'json' or 'csv'. Default 'json'.
             api_token (str, optional): Per-call token override.
 
+
         Returns:
-            str: JSON with indicator timeseries or {"csv": "..."} wrapper if returning CSV text,
-                 or {"error": "..."} on validation/transport errors.
+            Array of indicator data points, each with:
+            - CountryCode (str): ISO-3 country code (e.g. "USA")
+            - Indicator (str): indicator key (e.g. "gdp_current_usd")
+            - Date (str): observation date (YYYY-MM-DD)
+            - Period (str): reporting period
+            - Value (float): indicator value
+            - Frequency (str): data frequency (e.g. "Annual")
+            - Unit (str): measurement unit
+
+        Examples:
+            "US GDP over time" → get_macro_indicator(country="USA", indicator="gdp_current_usd")
+            "Germany unemployment rate" → get_macro_indicator(country="DEU", indicator="unemployment_total_percent")
+            "France inflation (CPI)" → get_macro_indicator(country="FRA", indicator="inflation_consumer_prices_annual")
         """
         # --- Validate inputs ---
         if not country or not isinstance(country, str) or not ISO3_RE.match(country.upper()):
-            return _err("Parameter 'country' must be an Alpha-3 ISO code (e.g., 'USA', 'FRA', 'DEU').")
+            raise ToolError("Parameter 'country' must be an Alpha-3 ISO code (e.g., 'USA', 'FRA', 'DEU').")
 
         if fmt not in ALLOWED_FMT:
-            return _err(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
+            raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
         use_indicator = indicator or "gdp_current_usd"
         if use_indicator not in ALLOWED_INDICATORS:
-            return _err(
-                "Invalid 'indicator'. Provide one of the documented indicators "
-                f"or omit it to use 'gdp_current_usd'."
+            raise ToolError(
+                "Invalid 'indicator'. Provide one of the documented indicators or omit it to use 'gdp_current_usd'."
             )
 
         # --- Build URL ---
         # Example: /api/macro-indicator/USA?indicator=inflation_consumer_prices_annual&fmt=json
-        url = (
-            f"{EODHD_API_BASE}/macro-indicator/{country.upper()}"
-            f"?indicator={use_indicator}&fmt={fmt}"
+        url = build_url(
+            f"macro-indicator/{country.upper()}",
+            {
+                "indicator": use_indicator,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
         )
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request appends env token
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- Normalize / return ---
-        if data is None:
-            return _err("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            return json.dumps({"error": data["error"]}, indent=2)
 
-        # If fmt=json, API returns JSON -> dump.
-        # If you adapt make_request to return text for fmt='csv', we'll wrap it.
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
-            return _err("Unexpected response format from API.")
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(
+                data,
+                "text/csv",
+                resource_path=f"macro-indicator/{country.upper()}-{use_indicator}.csv",
+            )
+
+        return format_json_response(data)
