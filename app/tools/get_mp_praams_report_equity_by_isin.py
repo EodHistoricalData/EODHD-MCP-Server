@@ -1,23 +1,17 @@
-#get_mp_praams_report_equity_by_isin.py
+# app/tools/get_mp_praams_report_equity_by_isin.py
 
-import json
-from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-
-def _q(key: str, val: Optional[str | int]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_email
+from app.response_formatter import ResourceResponse, format_binary_response, raise_on_api_error
 
 
-def _canon_isin(v: str) -> Optional[str]:
+def _canon_isin(v: str) -> str | None:
     """Light validation/normalization for ISIN path param."""
     if not isinstance(v, str):
         return None
@@ -28,56 +22,53 @@ def _canon_isin(v: str) -> Optional[str]:
 
 
 async def _run_praams_report_equity_by_isin(
-    isin: str, email: str, is_full: Optional[bool], api_token: Optional[str]
-) -> str:
+    isin: str, email: str, is_full: bool | None, api_token: str | None
+) -> ResourceResponse:
     ci = _canon_isin(isin)
     if ci is None:
         raise ToolError("Invalid 'isin'. It must be a non-empty string (e.g. 'US0378331005').")
-    if not email or not isinstance(email, str):
-        raise ToolError("Parameter 'email' is required for report notifications.")
+    email = sanitize_email(email)
 
-    email = email.strip()
+    url = build_url(
+        f"mp/praams/reports/equity/isin/{quote_plus(ci)}",
+        {
+            "email": email,
+            "isFull": str(is_full).lower() if is_full is not None else None,
+            "api_token": api_token,
+        },
+    )
 
-    url = f"{EODHD_API_BASE}/mp/praams/reports/equity/isin/{quote_plus(ci)}?1=1"
-    url += _q("email", email)
-    if is_full is not None:
-        url += _q("isFull", str(is_full).lower())
-    if api_token:
-        url += _q("api_token", api_token)
+    data = await make_request(url, response_mode="bytes")
+    raise_on_api_error(data)
 
-    data = await make_request(url)
-    if data is None:
-        raise ToolError("No response from API.")
-
-
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
-    try:
-        return json.dumps(data, indent=2)
-    except Exception:
+    if not isinstance(data, bytes) or not data:
         raise ToolError("Unexpected response format from API.")
+    return format_binary_response(
+        data, "application/pdf", resource_path=f"reports/praams/equity/isin/{quote_plus(ci)}.pdf"
+    )
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(
+        annotations=ToolAnnotations(title="Praams: Equity Report (by ISIN)", readOnlyHint=False, idempotentHint=False)
+    )
     async def get_mp_praams_report_equity_by_isin(
-        isin: str,                             # e.g. "US0378331005" (Apple)
-        email: str,                            # email for notifications
-        is_full: Optional[bool] = None,        # full or partial report
-        api_token: Optional[str] = None,       # per-call override
-    ) -> str:
+        isin: str,  # e.g. "US0378331005" (Apple)
+        email: str,  # email for notifications
+        is_full: bool | None = None,  # full or partial report
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Generate a comprehensive multi-factor PDF report for an equity by ISIN code.
         Covers 120,000+ global equities. Report includes valuation, performance, profitability,
-        growth, dividends, analyst view, plus risk factors (volatility, stress-test, liquidity,
+        growth, dividends, analyst view, plus risk factors (volatility, stress-manual, liquidity,
         country, solvency). Requires an email for delivery notification. Consumes 10 API calls per request.
         For report by ticker, use get_mp_praams_report_equity_by_ticker.
         For JSON risk scoring without PDF, use get_mp_praams_risk_scoring_by_isin.
 
         Args:
             isin (str): ISIN code (e.g. 'US0378331005' for Apple, 'US88160R1014' for Tesla).
-            If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
             email (str): Email address for report notifications.
             is_full (bool, optional): True for full report, False for partial.
             api_token (str, optional): Per-call token override; env token used otherwise.
@@ -100,7 +91,7 @@ def register(mcp: FastMCP):
             - Coverage: 120,000+ global equities (stocks, ETFs).
             - Return factors: valuation, performance, analyst view, profitability,
               growth, dividends/coupons.
-            - Risk factors: default, volatility, stress-test, selling difficulty,
+            - Risk factors: default, volatility, stress-manual, selling difficulty,
               country, other risks.
             - Demo ISINs: US0378331005, US88160R1014, US0231351067.
 
@@ -108,19 +99,6 @@ def register(mcp: FastMCP):
             "Full Apple equity report by ISIN" → isin="US0378331005", email="user@example.com", is_full=True
             "Tesla equity PDF via ISIN" → isin="US88160R1014", email="user@example.com"
 
-        
-        """
-        return await _run_praams_report_equity_by_isin(
-            isin=isin, email=email, is_full=is_full, api_token=api_token
-        )
 
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_report_equity_by_isin(
-        isin: str,
-        email: str,
-        is_full: Optional[bool] = None,
-        api_token: Optional[str] = None,
-    ) -> str:
-        return await _run_praams_report_equity_by_isin(
-            isin=isin, email=email, is_full=is_full, api_token=api_token
-        )
+        """
+        return await _run_praams_report_equity_by_isin(isin=isin, email=email, is_full=is_full, api_token=api_token)

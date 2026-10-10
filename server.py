@@ -1,13 +1,20 @@
+# server.py
 import argparse
+import asyncio
 import logging
 import os
 import sys
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
+from app import telemetry
+from app.api_client import close_client, install_token_redaction
+from app.prompts import register_all as register_all_prompts
+from app.resources import register_all as register_all_resources
+from app.telemetry_middleware import install as install_telemetry
+from app.tools import register_all as register_all_tools
 from dotenv import load_dotenv
 from fastmcp import FastMCP
-from app.tools import register_all as register_all_tools
-from app.resources import register_all as register_all_resources
-from app.prompts import register_all as register_all_prompts
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -56,7 +63,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     p.add_argument(
-        "--apikey", "--api-key",
+        "--apikey",
+        "--api-key",
         dest="api_key",
         help="EODHD API key",
     )
@@ -74,18 +82,41 @@ def main(argv: list[str] | None = None) -> int:
     if args.api_key:
         os.environ["EODHD_API_KEY"] = args.api_key
 
-    if unknown:
-        # Don’t print secrets; just show shapes
-        print(f"Ignoring extra args from client: {len(unknown)} item(s)", file=sys.stderr)
-
     logging.basicConfig(
         level=getattr(logging, args.log_level.upper(), logging.INFO),
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr,
     )
+    install_token_redaction()
     logger = logging.getLogger("eodhd-mcp")
 
-    mcp = FastMCP("eodhd-datasets")
+    if unknown:
+        logger.warning("Ignoring extra args from client: %d item(s)", len(unknown))
+
+    if not os.environ.get("EODHD_API_KEY"):
+        logger.warning(
+            "No EODHD_API_KEY set. Set EODHD_API_KEY env var or pass --apikey to use your key.",
+        )
+
+    @asynccontextmanager
+    async def _lifespan(_mcp: FastMCP) -> AsyncIterator[None]:
+        """Startup / shutdown hook running inside the server's event loop."""
+        yield
+        # ── shutdown ──
+        logger.info("Flushing telemetry…")
+        try:
+            await telemetry.shutdown()
+        except Exception:
+            logger.exception("Failed to flush telemetry.")
+
+        logger.info("Closing shared HTTP client…")
+        try:
+            await close_client()
+        except Exception:
+            logger.exception("Failed to close shared HTTP client.")
+
+    mcp: FastMCP = FastMCP("eodhd-datasets", lifespan=_lifespan)
+    install_telemetry(mcp)
     register_all_tools(mcp)
     register_all_resources(mcp)
     register_all_prompts(mcp)
@@ -140,20 +171,15 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("No transport selected.")
         return 2
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # The transport runs inside anyio, which delivers SIGINT as a CancelledError.
+        # That inherits from BaseException, so the handler below never saw it and an
+        # ordinary Ctrl+C ended with a traceback and exit code 1.
         logger.info("Shutdown requested (Ctrl+C).")
         return 0
     except Exception:
         logger.exception("Fatal error while running MCP server.")
         return 1
-    finally:
-        # Best-effort: close the shared HTTP client
-        from app.api_client import close_client
-        import asyncio
-        try:
-            asyncio.get_event_loop().run_until_complete(close_client())
-        except Exception:
-            pass
 
 
 if __name__ == "__main__":

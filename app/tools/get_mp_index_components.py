@@ -1,28 +1,26 @@
-#get_mp_index_components.py
+# app/tools/get_mp_index_components.py
 
-import json
-from typing import Optional
+import logging
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Index Components", readOnlyHint=True))
     async def mp_index_components(
-        symbol: str,                        # e.g., "GSPC.INDX" from mp_indices_list
-        fmt: str = "json",                  # JSON only (per docs)
-        api_token: Optional[str] = None,    # per-call override
-    ) -> str:
+        symbol: str,  # e.g., "GSPC.INDX" from mp_indices_list
+        fmt: str = "json",  # JSON only (per docs)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         [Marketplace] Get constituent stocks of a specific S&P or Dow Jones index, including
@@ -54,29 +52,24 @@ def register(mcp: FastMCP):
             "Dow Jones Industrial Average constituents" → symbol="DJI.INDX"
             "S&P 400 MidCap index members" → symbol="SP400.INDX"
 
-        
+
         """
-        if not (symbol and symbol.strip()):
-            raise ToolError("Parameter 'symbol' is required (e.g., 'GSPC.INDX').")
+        symbol = sanitize_ticker(symbol, param_name="symbol")
 
         fmt = (fmt or "json").lower()
         if fmt != "json":
             raise ToolError("Only JSON is supported for this endpoint.")
 
         # Build URL - symbol is in the path
-        path_symbol = quote_plus(symbol.strip())
-        url = f"{EODHD_API_BASE}/mp/unicornbay/spglobal/comp/{path_symbol}?1=1"
-        url += _q("fmt", "json")
-        if api_token:
-            url += _q("api_token", api_token)
+        path_symbol = quote_plus(symbol)
+        url = build_url(f"mp/unicornbay/spglobal/comp/{path_symbol}", {"fmt": "json", "api_token": api_token})
 
         data = await make_request(url)
-        if data is None:
-            raise ToolError("No response from API.")
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

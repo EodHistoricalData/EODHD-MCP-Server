@@ -1,23 +1,21 @@
-#get_stock_screener_data.py
+# app/tools/get_stock_screener_data.py
 
 import json
-from typing import Optional, Union, List, Any
-from urllib.parse import quote_plus
+import logging
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 
-def _q(key: str, val: Optional[str]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+logger = logging.getLogger(__name__)
 
 
-def _normalize_filters(filters: Optional[Union[str, List[List[Any]]]]) -> Optional[str]:
+def _normalize_filters(filters: str | list[list[Any]] | None) -> str | None:
     """
     Accepts either:
       - a raw (already-encoded) string like:
@@ -34,10 +32,11 @@ def _normalize_filters(filters: Optional[Union[str, List[List[Any]]]]) -> Option
     try:
         return json.dumps(filters, separators=(",", ":"))
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
 
-def _normalize_signals(signals: Optional[Union[str, List[str]]]) -> Optional[str]:
+def _normalize_signals(signals: str | list[str] | None) -> str | None:
     """
     Accepts either a comma-separated string or a list of strings.
     Returns a comma-separated string or None.
@@ -52,16 +51,16 @@ def _normalize_signals(signals: Optional[Union[str, List[str]]]) -> Optional[str
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Stock Screener", readOnlyHint=True))
     async def stock_screener(
-        filters: Optional[Union[str, List[List[Any]]]] = None,
-        signals: Optional[Union[str, List[str]]] = None,
-        sort: Optional[str] = None,             # e.g. "market_capitalization.desc"
-        limit: int = 50,                         # 1..100
-        offset: int = 0,                         # 0..999
-        fmt: Optional[str] = None,               # NEW: accept fmt to avoid validation errors
-        api_token: Optional[str] = None,         # per-call override (else env)
-    ) -> str:
+        filters: str | list[list[Any]] | None = None,
+        signals: str | list[str] | None = None,
+        sort: str | None = None,  # e.g. "market_capitalization.desc"
+        limit: int = 50,  # 1..100
+        offset: int = 0,  # 0..999
+        fmt: str | None = None,  # NEW: accept fmt to avoid validation errors
+        api_token: str | None = None,  # per-call override (else env)
+    ) -> ResourceResponse:
         """
 
         Screen and filter stocks by fundamental and technical criteria.
@@ -71,7 +70,6 @@ def register(mcp: FastMCP):
         Consumes 5 API calls per request.
         Use this tool for stock discovery, screening by fundamentals/technicals, and building watchlists.
         For detailed data on a specific ticker, use get_fundamentals_data instead.
-        If user asks about a specific company, call resolve_ticker first to get the ticker, then use other tools.
 
         Args:
           - filters: list-of-lists or JSON string
@@ -101,7 +99,11 @@ def register(mcp: FastMCP):
             "Stocks hitting new 52-week highs" → signals=["52weekhigh"], limit=50
             "Undervalued healthcare with high volume" → filters=[["sector","=","Healthcare"],["pe_ratio","<",15],["avgvol_200d",">",1000000]], sort="pe_ratio.asc"
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
 
         # --- fmt handling (for compatibility with callers passing fmt) ---
@@ -123,28 +125,25 @@ def register(mcp: FastMCP):
             raise ToolError("Invalid 'signals' value. Provide a list of strings or comma-separated string.")
 
         # Build URL
-        url = f"{EODHD_API_BASE}/screener?1=1"
-        if sort:
-            url += _q("sort", sort)
-        url += _q("limit", str(limit))
-        url += _q("offset", str(offset))
-        if filt_str:
-            url += _q("filters", filt_str)
-        if sig_str:
-            url += _q("signals", sig_str)
-
         # (We deliberately do NOT append fmt, since the endpoint is JSON-only.)
-
-        if api_token:
-            url += _q("api_token", api_token)
+        url = build_url(
+            "screener",
+            {
+                "sort": sort,
+                "limit": str(limit),
+                "offset": str(offset),
+                "filters": filt_str,
+                "signals": sig_str,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
-        if data is None:
-            raise ToolError("No response from API.")
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected JSON response format from API.") from e

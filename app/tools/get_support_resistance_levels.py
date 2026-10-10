@@ -1,30 +1,21 @@
-# get_support_resistance_levels.py
+# app/tools/get_support_resistance_levels.py
 
-import json
-import re
-from datetime import datetime
-from typing import Optional
+import logging
+from collections.abc import Callable
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+logger = logging.getLogger(__name__)
 
 ALLOWED_METHODS = {"classic", "fibonacci", "woodie", "camarilla", "demark"}
-
-
-def _valid_date(s: str) -> bool:
-    if not isinstance(s, str) or not DATE_RE.match(s):
-        return False
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
+ThreePointCalc = Callable[[float, float, float], dict]
+DemarkCalc = Callable[[float, float, float, float], dict]
 
 
 def _calc_classic(high: float, low: float, close: float) -> dict:
@@ -105,38 +96,37 @@ def _calc_demark(high: float, low: float, close: float, open_: float) -> dict:
     }
 
 
-CALC_MAP = {
+CALC_MAP: dict[str, ThreePointCalc] = {
     "classic": _calc_classic,
     "fibonacci": _calc_fibonacci,
     "woodie": _calc_woodie,
     "camarilla": _calc_camarilla,
-    "demark": _calc_demark,
 }
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Support & Resistance Levels", readOnlyHint=True))
     async def get_support_resistance_levels(
         ticker: str,
         method: str = "classic",
         period: str = "d",
-        start_date: Optional[str] = None,
-        end_date: Optional[str] = None,
-        api_token: Optional[str] = None,
-    ) -> str:
+        start_date: str | None = None,
+        end_date: str | None = None,
+        api_token: str | None = None,
+    ) -> ResourceResponse:
         """
-        Calculate pivot-point-based support and resistance levels for any stock, ETF, index, or crypto.
 
+        Calculate pivot-point-based support and resistance levels for any stock, ETF, index, or crypto.
         Fetches historical OHLCV data and computes support/resistance levels using one of five
         standard pivot point methods: Classic (Floor), Fibonacci, Woodie, Camarilla, or DeMark.
         Each record in the result corresponds to one bar from the price history, with the calculated
         levels that traders use to identify potential reversal zones, entry/exit points, and stop-loss placement.
 
         Formulas:
-            Classic:    PP = (H + L + C) / 3;  R1 = 2·PP − L;  S1 = 2·PP − H;  R2 = PP + (H − L);  S2 = PP − (H − L)
-            Fibonacci:  PP = (H + L + C) / 3;  R1 = PP + 0.382·(H − L);  S1 = PP − 0.382·(H − L)
-            Woodie:     PP = (H + L + 2·C) / 4  (extra weight on close)
-            Camarilla:  Uses close ± range × multipliers (1.1/12, 1.1/6, 1.1/4, 1.1/2)
+            Classic:    PP = (H + L + C) / 3;  R1 = 2*PP - L;  S1 = 2*PP - H;  R2 = PP + (H - L);  S2 = PP - (H - L)
+            Fibonacci:  PP = (H + L + C) / 3;  R1 = PP + 0.382*(H - L);  S1 = PP - 0.382*(H - L)
+            Woodie:     PP = (H + L + 2*C) / 4  (extra weight on close)
+            Camarilla:  Uses close +/- range * multipliers (1.1/12, 1.1/6, 1.1/4, 1.1/2)
             DeMark:     X depends on open vs close relationship; PP = X/4
 
         Args:
@@ -161,76 +151,72 @@ def register(mcp: FastMCP):
             "Classic pivot points for Apple last month" → ticker="AAPL.US", method="classic", start_date="2026-02-01"
             "Fibonacci support/resistance for Bitcoin weekly" → ticker="BTC-USD.CC", method="fibonacci", period="w"
             "Camarilla levels for Tesla in 2025" → ticker="TSLA.US", method="camarilla", start_date="2025-01-01", end_date="2025-12-31"
-
         """
         # --- Validation ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         method = method.strip().lower() if isinstance(method, str) else "classic"
         if method not in ALLOWED_METHODS:
-            raise ToolError(
-                f"Invalid 'method'. Allowed: {', '.join(sorted(ALLOWED_METHODS))}"
-            )
+            raise ToolError(f"Invalid 'method'. Allowed: {', '.join(sorted(ALLOWED_METHODS))}")
 
         allowed_periods = {"d", "w", "m"}
         if period not in allowed_periods:
             raise ToolError(f"Invalid 'period'. Allowed: {sorted(allowed_periods)}")
 
-        if start_date is not None and not _valid_date(start_date):
-            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
-        if end_date is not None and not _valid_date(end_date):
-            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         # --- Fetch OHLCV data ---
-        url = f"{EODHD_API_BASE}/eod/{ticker}?period={period}&order=a&fmt=json"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"eod/{ticker}",
+            {
+                "period": period,
+                "order": "a",
+                "fmt": "json",
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
+        raise_on_api_error(data)
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
         if not isinstance(data, list) or len(data) == 0:
             raise ToolError("No price data available for the given ticker and date range.")
 
         # --- Calculate support/resistance for each bar ---
-        calc_fn = CALC_MAP[method]
         results = []
         for bar in data:
             h = bar.get("high")
-            l = bar.get("low")
+            low = bar.get("low")
             c = bar.get("close")
             o = bar.get("open")
-            if h is None or l is None or c is None:
+            if h is None or low is None or c is None:
                 continue
 
             if method == "demark":
                 if o is None:
                     continue
-                levels = calc_fn(h, l, c, o)
+                demark_calc: DemarkCalc = _calc_demark
+                levels = demark_calc(h, low, c, o)
             else:
-                levels = calc_fn(h, l, c)
+                pivot_calc: ThreePointCalc = CALC_MAP[method]
+                levels = pivot_calc(h, low, c)
 
-            results.append({
-                "date": bar.get("date"),
-                "open": o,
-                "high": h,
-                "low": l,
-                "close": c,
-                **levels,
-            })
+            results.append(
+                {
+                    "date": bar.get("date"),
+                    "open": o,
+                    "high": h,
+                    "low": low,
+                    "close": c,
+                    **levels,
+                }
+            )
 
         if not results:
             raise ToolError("Could not compute levels — no valid OHLC bars found.")
 
-        return json.dumps(results, indent=2)
+        return format_json_response(results, resource_path=f"support-resistance/{ticker}-{method}.json")

@@ -1,26 +1,30 @@
-#get_mp_investverte_esg_view_country.py
+# app/tools/get_mp_investverte_esg_view_country.py
 
-import json
-from typing import Optional, Union
+
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_exchange
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FREQUENCIES = {"FY", "Q1", "Q2", "Q3", "Q4"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Country Detail", readOnlyHint=True))
     async def get_mp_investverte_esg_view_country(
-        symbol: str,                     # e.g., "US"
-        year: Optional[Union[int, str]] = None,  # e.g., 2021
-        frequency: Optional[str] = None,         # one of ALLOWED_FREQUENCIES
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,         # per-call override
-    ) -> str:
+        symbol: str,  # e.g., "US"
+        year: int | str | None = None,  # e.g., 2021
+        frequency: str | None = None,  # one of ALLOWED_FREQUENCIES
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         [InvestVerte] Get detailed ESG ratings for a specific country by country code.
@@ -58,10 +62,9 @@ def register(mcp: FastMCP):
             - /api/mp/investverte/country/US?year=2021&frequency=FY
             - /api/mp/investverte/country/US
 
-        
+
         """
-        if not symbol or not isinstance(symbol, str):
-            raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'US').")
+        symbol = sanitize_exchange(symbol, param_name="symbol")
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
@@ -73,25 +76,23 @@ def register(mcp: FastMCP):
             raise ToolError("Parameter 'year' must be an integer or string representing a year, e.g., 2021.")
 
         # Base URL for Investverte view-country endpoint
-        url = f"{EODHD_API_BASE}/mp/investverte/country/{symbol}?fmt={fmt}"
-
-        if year is not None:
-            url += f"&year={year}"
-        if frequency:
-            url += f"&frequency={frequency}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"mp/investverte/country/{symbol}",
+            {
+                "fmt": fmt,
+                "year": year,
+                "frequency": frequency,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            raise ToolError(str(data["error"]))
-
         try:
             # Expected: list of country ESG entries
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

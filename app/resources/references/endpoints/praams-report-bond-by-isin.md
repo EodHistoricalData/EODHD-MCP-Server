@@ -106,7 +106,7 @@ def download_bond_report_by_isin(isin, email, api_token, is_full=False, output_p
     return output_path
 
 # Demo usage
-path = download_bond_report_by_isin("US7593518852", "test@test.com", "demo")
+path = download_bond_report_by_isin("US7593518852", "manual@manual.com", "demo")
 print(f"Report saved to: {path}")
 ```
 

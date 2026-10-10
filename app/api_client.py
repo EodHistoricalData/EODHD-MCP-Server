@@ -1,63 +1,528 @@
 # app/api_client.py
-
 import asyncio
+import email.utils
 import logging
+import re
 import time
-from typing import Optional
+from http import HTTPStatus
+from typing import Any, Literal
+from urllib.parse import parse_qs, unquote, urlsplit
 
 import httpx
-from .config import EODHD_API_KEY, EODHD_RETRY_ENABLED
+from fastmcp.server.dependencies import get_http_request
+
+from . import quota
+from .config import EODHD_API_BASE, EODHD_RATE_LIMIT_DELAY, EODHD_RETRY_ENABLED, get_api_key, get_user_agent
 
 logger = logging.getLogger("eodhd-mcp.api_client")
 
-# Shared HTTP client — reuses TCP+TLS connections across tool calls
-_http_client: httpx.AsyncClient = httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+# Dedicated logger for daily-quota exhaustion (HTTP 402). EODHD's own request log
+# drops 402 before writing, so this server's log is the only place MCP quota hits
+# are counted.
+quota_logger = logging.getLogger("eodhd-mcp.quota")
+
+# Shared HTTP client — created lazily inside a running event loop
+_http_client: httpx.AsyncClient | None = None
+_http_client_lock: asyncio.Lock | None = None
+
+
+def _get_client_lock() -> asyncio.Lock:
+    """Return (and lazily create) the asyncio.Lock for client init.
+
+    asyncio.Lock must be created inside a running event loop, so we create it
+    on first access and recreate if the loop changes (e.g. between tests).
+    """
+    global _http_client_lock
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # No running loop — return a fresh lock (caller is likely in tests)
+        _http_client_lock = asyncio.Lock()
+        return _http_client_lock
+
+    # Recreate if the lock was created on a different loop
+    if _http_client_lock is None:
+        _http_client_lock = asyncio.Lock()
+    else:
+        try:
+            # If the lock's loop doesn't match, replace it
+            lock_loop = getattr(_http_client_lock, "_loop", None)
+            if lock_loop is not None and lock_loop is not loop:
+                _http_client_lock = asyncio.Lock()
+        except Exception:
+            _http_client_lock = asyncio.Lock()
+    return _http_client_lock
+
+
+# Count of daily-quota exhaustions (HTTP 402) seen since this process started.
+# Best-effort and per-process: it resets on restart and is not shared across workers.
+# The durable record is the eodhd-mcp.quota log line, one per hit — aggregate from there.
+_quota_exhausted_hits = 0
+
+
+def get_quota_exhausted_hits() -> int:
+    """How many times this process hit the EODHD daily quota since start (best-effort)."""
+    return _quota_exhausted_hits
+
+
+def _record_quota_exhausted(redacted_url: str) -> None:
+    """Log and count one daily-quota exhaustion, so MCP quota hits are measurable."""
+    global _quota_exhausted_hits
+    _quota_exhausted_hits += 1
+
+    quota_logger.warning(
+        "EODHD daily quota exhausted (402) | hits_since_start=%d | %s",
+        _quota_exhausted_hits,
+        redacted_url,
+    )
+
+
+async def _observe_quota(url: str) -> None:
+    """Let the quota watcher read the account, never at the cost of the caller's request.
+
+    The read stays inside the caller's call on purpose: the notice it may raise travels in
+    a ContextVar and can only reach the response being built right now. Moved to a
+    background task it would set that variable in a context nobody reads, and the feature
+    would go quiet without failing. What it must not do is make the caller wait on a slow
+    upstream, so it carries a timeout of its own — seconds, not the 30 a normal call gets.
+    """
+    try:
+        await quota.observe(
+            url,
+            lambda account_url: make_request(
+                account_url,
+                retry_enabled=False,
+                timeout=quota.READ_TIMEOUT_SECONDS,
+            ),
+        )
+    except Exception:
+        logger.debug("Quota observation failed", exc_info=True)
+
+
+def _create_http_client() -> httpx.AsyncClient:
+    """Create the shared HTTP client.
+
+    Deliberately without a User-Agent default: this client is created once and outlives
+    every later change to EODHD_MCP_EDITION, so a UA frozen here would be the deployment
+    label as it stood at the first request. make_request sets it per request instead.
+    """
+    return httpx.AsyncClient(timeout=httpx.Timeout(30.0))
+
+
+async def _get_http_client() -> httpx.AsyncClient:
+    """Return the shared HTTP client, creating it on first use.
+
+    Safe to call concurrently from many coroutines — an asyncio.Lock
+    ensures only one client is ever created.
+    """
+    global _http_client
+    # Fast path: client already exists
+    if _http_client is not None:
+        return _http_client
+
+    async with _get_client_lock():
+        # Re-check after acquiring the lock (another coroutine may have created it)
+        if _http_client is None:
+            _http_client = _create_http_client()
+        return _http_client
 
 
 async def close_client() -> None:
     """Shut down the shared HTTP client (call on server exit)."""
-    await _http_client.aclose()
+    global _http_client
+    async with _get_client_lock():
+        if _http_client is None:
+            return
 
+        client = _http_client
+        _http_client = None
+    await client.aclose()
 
-# Rate limiting
-_last_request_time: float = 0.0
-_rate_limit_delay: float = 0.1  # 100 ms between requests
 
 # Retry configuration
 MAX_RETRIES = 3
-RETRY_DELAY_BASE = 1.0   # seconds
-RETRY_DELAY_MAX = 10.0   # seconds cap
-
-#from fastmcp.server.dependencies import get_http_request
+RETRY_DELAY_BASE = 1.0  # seconds
+RETRY_DELAY_MAX = 10.0  # seconds cap
 
 
-#def _resolve_eodhd_token_from_request() -> str | None:
-#    """
-#    Try to read ?apikey=... from the incoming MCP HTTP request.
-#    Safe to call even outside HTTP context (falls back).
-#    """
-#    try:
-#        req = get_http_request()
-#    except RuntimeError:
-#        # Not running under HTTP transport (e.g., stdio), or no active request
-#        return None
-#    except Exception:
-#        return None
-#
-#    apikey = req.query_params.get("apikey")
-#    if apikey:
-#        return apikey
+# ---------------------------------------------------------------------------
+# Per-connection rate-limiting
+# ---------------------------------------------------------------------------
 
-#    return req.query_params.get("api_key") or req.query_params.get("token")
 
-# app/api_client.py
+class _ConnectionState:
+    """Pacing state for a single API-token bucket.
 
-from fastmcp.server.dependencies import get_http_request
+    Each instance owns its own asyncio.Lock so concurrent requests sharing the
+    same token are serialised, while requests on different tokens run freely.
+    """
+
+    __slots__ = ("_lock", "backoff_until", "last_request_time")
+
+    def __init__(self) -> None:
+        self.last_request_time: float = 0.0
+        self.backoff_until: float = 0.0
+        self._lock: asyncio.Lock = asyncio.Lock()
+
+    @property
+    def lock(self) -> asyncio.Lock:
+        return self._lock
+
+
+class RateLimiter:
+    """Encapsulates per-connection pacing state and the base delay.
+
+    Disabled by default (delay=0.0).  When disabled, ``rate_limit()`` and
+    ``set_backoff()`` are true no-ops — no locks acquired, no state allocated.
+
+    Enable by setting ``EODHD_RATE_LIMIT_DELAY`` env var to a positive float
+    (e.g. ``0.1`` for 100 ms) or by calling ``set_rate_limit(seconds)``.
+    """
+
+    def __init__(self, delay: float = 0.0) -> None:
+        self._delay: float = max(0.0, delay)
+        self._states: dict[str, _ConnectionState] = {}
+        self._states_lock: asyncio.Lock = asyncio.Lock()
+
+    # -- public helpers -----------------------------------------------------
+
+    @property
+    def enabled(self) -> bool:
+        return self._delay > 0.0
+
+    @property
+    def delay(self) -> float:
+        return self._delay
+
+    @delay.setter
+    def delay(self, value: float) -> None:
+        self._delay = max(0.0, value)
+        logger.info("Rate limit delay set to %.3fs (enabled=%s)", self._delay, self.enabled)
+
+    async def get_state(self, connection_key: str) -> _ConnectionState:
+        """Return the ``_ConnectionState`` for *connection_key*, creating on first use."""
+        state = self._states.get(connection_key)
+        if state is not None:
+            return state
+
+        async with self._states_lock:
+            # Double-check after acquiring the lock
+            state = self._states.get(connection_key)
+            if state is None:
+                state = _ConnectionState()
+                self._states[connection_key] = state
+            return state
+
+    async def rate_limit(self, connection_key: str) -> None:
+        """Enforce per-connection pacing and any scheduled retry backoff.
+
+        When rate limiting is disabled (delay == 0) and no backoff is pending
+        for this connection, this is a true no-op — no lock, no state created.
+        Backoff (from upstream 429s / retries) is always honoured regardless.
+        """
+        if not self.enabled:
+            # Even when disabled, honour pending backoff if state exists.
+            state = self._states.get(connection_key)
+            if state is None or state.backoff_until <= 0.0:
+                return
+
+        state = await self.get_state(connection_key)
+        async with state.lock:
+            now = time.monotonic()
+            ready_at = max(state.backoff_until, state.last_request_time + self._delay)
+            if now < ready_at:
+                await asyncio.sleep(ready_at - now)
+            now = time.monotonic()
+            state.last_request_time = now
+            if state.backoff_until <= now:
+                state.backoff_until = 0.0
+
+    async def set_backoff(self, connection_key: str, delay: float) -> None:
+        """Schedule backoff for one connection without affecting others.
+
+        Always honoured (even when rate limiting is disabled) because backoff
+        is driven by upstream 429 / retry logic, not by the pacing delay.
+        """
+        if delay <= 0:
+            return
+
+        state = await self.get_state(connection_key)
+        async with state.lock:
+            state.backoff_until = max(state.backoff_until, time.monotonic() + delay)
+
+    def clear(self) -> None:
+        """Drop all per-connection state.  Intended for tests."""
+        self._states.clear()
+
+
+# Module-wide singleton — disabled by default, reads env for opt-in delay.
+_rate_limiter = RateLimiter(delay=EODHD_RATE_LIMIT_DELAY)
+
+_RETRY_AFTER_DEFAULT = 60  # seconds — fallback when header is missing or unparseable
+
+
+def _parse_retry_after(header_value: str | None) -> int:
+    """Parse a ``Retry-After`` header per RFC 7231 §7.1.3.
+
+    The header may be either:
+    - **delay-seconds**: a non-negative integer (e.g. ``"120"``), or
+    - **HTTP-date**: e.g. ``"Thu, 01 Dec 2025 16:00:00 GMT"``
+
+    Returns the delay in seconds (minimum 0, capped at 1 hour).
+    Falls back to ``_RETRY_AFTER_DEFAULT`` on missing or unparseable values.
+    """
+    if not header_value:
+        return _RETRY_AFTER_DEFAULT
+
+    # Try delay-seconds first (most common)
+    try:
+        return max(0, min(int(header_value), 3600))
+    except (ValueError, TypeError):
+        pass
+
+    # Try HTTP-date (RFC 2822 / RFC 7231)
+    try:
+        parsed = email.utils.parsedate_to_datetime(header_value)
+        delay = int(parsed.timestamp() - time.time())
+        return max(0, min(delay, 3600))
+    except Exception:
+        pass
+
+    return _RETRY_AFTER_DEFAULT
+
+
+# Query parameter names that carry a credential: the upstream ``api_token`` plus every
+# alias this server accepts on its own endpoint (see _resolve_eodhd_token_from_request).
+# uvicorn logs the request line with its query string, so ``POST /mcp?apikey=…`` would
+# otherwise put a usable key in the access log.
+_CREDENTIAL_PARAMS = frozenset({"api_token", "api_key", "apikey", "access_token", "token"})
+
+# Any ``name=value`` pair, whether the string is a bare URL or text that embeds one. The
+# name is matched loosely and classified afterwards, because Starlette decodes the query
+# before the server reads it while uvicorn logs the raw path: ``api%5Ftoken=…`` is a
+# working credential that a literal-name pattern would miss. The value ends at a query
+# separator or at the punctuation that surrounds a URL quoted inside a message.
+_PARAM_RE = re.compile(r"(?<![A-Za-z0-9_%.-])([A-Za-z0-9_%.-]{3,24})=([^&\s'\"<>()\[\]]+)")
+
+
+def _is_credential_param(name: str) -> bool:
+    """Classify a query parameter name, ignoring percent-encoding and dash/underscore."""
+    return unquote(name).lower().replace("-", "_") in _CREDENTIAL_PARAMS
+
+
+def _carries_credential(text: str) -> bool:
+    return any(_is_credential_param(match.group(1)) for match in _PARAM_RE.finditer(text))
+
+
+def _redact_url(text: str) -> str:
+    """Strip credential values from a URL, or from any text that embeds one."""
+    return _PARAM_RE.sub(
+        lambda match: f"{match.group(1)}=***" if _is_credential_param(match.group(1)) else match.group(0),
+        text,
+    )
+
+
+class TokenRedactingFilter(logging.Filter):
+    """Scrub credential values from every log record.
+
+    Third-party loggers would otherwise write the caller's API key to the server log:
+    httpx logs each upstream request URL at INFO, and uvicorn logs this server's own
+    request line, query string included. Attach this to the root handlers.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str) and _carries_credential(record.msg):
+            # The credential sits in the format string itself (httpx logs
+            # 'GET …?api_token=%s'), so redacting it would eat the placeholder: render the
+            # message first, then drop the arguments.
+            record.msg = _redact_url(self._render(record))
+            record.args = ()
+        else:
+            # Keep the argument shape — uvicorn's AccessFormatter unpacks exactly five of
+            # them, and clearing the tuple turns every access line into a logging error.
+            record.args = self._redact_args(record.args)
+        self._redact_traceback(record)
+
+        return True
+
+    @staticmethod
+    def _render(record: logging.LogRecord) -> str:
+        """Format the record, falling back to the raw template on a broken log call.
+
+        A filter that raises would turn a caller's formatting bug into an exception at the
+        logging call site, where the stdlib merely reports it from the handler.
+        """
+        try:
+            return record.getMessage()
+        except Exception:
+            return str(record.msg)
+
+    @staticmethod
+    def _redact_traceback(record: logging.LogRecord) -> None:
+        """Pre-render the traceback only when it carries a credential.
+
+        The exception text is appended by the formatter, outside the message this filter
+        rewrites, so an exception whose ``str()`` holds the URL would leak. Rendering it
+        here overrides the handler's own exception style, so only do it when needed.
+        """
+        if not record.exc_info or record.exc_text:
+            return
+
+        rendered = logging.Formatter().formatException(record.exc_info)
+        if _carries_credential(rendered):
+            record.exc_text = _redact_url(rendered)
+
+    @classmethod
+    def _redact_args(cls, args: Any) -> Any:
+        if isinstance(args, dict):
+            return {key: cls._redact_arg(value) for key, value in args.items()}
+        if isinstance(args, tuple):
+            return tuple(cls._redact_arg(arg) for arg in args)
+
+        return args
+
+    @staticmethod
+    def _redact_arg(value: Any) -> Any:
+        """Redact an argument by its string form.
+
+        httpx passes the URL as an ``httpx.URL`` and exceptions carry it in their own
+        string form, so a str-only pass leaves those records with a usable key. Numbers
+        are returned untouched, so a ``%d`` placeholder keeps its type.
+        """
+        if isinstance(value, str):
+            return _redact_url(value)
+        if value is None or isinstance(value, (bool, int, float)):
+            return value
+
+        rendered = str(value)
+        redacted = _redact_url(rendered)
+
+        return redacted if redacted != rendered else value
+
+
+# Loggers that put a URL with credentials into a record and do not reach the root
+# handlers: uvicorn installs its own handlers and sets propagate=False, so the filter has
+# to sit on the logger itself. dictConfig (which uvicorn runs on start-up) drops handlers
+# but keeps logger filters, so installing before mcp.run() is enough.
+_CREDENTIAL_LOGGERS = ("uvicorn", "uvicorn.access", "uvicorn.error", "httpx", "httpcore")
+
+
+def install_token_redaction() -> None:
+    """Attach :class:`TokenRedactingFilter` everywhere a credential can reach a record.
+
+    Call this right after ``logging.basicConfig()`` in every entry point. Idempotent, so a
+    second call does not stack duplicate filters.
+    """
+
+    def attach(target: logging.Logger | logging.Handler) -> None:
+        if not any(isinstance(existing, TokenRedactingFilter) for existing in target.filters):
+            target.addFilter(TokenRedactingFilter())
+
+    for handler in logging.getLogger().handlers:
+        attach(handler)
+    for name in _CREDENTIAL_LOGGERS:
+        attach(logging.getLogger(name))
+
+    # httpx logs every request URL at INFO, which puts the caller's search parameters
+    # (tickers, member ids, date ranges) into operational logs. api_client already logs a
+    # redacted URL at DEBUG, so nothing is lost by keeping httpx quiet.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
+
+def _truncate_text(text: str | None, limit: int = 2000) -> str | None:
+    """Trim large response bodies so error payloads stay readable.
+
+    The body is redacted as well: EODHD echoes the request URL back in its 404 page, so a
+    raw body would carry the caller's key into the tool result and into every transcript
+    that result lands in.
+    """
+    if not text:
+        return None
+    text = _redact_url(text)
+    if len(text) > limit:
+        return text[:limit] + "…"
+    return text
+
+
+def _extract_api_error_details(response: httpx.Response) -> tuple[str | None, str | None, str | None]:
+    """Extract structured error details from an API response body when possible."""
+    response_text = _truncate_text(response.text)
+
+    try:
+        payload = response.json()
+    except ValueError:
+        return None, None, response_text
+
+    if not isinstance(payload, dict):
+        return None, None, response_text
+
+    def _pick_str(*keys: str) -> str | None:
+        for key in keys:
+            value = payload.get(key)
+            if isinstance(value, str) and value.strip():
+                # Redacted like the raw body: EODHD answers a malformed request with
+                # {"message": "bad request URL: …?api_token=…"}, and this string ends up
+                # in the ToolError the agent reads.
+                return _redact_url(value.strip())
+        return None
+
+    error_code = _pick_str("code", "error_code", "errorCode", "type")
+    detail = _pick_str("errorMessage", "message", "detail", "description", "error_description")
+
+    if detail is None:
+        error_value = payload.get("error")
+        if isinstance(error_value, str) and error_value.strip():
+            detail = _redact_url(error_value.strip())
+
+    return error_code, detail, response_text
+
+
+def _http_status_phrase(status_code: int) -> str:
+    """Return a standard reason phrase when available."""
+    try:
+        return HTTPStatus(status_code).phrase
+    except ValueError:
+        return "HTTP Error"
+
+
+def _build_http_error(
+    response: httpx.Response,
+    *,
+    base_message: str | None = None,
+    extra_fields: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Build a structured, agent-readable error payload from an HTTP response."""
+    status_code = response.status_code
+    error_code, upstream_message, response_text = _extract_api_error_details(response)
+
+    error = base_message or f"EODHD API request failed with {status_code} {_http_status_phrase(status_code)}."
+
+    payload: dict[str, Any] = {
+        "error": error,
+        "status_code": status_code,
+    }
+
+    if error_code:
+        payload["error_code"] = error_code
+    if upstream_message:
+        payload["upstream_message"] = upstream_message
+    if response_text:
+        payload["text"] = response_text
+    if extra_fields:
+        payload.update(extra_fields)
+
+    # Last line of defence: every HTTP error the agent sees is built here, so a caller's
+    # base_message or extra field cannot smuggle a credential out either.
+    return {key: _redact_url(value) if isinstance(value, str) else value for key, value in payload.items()}
+
 
 def _resolve_eodhd_token_from_request() -> str | None:
     try:
         req = get_http_request()
+    except RuntimeError:
+        return None
     except Exception:
+        logger.debug("Unexpected error resolving HTTP request context", exc_info=True)
         return None
 
     # 1) Authorization: Bearer <token>
@@ -72,13 +537,14 @@ def _resolve_eodhd_token_from_request() -> str | None:
     if xkey:
         return xkey.strip()
 
-    # 3) Legacy query params
-    apikey = req.query_params.get("apikey")
-    if apikey:
-        return apikey
-    return req.query_params.get("api_key") or req.query_params.get("token")
+    # 3) Legacy query params. Same aliases as v2, so a caller who passes the key the way
+    # the REST API expects it (api_token) is not silently served the server's env key.
+    for param in ("apikey", "api_key", "api-key", "api_token", "token"):
+        value = req.query_params.get(param)
+        if value:
+            return value
 
-
+    return None
 
 
 def _ensure_api_token(url: str) -> str:
@@ -89,33 +555,74 @@ def _ensure_api_token(url: str) -> str:
     if "api_token=" in url:
         return url
 
-    token = _resolve_eodhd_token_from_request() or EODHD_API_KEY
+    token = _resolve_eodhd_token_from_request() or get_api_key()
     if not token:
         return url  # best-effort; caller may have other auth patterns
 
     return url + (f"&api_token={token}" if "?" in url else f"?api_token={token}")
 
 
-async def _rate_limit() -> None:
-    """Enforce a minimum gap between outgoing requests."""
-    global _last_request_time
-    now = time.monotonic()
-    elapsed = now - _last_request_time
-    if elapsed < _rate_limit_delay:
-        await asyncio.sleep(_rate_limit_delay - elapsed)
-    _last_request_time = time.monotonic()
+def resolve_account_hash() -> str | None:
+    """The account behind the current request, as a hash, or None when unauthenticated.
+
+    Token resolution differs between the two servers, so it is reused rather than
+    reimplemented: ask this repo's own ``_ensure_api_token`` to fill a URL and read back
+    what it put there. The raw token never leaves this function.
+    """
+    try:
+        url = _ensure_api_token(f"{EODHD_API_BASE}/user")
+        token = parse_qs(urlsplit(url).query).get("api_token", [""])[0]
+    except Exception:
+        logger.debug("Account resolution for telemetry failed", exc_info=True)
+
+        return None
+
+    return quota.account_hash(token) if token else None
+
+
+def _normalize_query_string(url: str) -> str:
+    """Promote the first ``&``-joined query param to ``?`` when the URL has no
+    query start yet.
+
+    Tools assemble query params with ``build_query_param()``, which always emits
+    ``&key=value``. When ``build_url()`` produced no ``?…`` (e.g. the per-call
+    ``api_token`` is absent because the token comes from a header or the env),
+    the first param ends up as ``path&key=value`` — the ``&`` sits before any
+    ``?``, so EODHD reads it as part of the path and returns 404 (SUPPORT-1009).
+    Normalising here fixes every tool at the single HTTP choke point and lets
+    ``_ensure_api_token``'s ``"?" in url`` check append the token with the
+    correct separator. Only the part before any ``#`` fragment is inspected, so
+    an ``&`` inside a fragment is never mistaken for a separator.
+    """
+    head, sep, frag = url.partition("#")
+    if "?" not in head and "&" in head:
+        head = head.replace("&", "?", 1)
+
+    return head + sep + frag
+
+
+def _get_connection_key(url: str) -> str:
+    """Resolve the request pacing bucket from the effective api_token."""
+    query = parse_qs(urlsplit(url).query)
+    token = query.get("api_token", [None])[0]
+    if isinstance(token, str) and token:
+        return token
+    return "__default__"
+
+
+def _clear_connection_states() -> None:
+    """Reset request pacing state. Intended for tests."""
+    _rate_limiter.clear()
 
 
 def _backoff(attempt: int) -> float:
     """Exponential backoff: 1 s, 2 s, 4 s … capped at RETRY_DELAY_MAX."""
-    return min(RETRY_DELAY_BASE * (2 ** attempt), RETRY_DELAY_MAX)
+    return min(RETRY_DELAY_BASE * float(2**attempt), RETRY_DELAY_MAX)
 
 
 def set_rate_limit(delay: float) -> None:
     """Override the minimum delay between requests (seconds)."""
-    global _rate_limit_delay
-    _rate_limit_delay = max(0.0, delay)
-    logger.info("Rate limit delay set to %.3fs", _rate_limit_delay)
+    _rate_limiter.delay = delay
 
 
 async def make_request(
@@ -125,20 +632,25 @@ async def make_request(
     headers: dict | None = None,
     timeout: float = 30.0,
     retry_enabled: bool | None = None,
-) -> dict | None:
+    response_mode: Literal["json", "text", "bytes"] = "json",
+) -> Any:
     """
     Generic HTTP request helper for EODHD APIs.
 
     - Auto-injects api_token into URL if absent.
     - Supports GET (default), POST, PUT, DELETE with optional JSON payload.
     - Backoff & retry are **disabled by default**. Enable by:
-        • passing retry_enabled=True to this call, OR
-        • setting the env var EODHD_RETRY_ENABLED=true
+        * passing retry_enabled=True to this call, OR
+        * setting the env var EODHD_RETRY_ENABLED=true
     - When enabled, retries transient failures (timeouts, 5xx) up to
       MAX_RETRIES times with exponential backoff; HTTP 429 uses Retry-After.
-    - Returns parsed JSON dict on success, or {"error": "..."} on failure.
+    - ``response_mode="json"`` returns parsed JSON on success.
+    - ``response_mode="text"`` returns ``response.text`` on success.
+    - ``response_mode="bytes"`` returns raw ``response.content`` on success.
+    - Returns {"error": "..."} on failure.
     """
-    url = _ensure_api_token(url)
+    url = _ensure_api_token(_normalize_query_string(url))
+    connection_key = _get_connection_key(url)
     m = (method or "GET").upper()
 
     if m not in ("GET", "POST", "PUT", "DELETE"):
@@ -147,6 +659,14 @@ async def make_request(
     req_headers: dict = {}
     if headers:
         req_headers.update(headers)
+
+    # Per request, not per client: the shared client is built once and lives for the whole
+    # process, so a UA set there would freeze EODHD_MCP_EDITION at the first call. A label
+    # that only takes effect after a restart is the label someone sets on a live process
+    # and believes is done — leaving both servers indistinguishable in the logs, which is
+    # the one thing the label exists to prevent.
+    if "user-agent" not in (key.lower() for key in req_headers):
+        req_headers["User-Agent"] = get_user_agent()
 
     # Ensure Content-Type for JSON bodies
     if json_body is not None:
@@ -157,41 +677,72 @@ async def make_request(
     _retry_on = retry_enabled if retry_enabled is not None else EODHD_RETRY_ENABLED
     retries = MAX_RETRIES if _retry_on else 0
 
-    last_error: Optional[Exception] = None
+    client = await _get_http_client()
+    last_error: Exception | None = None
 
     for attempt in range(retries + 1):
         try:
-            await _rate_limit()
+            await _rate_limiter.rate_limit(connection_key)
 
-            logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, url[:120])
+            logger.debug("Request attempt %d/%d: %s %s", attempt + 1, retries + 1, m, _redact_url(url)[:120])
 
             if m == "GET":
-                response = await _http_client.get(url, headers=req_headers, timeout=timeout)
+                response = await client.get(url, headers=req_headers, timeout=timeout)
             elif m == "POST":
-                response = await _http_client.post(url, json=json_body, headers=req_headers, timeout=timeout)
+                response = await client.post(url, json=json_body, headers=req_headers, timeout=timeout)
             elif m == "PUT":
-                response = await _http_client.put(url, json=json_body, headers=req_headers, timeout=timeout)
+                response = await client.put(url, json=json_body, headers=req_headers, timeout=timeout)
             else:  # DELETE
-                response = await _http_client.delete(url, headers=req_headers, timeout=timeout)
+                response = await client.delete(url, headers=req_headers, timeout=timeout)
 
             # Handle rate limiting from the API
             if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 60))
-                logger.warning("Rate limited by API; waiting %ds (attempt %d/%d)",
-                               retry_after, attempt + 1, retries + 1)
-                await asyncio.sleep(retry_after)
-                continue  # doesn't count as a failed attempt
+                retry_after = _parse_retry_after(response.headers.get("Retry-After"))
+                redacted_url = _redact_url(str(response.request.url))
+
+                if attempt >= retries:
+                    logger.error("Rate limited by API after final attempt for %s %s", m, redacted_url)
+                    return _build_http_error(
+                        response,
+                        base_message="EODHD API rate limit exceeded (429 Too Many Requests).",
+                        extra_fields={
+                            "retry_after": retry_after,
+                            "upstream_message": f"Retry after {retry_after} seconds.",
+                        },
+                    )
+
+                logger.warning(
+                    "Rate limited by API for %s %s; waiting %ds (attempt %d/%d)",
+                    m,
+                    redacted_url,
+                    retry_after,
+                    attempt + 1,
+                    retries + 1,
+                )
+                await _rate_limiter.set_backoff(connection_key, retry_after)
+                continue  # does not count as a failed attempt
 
             response.raise_for_status()
 
+            # A successful call is the only moment the quota is worth reading: it tells
+            # the user they are running out while they can still do something about it.
+            await _observe_quota(url)
+
+            if response_mode == "bytes":
+                return response.content
+
+            if response_mode == "text":
+                return response.text
+
             # Prefer JSON; if server returns non-JSON return a helpful error object
             try:
-                return response.json()
-            except Exception:
+                payload = response.json()
+                quota.remember(url, payload)
+
+                return payload
+            except ValueError:
                 ct = response.headers.get("content-type", "")
-                text = response.text
-                if text and len(text) > 2000:
-                    text = text[:2000] + "…"
+                text = _truncate_text(response.text)
                 return {
                     "error": "Response is not valid JSON.",
                     "status_code": response.status_code,
@@ -206,31 +757,41 @@ async def make_request(
         except httpx.HTTPStatusError as e:
             last_error = e
             status = e.response.status_code
+            error_payload = _build_http_error(e.response)
+            redacted_url = _redact_url(str(e.request.url))
+            error_code = error_payload.get("error_code")
+            upstream_message = error_payload.get("upstream_message")
 
             # 4xx (except 429 which is handled above) are not retryable
             if 400 <= status < 500:
-                logger.error("Client error %d: %s", status, e)
-                text = e.response.text
-                if text and len(text) > 2000:
-                    text = text[:2000] + "…"
-                return {"error": str(e), "status_code": status, "text": text}
+                if status == HTTPStatus.PAYMENT_REQUIRED:
+                    _record_quota_exhausted(redacted_url)
+
+                log_parts = [f"Client error {status} for {m} {redacted_url}"]
+                if error_code:
+                    log_parts.append(f"code={error_code}")
+                if upstream_message:
+                    log_parts.append(f"detail={upstream_message}")
+                logger.error(" | ".join(log_parts))
+                return error_payload
 
             logger.warning("Server error %d (attempt %d/%d)", status, attempt + 1, retries + 1)
 
         except httpx.RequestError as e:
             last_error = e
-            logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, e)
+            logger.warning("Network error (attempt %d/%d): %s", attempt + 1, retries + 1, _redact_url(str(e)))
 
         except Exception as e:
-            logger.error("Unexpected error: %s", e)
-            return {"error": str(e)}
+            message = _redact_url(str(e))
+            logger.error("Unexpected error: %s", message)
+            return {"error": message}
 
         # Wait before next attempt
         if attempt < retries:
             delay = _backoff(attempt)
-            logger.info("Retrying in %.1fs…", delay)
-            await asyncio.sleep(delay)
+            logger.info("Retrying in %.1fs...", delay)
+            await _rate_limiter.set_backoff(connection_key, delay)
 
-    error_msg = str(last_error) if last_error else "Unknown error after retries"
+    error_msg = _redact_url(str(last_error)) if last_error else "Unknown error after retries"
     logger.error("All %d retries exhausted: %s", retries, error_msg)
     return {"error": error_msg}

@@ -1,36 +1,33 @@
-#get_economic_events.py
+# app/tools/get_economic_events.py
 
-import json
-from typing import Optional, Union
-from urllib.parse import quote_plus
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_COMPARISON = {None, "mom", "qoq", "yoy"}
 
-def _q(key: str, val: Optional[Union[str, int]]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Economic Calendar Events", readOnlyHint=True))
     async def get_economic_events(
-        start_date: Optional[str] = None,   # maps to from= (YYYY-MM-DD)
-        end_date: Optional[str] = None,     # maps to to=   (YYYY-MM-DD)
-        country: Optional[str] = None,      # ISO-3166 alpha-2 (e.g., US, GB, DE)
-        comparison: Optional[str] = None,   # mom | qoq | yoy
-        type: Optional[str] = None,         # free text, e.g. "House Price Index"
-        offset: int = 0,                    # 0..1000 (default 0)
-        limit: int = 50,                    # 0..1000 (default 50)
-        fmt: Optional[str] = "json",        # json (default) | csv (if supported)
-        api_token: Optional[str] = None,    # per-call override
-    ) -> str:
+        start_date: str | None = None,  # maps to from= (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to to=   (YYYY-MM-DD)
+        country: str | None = None,  # ISO-3166 alpha-2 (e.g., US, GB, DE)
+        comparison: str | None = None,  # mom | qoq | yoy
+        type: str | None = None,  # free text, e.g. "House Price Index"
+        offset: int = 0,  # 0..1000 (default 0)
+        limit: int = 50,  # 0..1000 (default 50)
+        fmt: str | None = "json",  # json (default) | csv (if supported)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Fetch macroeconomic calendar events such as GDP, CPI, employment, and interest rate releases.
@@ -38,7 +35,6 @@ def register(mcp: FastMCP):
         Covers global economies; filter by country (ISO-2), date range, comparison period (mom/qoq/yoy), and event type.
         Use when the user asks about economic calendar, macro releases, or upcoming government data publications.
         This tool covers macro events only -- for company-level earnings dates, use get_upcoming_earnings.
-
 
         Returns:
             Array of events, each with:
@@ -57,7 +53,11 @@ def register(mcp: FastMCP):
             "German GDP year-over-year" → country="DE", comparison="yoy", type="GDP"
             "All events in March 2026, first 200" → start_date="2026-03-01", end_date="2026-03-31", limit=200
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- validate ---
         if comparison not in ALLOWED_COMPARISON:
@@ -69,34 +69,39 @@ def register(mcp: FastMCP):
         if country is not None and (not isinstance(country, str) or len(country.strip()) != 2):
             raise ToolError("'country' must be a 2-letter ISO code (e.g., 'US').")
 
+        # --- coerce dates ---
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
+
         # --- build URL ---
         # Example:
         # /economic-events?api_token=XXX&fmt=json&from=2025-01-05&to=2025-01-06&country=US&limit=1000
-        url = f"{EODHD_API_BASE}/economic-events?1=1"
-        url += _q("from", start_date)
-        url += _q("to", end_date)
-        url += _q("country", country.upper() if country else None)
-        url += _q("comparison", comparison)
-        url += _q("type", type)
-        url += _q("offset", offset)
-        url += _q("limit", limit)
-        url += _q("fmt", fmt or "json")
-        if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request
+        url = build_url(
+            "economic-events",
+            {
+                "from": start_date,
+                "to": end_date,
+                "country": country.upper() if country else None,
+                "comparison": comparison,
+                "type": type,
+                "offset": offset,
+                "limit": limit,
+                "fmt": fmt or "json",
+                "api_token": api_token,
+            },
+        )
 
         # --- request ---
-        data = await make_request(url)
+        output_fmt = (fmt or "json").lower()
+        data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- return/normalize ---
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            # If CSV or unexpected text returned, wrap it
-            if isinstance(data, str):
-                return json.dumps({"raw": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        if output_fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="economic-events/events.csv")
+
+        return format_json_response(data)

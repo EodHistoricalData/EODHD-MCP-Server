@@ -1,18 +1,23 @@
-#get_live_price_data.py
+# app/tools/get_live_price_data.py
 
-import json
-from typing import Iterable, Optional, Sequence
+import logging
+from collections.abc import Iterable, Sequence
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_FMT = {"json", "csv"}
 MAX_EXTRA_TICKERS = 20  # soft limit recommended by docs (15–20)
 
-def _normalize_symbols(symbols: Optional[Iterable[str]]) -> list[str]:
+
+def _normalize_symbols(symbols: Iterable[str] | None) -> list[str]:
     if not symbols:
         return []
     out: list[str] = []
@@ -21,17 +26,18 @@ def _normalize_symbols(symbols: Optional[Iterable[str]]) -> list[str]:
             continue
         s = str(s).strip()
         if s:
-            out.append(s)
+            out.append(sanitize_ticker(s, param_name="additional_symbols"))
     return out
 
+
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Live (Delayed) Prices", readOnlyHint=True))
     async def get_live_price_data(
         ticker: str,
-        additional_symbols: Optional[Sequence[str]] = None,
+        additional_symbols: Sequence[str] | None = None,
         fmt: str = "json",
-        api_token: Optional[str] = None,
-    ) -> str:
+        api_token: str | None = None,
+    ) -> ResourceResponse:
         """
 
         Get the current (delayed ~15-20 min) price snapshot for one or more tickers.
@@ -43,7 +49,6 @@ def register(mcp: FastMCP):
         Args:
             ticker (str): Primary symbol in SYMBOL.EXCHANGE format (e.g., 'AAPL.US').
                           Required and placed in the path, per API spec.
-                          If you only have a company name or ISIN, call resolve_ticker first.
             additional_symbols (Sequence[str], optional): Extra symbols for 's=' query param,
                           comma-separated by the tool (e.g., ['VTI', 'EUR.FOREX']).
                           Docs recommend <= 15–20 total.
@@ -67,11 +72,14 @@ def register(mcp: FastMCP):
             "Live quotes for Tesla, Google, and Amazon" → ticker="TSLA.US", additional_symbols=["GOOG.US", "AMZN.US"]
             "Bitcoin and Ethereum prices right now" → ticker="BTC-USD.CC", additional_symbols=["ETH-USD.CC"]
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate inputs ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
@@ -82,35 +90,29 @@ def register(mcp: FastMCP):
 
         if len(extras) > MAX_EXTRA_TICKERS:
             raise ToolError(
-                f"Too many symbols in 'additional_symbols'. "
-                f"Got {len(extras)}, max recommended is {MAX_EXTRA_TICKERS}."
+                f"Too many symbols in 'additional_symbols'. Got {len(extras)}, max recommended is {MAX_EXTRA_TICKERS}."
             )
 
         # --- Build URL per docs ---
         # Example: /api/real-time/AAPL.US?fmt=json&s=VTI,EUR.FOREX
-        url = f"{EODHD_API_BASE}/real-time/{ticker}?fmt={fmt}"
-        if extras:
-            url += f"&s={','.join(extras)}"
-
-        # Per-call token override. If omitted, make_request will append env token.
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"real-time/{ticker}",
+            {
+                "fmt": fmt,
+                "s": ",".join(extras) if extras else None,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- Normalize errors / outputs ---
-        if data is None:
-            raise ToolError("No response from API.")
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"real-time/{ticker}.csv")
 
-        # If make_request always returns JSON (since it calls response.json()),
-        # this will succeed for fmt=json. For fmt=csv, consider adapting make_request to return text.
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):  # if you adapted make_request to return text for CSV
-                return json.dumps({"csv": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        return format_json_response(data)

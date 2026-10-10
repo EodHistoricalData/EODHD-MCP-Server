@@ -2,7 +2,7 @@
 
 import importlib
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 logger = logging.getLogger("eodhd-mcp.prompts")
 

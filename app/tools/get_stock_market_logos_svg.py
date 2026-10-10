@@ -1,22 +1,22 @@
-#get_stock_market_logos_svg.py
+# app/tools/get_stock_market_logos_svg.py
 
-import json
-from typing import Optional
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_ticker
+from app.response_formatter import ResourceResponse, format_text_response, raise_on_api_error
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Stock & Market Logos (SVG)", readOnlyHint=True))
     async def get_stock_market_logos_svg(
-        symbol: str,                            # e.g. "AAPL.US", "RY.TO"
-        api_token: Optional[str] = None,        # per-call override
-    ) -> str:
+        symbol: str,  # e.g. "AAPL.US", "RY.TO"
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Get a company logo in SVG vector format. Use when the user needs a scalable vector logo
@@ -29,7 +29,6 @@ def register(mcp: FastMCP):
 
         Args:
             symbol (str): Ticker in TICKER.EXCHANGE format (e.g. 'AAPL.US', 'RY.TO').
-            If you only have a company name or ISIN, call resolve_ticker first.
             api_token (str, optional): Per-call token override.
 
 
@@ -44,29 +43,15 @@ def register(mcp: FastMCP):
         Examples:
             "Apple SVG logo" → get_stock_market_logos_svg(symbol="AAPL.US")
             "Royal Bank of Canada vector logo" → get_stock_market_logos_svg(symbol="RY.TO")
-
-        
         """
-        if not symbol or not isinstance(symbol, str):
-            raise ToolError(
-                "Parameter 'symbol' is required in {TICKER}.{EXCHANGE} format "
-                "(e.g. 'AAPL.US', 'RY.TO')."
-            )
+        symbol = sanitize_ticker(symbol, param_name="symbol").upper()
 
-        symbol = symbol.strip().upper()
+        url = build_url(f"logo-svg/{quote_plus(symbol)}", {"api_token": api_token})
 
-        url = f"{EODHD_API_BASE}/logo-svg/{quote_plus(symbol)}?1=1"
-        if api_token:
-            url += f"&api_token={api_token}"
+        data = await make_request(url, response_mode="text")
+        raise_on_api_error(data)
 
-        data = await make_request(url)
-
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
+        if not isinstance(data, str) or not data:
             raise ToolError("Unexpected response format from API.")
+
+        return format_text_response(data, "image/svg+xml", resource_path=f"logos/{quote_plus(symbol)}.svg")

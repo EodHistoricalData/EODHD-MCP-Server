@@ -1,29 +1,32 @@
-#get_stocks_from_search.py
+# app/tools/get_stocks_from_search.py
 
-import json
-from typing import Optional
+import logging
 from urllib.parse import quote
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_exchange
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_TYPES = {"all", "stock", "etf", "fund", "bond", "index", "crypto"}
 
+
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Symbol Search", readOnlyHint=True))
     async def get_stocks_from_search(
         query: str,
-        limit: int = 15,                         # per docs: default 15, max 500
-        bonds_only: Optional[bool] = None,       # maps to bonds_only=1
-        exchange: Optional[str] = None,          # e.g., "US", "PA", "FOREX", "NYSE", "NASDAQ"
-        type: Optional[str] = None,              # one of ALLOWED_TYPES
-        fmt: str = "json",                       # API supports json here
-        api_token: Optional[str] = None,         # per-call override
-    ) -> str:
+        limit: int = 15,  # per docs: default 15, max 500
+        bonds_only: bool | None = None,  # maps to bonds_only=1
+        exchange: str | None = None,  # e.g., "US", "PA", "FOREX", "NYSE", "NASDAQ"
+        type: str | None = None,  # one of ALLOWED_TYPES
+        fmt: str = "json",  # API supports json here
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Search for financial instruments by name, ticker, or ISIN. Use when the user wants to
@@ -64,7 +67,11 @@ def register(mcp: FastMCP):
             "Search for ISIN US0378331005" → get_stocks_from_search(query="US0378331005")
             "Crypto assets matching ETH" → get_stocks_from_search(query="ETH", type="crypto", limit=10)
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate ---
         if not query or not isinstance(query, str):
@@ -76,32 +83,35 @@ def register(mcp: FastMCP):
         if type is not None and type not in ALLOWED_TYPES:
             raise ToolError(f"Invalid 'type'. Allowed: {sorted(ALLOWED_TYPES)}")
 
+        if isinstance(exchange, str) and not exchange.strip():
+            exchange = None
+        elif exchange is not None:
+            exchange = sanitize_exchange(exchange, param_name="exchange")
+
         # --- Build URL ---
         # Endpoint shape: /api/search/{query_string}?fmt=json&limit=...&bonds_only=1&exchange=...&type=...
         encoded_query = quote(query, safe="")
-        url = f"{EODHD_API_BASE}/search/{encoded_query}?fmt={fmt}&limit={limit}"
-
-        if bonds_only:
-            url += "&bonds_only=1"
-        if exchange:
-            url += f"&exchange={quote(str(exchange))}"
-        if type:
-            url += f"&type={quote(type)}"
-
-        # Per-call token override (note: demo does NOT work for Search)
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"search/{encoded_query}",
+            {
+                "fmt": fmt,
+                "limit": limit,
+                "bonds_only": 1 if bonds_only else None,
+                "exchange": exchange,
+                "type": type,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
         data = await make_request(url)
 
         # --- Normalize / return ---
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

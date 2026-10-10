@@ -1,49 +1,46 @@
-#get_upcoming_earnings.py
+# app/tools/get_upcoming_earnings.py
 
-import json
-from typing import Optional, Union, List
-from urllib.parse import quote_plus
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
-def _q(key: str, val: Optional[str]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(val)}"
+logger = logging.getLogger(__name__)
 
 
-def _normalize_symbols(symbols: Optional[Union[str, List[str]]]) -> Optional[str]:
+def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
     if symbols is None:
         return None
     if isinstance(symbols, str):
-        s = symbols.strip()
-        return s if s else None
-    if isinstance(symbols, list):
-        flat = [str(x).strip() for x in symbols if str(x).strip()]
-        return ",".join(flat) if flat else None
-    return None
+        parts = [part.strip() for part in symbols.split(",")]
+    elif isinstance(symbols, list):
+        parts = [str(x).strip() for x in symbols if x is not None]
+    else:
+        return None
+
+    cleaned = [sanitize_ticker(part, param_name="symbols") for part in parts if part]
+    return ",".join(cleaned) if cleaned else None
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Upcoming Earnings", readOnlyHint=True))
     async def get_upcoming_earnings(
-        start_date: Optional[str] = None,         # maps to from= (YYYY-MM-DD)
-        end_date: Optional[str] = None,           # maps to to=   (YYYY-MM-DD)
-        symbols: Optional[Union[str, List[str]]] = None,  # 'AAPL.US' or ['AAPL.US','MSFT.US']
-        fmt: Optional[str] = "json",              # 'json' or 'csv' (docs default csv)
-        api_token: Optional[str] = None,          # per-call override
-    ) -> str:
+        start_date: str | None = None,  # maps to from= (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to to=   (YYYY-MM-DD)
+        symbols: str | list[str] | None = None,  # 'AAPL.US' or ['AAPL.US','MSFT.US']
+        fmt: str | None = "json",  # 'json' or 'csv' (docs default csv)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Get upcoming and recent earnings report dates for stocks.
         Returns scheduled earnings dates, EPS estimates, and actual results when available.
         Filter by specific symbols or a date range (defaults to next 7 days).
-        If you only have a company name or ISIN, call resolve_ticker first.
         Use when the user asks "when does X report earnings?" or wants an earnings calendar.
         For EPS/revenue trend analysis and analyst revisions, use get_earnings_trends instead.
         For macroeconomic events (GDP, CPI), use get_economic_events instead.
@@ -67,38 +64,42 @@ def register(mcp: FastMCP):
             "Earnings this week" → start_date="2026-03-02", end_date="2026-03-06"
             "Microsoft and Google earnings" → symbols="MSFT.US,GOOG.US"
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         sym_param = _normalize_symbols(symbols)
 
+        # --- Coerce dates ---
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
+
         # Build base URL
-        url = f"{EODHD_API_BASE}/calendar/earnings?1=1"
-
-        # Add parameters:
-        if sym_param:
-            url += _q("symbols", sym_param)
-            # Per spec: when symbols provided, 'from'/'to' are ignored — so we do NOT append them.
-        else:
-            url += _q("from", start_date)
-            url += _q("to", end_date)
-
-        url += _q("fmt", (fmt or "json").lower())
-
-        if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request via env
+        # Per spec: when symbols provided, 'from'/'to' are ignored — so we do NOT append them.
+        url = build_url(
+            "calendar/earnings",
+            {
+                "symbols": sym_param,
+                "from": None if sym_param else start_date,
+                "to": None if sym_param else end_date,
+                "fmt": (fmt or "json").lower(),
+                "api_token": api_token,
+            },
+        )
 
         # Hit API
-        data = await make_request(url)
+        output_fmt = (fmt or "json").lower()
+        data = await make_request(url, response_mode="text" if output_fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # Normalize output
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):  # e.g., CSV
-                return json.dumps({"raw": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        if output_fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="calendar/earnings.csv")
+
+        return format_json_response(data)

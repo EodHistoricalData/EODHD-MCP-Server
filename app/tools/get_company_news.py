@@ -1,43 +1,46 @@
-#get_company_news.py
+# app/tools/get_company_news.py
 
-import json
+import logging
 import re
-from datetime import datetime
-from typing import Optional
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+logger = logging.getLogger(__name__)
+
 ALLOWED_FMT = {"json", "xml"}
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
 
-def _valid_date(d: Optional[str]) -> bool:
-    if d is None:
-        return True
-    if not DATE_RE.match(d):
-        return False
-    try:
-        datetime.strptime(d, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
+
+def _sanitize_articles(data: list) -> list:
+    """Strip HTML tags from title/content fields before returning news content."""
+    for article in data:
+        if not isinstance(article, dict):
+            continue
+        for field in ("title", "content"):
+            value = article.get(field)
+            if isinstance(value, str):
+                article[field] = _HTML_TAG_RE.sub("", value)
+    return data
+
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Company News", readOnlyHint=True))
     async def get_company_news(
-        ticker: Optional[str] = None,        # maps to 's'
-        tag: Optional[str] = None,           # maps to 't'
-        start_date: Optional[str] = None,    # maps to 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,      # maps to 'to' (YYYY-MM-DD)
-        limit: int = 50,                     # 1..1000 (API default 50)
-        offset: int = 0,                     # default 0
-        fmt: str = "json",                   # 'json' or 'xml' (API default json)
-        api_token: Optional[str] = None,     # per-call override
-    ) -> str:
+        ticker: str | None = None,  # maps to 's'
+        tag: str | None = None,  # maps to 't'
+        start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # maps to 'to' (YYYY-MM-DD)
+        limit: int = 50,  # 1..1000 (API default 50)
+        offset: int = 0,  # default 0
+        fmt: str = "json",  # 'json' or 'xml' (API default json)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Fetch financial news articles for a stock ticker or topic tag within a date range.
@@ -48,7 +51,6 @@ def register(mcp: FastMCP):
 
         Args:
             ticker (str, optional): SYMBOL.EXCHANGE_ID (e.g., 'AAPL.US'). Mapped to 's'.
-                          If you only have a company name or ISIN, call resolve_ticker first.
             tag (str, optional): Topic tag (e.g., 'technology'). Mapped to 't'.
             start_date (str, optional): YYYY-MM-DD. Mapped to 'from'.
             end_date (str, optional): YYYY-MM-DD. Mapped to 'to'.
@@ -72,22 +74,26 @@ def register(mcp: FastMCP):
             "Crypto news, 50 results" → tag="crypto", limit=50
             "Tesla news in February 2026, first 10" → ticker="TSLA.US", start_date="2026-02-01", end_date="2026-02-28", limit=10
 
-        
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate required conditions ---
+        if isinstance(ticker, str) and not ticker.strip():
+            ticker = None
+        elif ticker is not None:
+            ticker = sanitize_ticker(ticker)
+
         if not ticker and not tag:
             raise ToolError("Provide at least one of 'ticker' (s) or 'tag' (t).")
 
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
-        if not _valid_date(start_date):
-            raise ToolError("'start_date' must be YYYY-MM-DD when provided.")
-        if not _valid_date(end_date):
-            raise ToolError("'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         if not isinstance(limit, int) or not (1 <= limit <= 1000):
             raise ToolError("'limit' must be an integer between 1 and 1000.")
@@ -95,34 +101,32 @@ def register(mcp: FastMCP):
             raise ToolError("'offset' must be a non-negative integer.")
 
         # --- Build URL per docs ---
-        url = f"{EODHD_API_BASE}/news?fmt={fmt}&limit={limit}&offset={offset}"
-        if ticker:
-            url += f"&s={ticker}"
-        if tag:
-            url += f"&t={tag}"
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if api_token:
-            url += f"&api_token={api_token}"  # otherwise make_request will append env token
+        url = build_url(
+            "news",
+            {
+                "fmt": fmt,
+                "limit": limit,
+                "offset": offset,
+                "s": ticker,
+                "t": tag,
+                "from": start_date,
+                "to": end_date,
+                "api_token": api_token,
+            },
+        )
 
         # --- Request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "xml" else "json")
+        raise_on_api_error(data, tool="get_company_news")
 
         # --- Normalize / return ---
-        if data is None:
-            raise ToolError("No response from API.")
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
+        if fmt == "xml":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected XML response format from API.")
+            return format_text_response(data, "application/xml", resource_path="news/feed.xml")
 
-        # Typical 'json' path: API returns a list of articles (or an object).
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            # If you adapt make_request to return raw text for 'xml', we wrap it.
-            if isinstance(data, str):
-                return json.dumps({"xml": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        if isinstance(data, list):
+            data = _sanitize_articles(data)
 
+        return format_json_response(data)

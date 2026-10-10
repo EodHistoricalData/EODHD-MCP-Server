@@ -1,24 +1,27 @@
 # app/tools/resolve_ticker.py
 
-import json
-from typing import Optional
+import logging
 from urllib.parse import quote
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_exchange
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Resolve Ticker", readOnlyHint=True))
     async def resolve_ticker(
         query: str,
-        preferred_exchange: Optional[str] = None,
-        asset_type: Optional[str] = None,
-        api_token: Optional[str] = None,
-    ) -> str:
+        preferred_exchange: str | None = None,
+        asset_type: str | None = None,
+        api_token: str | None = None,
+    ) -> ResourceResponse:
         """
         Resolve a company name, partial ticker, or ISIN to SYMBOL.EXCHANGE format (and ISIN).
 
@@ -47,33 +50,45 @@ def register(mcp: FastMCP):
             - type (str): asset type (Common Stock, ETF, etc.)
             - exchange (str): exchange code
             - alternatives (list): if ambiguous, top 10 matches each with ticker, name, isin, type, exchange
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         if not query or not isinstance(query, str):
             raise ToolError("Parameter 'query' is required and must be a non-empty string.")
 
+        if isinstance(preferred_exchange, str) and not preferred_exchange.strip():
+            preferred_exchange = None
+        elif preferred_exchange is not None:
+            preferred_exchange = sanitize_exchange(preferred_exchange, param_name="preferred_exchange")
+
+        allowed = {"stock", "etf", "fund", "bond", "index", "crypto"}
+        if asset_type and asset_type not in allowed:
+            raise ToolError(f"Invalid 'asset_type'. Allowed: {sorted(allowed)}")
+
         encoded_query = quote(query.strip(), safe="")
-        url = f"{EODHD_API_BASE}/search/{encoded_query}?fmt=json&limit=10"
-
-        if asset_type:
-            allowed = {"stock", "etf", "fund", "bond", "index", "crypto"}
-            if asset_type not in allowed:
-                raise ToolError(f"Invalid 'asset_type'. Allowed: {sorted(allowed)}")
-            url += f"&type={quote(asset_type)}"
-
-        if preferred_exchange:
-            url += f"&exchange={quote(str(preferred_exchange))}"
-
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            f"search/{encoded_query}",
+            {
+                "fmt": "json",
+                "limit": 10,
+                "type": asset_type,
+                "exchange": preferred_exchange,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
+        raise_on_api_error(data)
 
         if data is None:
-            raise ToolError("No response from Search API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-        if not isinstance(data, list) or len(data) == 0:
-            return json.dumps({"resolved": None, "message": f"No results found for '{query}'."})
+            raise ToolError("No response from API.")
+        if not isinstance(data, list):
+            raise ToolError("Unexpected response format from API.")
+        if len(data) == 0:
+            return format_json_response({"resolved": None, "message": f"No results found for '{query}'."})
 
         best = data[0]
         resolved = f"{best.get('Code', '')}.{best.get('Exchange', '')}"
@@ -86,13 +101,15 @@ def register(mcp: FastMCP):
                 key = f"{item.get('Code')}.{item.get('Exchange')}"
                 if key not in seen and key != resolved:
                     seen.add(key)
-                    alternatives.append({
-                        "ticker": key,
-                        "name": item.get("Name", ""),
-                        "isin": item.get("ISIN", ""),
-                        "type": item.get("Type", ""),
-                        "exchange": item.get("Exchange", ""),
-                    })
+                    alternatives.append(
+                        {
+                            "ticker": key,
+                            "name": item.get("Name", ""),
+                            "isin": item.get("ISIN", ""),
+                            "type": item.get("Type", ""),
+                            "exchange": item.get("Exchange", ""),
+                        }
+                    )
 
         result = {
             "resolved": resolved,
@@ -105,4 +122,4 @@ def register(mcp: FastMCP):
         if alternatives:
             result["alternatives"] = alternatives[:10]
 
-        return json.dumps(result, indent=2)
+        return format_json_response(result)

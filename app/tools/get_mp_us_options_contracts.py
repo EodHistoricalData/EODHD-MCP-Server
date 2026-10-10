@@ -1,33 +1,32 @@
-#get_mp_us_options_contracts.py
+# app/tools/get_mp_us_options_contracts.py
 
-import json
-from typing import Optional, Union, Sequence
+import logging
+from collections.abc import Sequence
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import (
+    build_query_param,
+    build_url,
+    coerce_date_param,
+    sanitize_ticker,
+    strip_exchange_suffix,
+    validate_date_range,
+)
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_SORT = {"exp_date", "strike", "-exp_date", "-strike"}
 ALLOWED_TYPE = {None, "put", "call"}
 ALLOWED_FMT = {"json"}
 
-def _q(key: str, val: Optional[Union[str, int, float]]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
 
-
-def _q_bool(key: str, val: Optional[bool]) -> str:
-    if val is None:
-        return ""
-    return f"&{key}={(1 if val else 0)}"
-
-
-def _q_fields_contracts(fields: Optional[Union[str, Sequence[str]]]) -> str:
+def _q_fields_contracts(fields: str | Sequence[str] | None) -> str:
     """
     Build fields[options-contracts] param.
 
@@ -52,33 +51,32 @@ def _q_fields_contracts(fields: Optional[Union[str, Sequence[str]]]) -> str:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Options Contracts", readOnlyHint=True))
     async def get_us_options_contracts(
-        underlying_symbol: Optional[str] = None,     # filter[underlying_symbol]
-        contract: Optional[str] = None,              # filter[contract]
-        exp_date_eq: Optional[str] = None,           # filter[exp_date_eq]    YYYY-MM-DD
-        exp_date_from: Optional[str] = None,         # filter[exp_date_from]  YYYY-MM-DD
-        exp_date_to: Optional[str] = None,           # filter[exp_date_to]    YYYY-MM-DD
-        tradetime_eq: Optional[str] = None,          # filter[tradetime_eq]   YYYY-MM-DD
-        tradetime_from: Optional[str] = None,        # filter[tradetime_from] YYYY-MM-DD
-        tradetime_to: Optional[str] = None,          # filter[tradetime_to]   YYYY-MM-DD
-        type: Optional[str] = None,                  # filter[type] 'put'|'call'
-        strike_eq: Optional[float] = None,           # filter[strike_eq]
-        strike_from: Optional[float] = None,         # filter[strike_from]
-        strike_to: Optional[float] = None,           # filter[strike_to]
-        sort: Optional[str] = None,                  # exp_date|strike|-exp_date|-strike
-        page_offset: int = 0,                        # page[offset] 0..10000
-        page_limit: int = 1000,                      # page[limit]  1..1000
-        fields: Optional[Union[str, Sequence[str]]] = None,  # fields[options-contracts]
-        api_token: Optional[str] = None,
-        fmt: Optional[str] = "json",
-    ) -> str:
+        underlying_symbol: str | None = None,  # filter[underlying_symbol]
+        contract: str | None = None,  # filter[contract]
+        exp_date_eq: str | None = None,  # filter[exp_date_eq]    YYYY-MM-DD
+        exp_date_from: str | None = None,  # filter[exp_date_from]  YYYY-MM-DD
+        exp_date_to: str | None = None,  # filter[exp_date_to]    YYYY-MM-DD
+        tradetime_eq: str | None = None,  # filter[tradetime_eq]   YYYY-MM-DD
+        tradetime_from: str | None = None,  # filter[tradetime_from] YYYY-MM-DD
+        tradetime_to: str | None = None,  # filter[tradetime_to]   YYYY-MM-DD
+        type: str | None = None,  # filter[type] 'put'|'call'
+        strike_eq: float | None = None,  # filter[strike_eq]
+        strike_from: float | None = None,  # filter[strike_from]
+        strike_to: float | None = None,  # filter[strike_to]
+        sort: str | None = None,  # exp_date|strike|-exp_date|-strike
+        page_offset: int = 0,  # page[offset] 0..10000
+        page_limit: int = 1000,  # page[limit]  1..1000
+        fields: str | Sequence[str] | None = None,  # fields[options-contracts]
+        api_token: str | None = None,
+        fmt: str | None = "json",
+    ) -> ResourceResponse:
         """
 
         [Marketplace] Get available US options contracts (calls and puts) for a stock or ETF.
         Returns strike prices, expiration dates, and contract symbols for the specified underlying ticker.
         Supports filtering by expiration date range, strike range, trade time, and option type (put/call).
-        If you only have a company name or ISIN, call resolve_ticker first.
         Use to discover which options exist before fetching pricing with get_us_options_eod.
         For the list of all tickers that have options, use get_us_options_underlyings.
         Consumes 10 API calls per request.
@@ -114,7 +112,7 @@ def register(mcp: FastMCP):
             "SPY puts with strike between 400 and 450" → underlying_symbol="SPY", type="put", strike_from=400, strike_to=450
             "TSLA call contracts expiring in June 2026, sorted by strike" → underlying_symbol="TSLA", type="call", exp_date_from="2026-06-01", exp_date_to="2026-06-30", sort="strike"
 
-        
+
         """
         # --- validate ---
         if type not in ALLOWED_TYPE:
@@ -125,45 +123,68 @@ def register(mcp: FastMCP):
             raise ToolError("'page_offset' must be an integer between 0 and 10000.")
         if not isinstance(page_limit, int) or not (1 <= page_limit <= 1000):
             raise ToolError("'page_limit' must be an integer between 1 and 1000.")
+        if not str(contract or "").strip() and not str(underlying_symbol or "").strip():
+            raise ToolError(
+                "Provide 'contract' or 'underlying_symbol' — the API rejects a request with neither "
+                "(HTTP 422: filter.contract is required when filter.underlying_symbol is absent)."
+            )
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(ALLOWED_FMT)}")
 
-        base = f"{EODHD_API_BASE}/mp/unicornbay/options/contracts?1=1"
-        # filters
-        base += _q("filter[contract]", contract)
-        base += _q("filter[underlying_symbol]", underlying_symbol)
-        base += _q("filter[exp_date_eq]", exp_date_eq)
-        base += _q("filter[exp_date_from]", exp_date_from)
-        base += _q("filter[exp_date_to]", exp_date_to)
-        base += _q("filter[tradetime_eq]", tradetime_eq)
-        base += _q("filter[tradetime_from]", tradetime_from)
-        base += _q("filter[tradetime_to]", tradetime_to)
-        base += _q("filter[type]", type)
-        base += _q("filter[strike_eq]", strike_eq)
-        base += _q("filter[strike_from]", strike_from)
-        base += _q("filter[strike_to]", strike_to)
-        # sort & pagination
-        base += _q("sort", sort)
-        base += _q("page[offset]", page_offset)
-        base += _q("page[limit]", page_limit)
-        # fields
-        base += _q_fields_contracts(fields)
-        # token
-        if api_token:
-            base += _q("api_token", api_token)
-        # format
-        if fmt:
-            base += _q("fmt", fmt)
+        # --- coerce dates ---
+        exp_date_eq = coerce_date_param(exp_date_eq, "exp_date_eq")
+        exp_date_from = coerce_date_param(exp_date_from, "exp_date_from")
+        exp_date_to = coerce_date_param(exp_date_to, "exp_date_to")
+        validate_date_range(exp_date_from, exp_date_to, "exp_date_from", "exp_date_to")
+        tradetime_eq = coerce_date_param(tradetime_eq, "tradetime_eq")
+        tradetime_from = coerce_date_param(tradetime_from, "tradetime_from")
+        tradetime_to = coerce_date_param(tradetime_to, "tradetime_to")
+        validate_date_range(tradetime_from, tradetime_to, "tradetime_from", "tradetime_to")
 
-        data = await make_request(base)
+        if isinstance(underlying_symbol, str) and not underlying_symbol.strip():
+            underlying_symbol = None
+        elif underlying_symbol is not None:
+            underlying_symbol = strip_exchange_suffix(
+                sanitize_ticker(underlying_symbol, param_name="underlying_symbol")
+            )
 
-        if data is None:
-            raise ToolError("No response from API.")
+        if isinstance(contract, str) and not contract.strip():
+            contract = None
+        elif contract is not None:
+            contract = sanitize_ticker(contract, param_name="contract")
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
+        # build_url handles non-bracket params; bracket-keyed params appended via build_query_param
+        # (urlencode would percent-encode [ and ] in keys, breaking filter[*] and page[*])
+        url = build_url(
+            "mp/unicornbay/options/contracts",
+            {
+                "sort": sort,
+                "api_token": api_token,
+                "fmt": fmt,
+            },
+        )
+        url += build_query_param("filter[contract]", contract)
+        url += build_query_param("filter[underlying_symbol]", underlying_symbol)
+        url += build_query_param("filter[exp_date_eq]", exp_date_eq)
+        url += build_query_param("filter[exp_date_from]", exp_date_from)
+        url += build_query_param("filter[exp_date_to]", exp_date_to)
+        url += build_query_param("filter[tradetime_eq]", tradetime_eq)
+        url += build_query_param("filter[tradetime_from]", tradetime_from)
+        url += build_query_param("filter[tradetime_to]", tradetime_to)
+        url += build_query_param("filter[type]", type)
+        url += build_query_param("filter[strike_eq]", strike_eq)
+        url += build_query_param("filter[strike_from]", strike_from)
+        url += build_query_param("filter[strike_to]", strike_to)
+        url += build_query_param("page[offset]", page_offset)
+        url += build_query_param("page[limit]", page_limit)
+        url += _q_fields_contracts(fields)
+
+        data = await make_request(url)
 
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

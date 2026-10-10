@@ -1,12 +1,16 @@
-import json
+# app/tools/retrieve_description_by_id.py
+import logging
 import re
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "references"
 
@@ -14,21 +18,20 @@ _RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources" / "referen
 # Markdown → nested-dict parser
 # ---------------------------------------------------------------------------
 
-_HEADING_RE = re.compile(r'^(#{1,6})\s+(.*)')
-_BOLD_KV_RE = re.compile(r'^\*\*(.+?)\*\*\s*:\s*(.*)')
-_UL_RE = re.compile(r'^[-*]\s+(.*)')
-_OL_RE = re.compile(r'^\d+\.\s+(.*)')
-_TABLE_SEP_RE = re.compile(r'^\s*\|[\s\-:|]+\|\s*$')
-_HR_RE = re.compile(r'^[-*_]{3,}\s*$')
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)")
+_BOLD_KV_RE = re.compile(r"^\*\*(.+?)\*\*\s*:\s*(.*)")
+_UL_RE = re.compile(r"^[-*]\s+(.*)")
+_OL_RE = re.compile(r"^\d+\.\s+(.*)")
+_TABLE_SEP_RE = re.compile(r"^\s*\|[\s\-:|]+\|\s*$")
+_HR_RE = re.compile(r"^[-*_]{3,}\s*$")
 
 
 def _strip_md(text: str) -> str:
     """Remove inline markdown formatting, keeping plain text."""
-    text = re.sub(r'\[([^\]]*)\]\([^)]*\)', r'\1', text)   # [link](url)
-    text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)            # **bold**
-    text = re.sub(r'(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)',
-                  r'\1', text)                               # *italic*
-    text = re.sub(r'`(.+?)`', r'\1', text)                  # `code`
+    text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", text)  # [link](url)
+    text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)  # **bold**
+    text = re.sub(r"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", r"\1", text)  # *italic*
+    text = re.sub(r"`(.+?)`", r"\1", text)  # `code`
     return text.strip()
 
 
@@ -43,7 +46,7 @@ def _put(sec: dict, key: str, val):
         sec[f"{key} ({c})"] = val
 
 
-def _parse_markdown(text: str) -> dict:
+def _parse_markdown(text: str) -> dict[str, Any]:
     """Parse a markdown document into a nested dict / list structure.
 
     Mapping rules
@@ -60,7 +63,7 @@ def _parse_markdown(text: str) -> dict:
     text, or note) are "unwrapped" so the section value becomes the
     block itself rather than a single-key dict.
     """
-    lines = text.split('\n')
+    lines = text.split("\n")
     root: dict = {}
     stack: list[tuple[int, dict]] = [(0, root)]
     i, n = 0, len(lines)
@@ -77,17 +80,17 @@ def _parse_markdown(text: str) -> dict:
             continue
 
         # ── fenced code block ──────────────────────────────────────
-        if s.startswith('```'):
+        if s.startswith("```"):
             lang = s[3:].strip()
             buf: list[str] = []
             i += 1
-            while i < n and not lines[i].strip().startswith('```'):
+            while i < n and not lines[i].strip().startswith("```"):
                 buf.append(lines[i])
                 i += 1
             if i < n:
                 i += 1
             key = f"example_{lang}" if lang else "example"
-            _put(cur(), key, '\n'.join(buf))
+            _put(cur(), key, "\n".join(buf))
             continue
 
         # ── heading ────────────────────────────────────────────────
@@ -103,21 +106,15 @@ def _parse_markdown(text: str) -> dict:
             continue
 
         # ── table ──────────────────────────────────────────────────
-        if s.startswith('|') and s.endswith('|') and s.count('|') >= 3:
-            hdrs = [h.strip() for h in s.split('|')[1:-1]]
+        if s.startswith("|") and s.endswith("|") and s.count("|") >= 3:
+            hdrs = [h.strip() for h in s.split("|")[1:-1]]
             i += 1
             if i < n and _TABLE_SEP_RE.match(lines[i]):
                 i += 1
             rows: list[dict] = []
-            while (i < n
-                   and lines[i].strip().startswith('|')
-                   and lines[i].strip().endswith('|')):
-                cells = [c.strip()
-                         for c in lines[i].strip().split('|')[1:-1]]
-                rows.append({
-                    hdrs[j]: _strip_md(cells[j]) if j < len(cells) else ""
-                    for j in range(len(hdrs))
-                })
+            while i < n and lines[i].strip().startswith("|") and lines[i].strip().endswith("|"):
+                cells = [c.strip() for c in lines[i].strip().split("|")[1:-1]]
+                rows.append({hdrs[j]: _strip_md(cells[j]) if j < len(cells) else "" for j in range(len(hdrs))})
                 i += 1
             _put(cur(), "_table", rows)
             continue
@@ -132,35 +129,34 @@ def _parse_markdown(text: str) -> dict:
                 j = i
                 while j < n and not lines[j].strip():
                     j += 1
-                if j < n and lines[j].strip().startswith('```'):
+                if j < n and lines[j].strip().startswith("```"):
                     lang = lines[j].strip()[3:].strip()
                     buf = []
                     j += 1
-                    while j < n and not lines[j].strip().startswith('```'):
+                    while j < n and not lines[j].strip().startswith("```"):
                         buf.append(lines[j])
                         j += 1
                     if j < n:
                         j += 1
-                    val = '\n'.join(buf)
+                    val = "\n".join(buf)
                     i = j
             _put(cur(), key, val)
             continue
 
         # ── blockquote ─────────────────────────────────────────────
-        if s.startswith('>'):
+        if s.startswith(">"):
             buf = []
-            while i < n and lines[i].strip().startswith('>'):
-                buf.append(lines[i].strip().lstrip('>').strip())
+            while i < n and lines[i].strip().startswith(">"):
+                buf.append(lines[i].strip().lstrip(">").strip())
                 i += 1
-            _put(cur(), "_note", _strip_md(' '.join(buf)))
+            _put(cur(), "_note", _strip_md(" ".join(buf)))
             continue
 
         # ── unordered list ─────────────────────────────────────────
         if _UL_RE.match(s):
             items: list[str] = []
-            while i < n and _UL_RE.match(lines[i].strip()):
-                items.append(
-                    _strip_md(_UL_RE.match(lines[i].strip()).group(1)))
+            while i < n and (m := _UL_RE.match(lines[i].strip())):
+                items.append(_strip_md(m.group(1)))
                 i += 1
             _put(cur(), "_items", items)
             continue
@@ -168,9 +164,8 @@ def _parse_markdown(text: str) -> dict:
         # ── ordered list ───────────────────────────────────────────
         if _OL_RE.match(s):
             items = []
-            while i < n and _OL_RE.match(lines[i].strip()):
-                items.append(
-                    _strip_md(_OL_RE.match(lines[i].strip()).group(1)))
+            while i < n and (m := _OL_RE.match(lines[i].strip())):
+                items.append(_strip_md(m.group(1)))
                 i += 1
             _put(cur(), "_items", items)
             continue
@@ -179,17 +174,21 @@ def _parse_markdown(text: str) -> dict:
         buf = []
         while i < n:
             ln = lines[i].strip()
-            if (not ln
-                    or ln.startswith(('#', '|', '```', '>'))
-                    or _UL_RE.match(ln) or _OL_RE.match(ln)
-                    or _BOLD_KV_RE.match(ln) or _HR_RE.match(ln)):
+            if (
+                not ln
+                or ln.startswith(("#", "|", "```", ">"))
+                or _UL_RE.match(ln)
+                or _OL_RE.match(ln)
+                or _BOLD_KV_RE.match(ln)
+                or _HR_RE.match(ln)
+            ):
                 break
             buf.append(ln)
             i += 1
         if buf:
-            _put(cur(), "_text", _strip_md(' '.join(buf)))
+            _put(cur(), "_text", _strip_md(" ".join(buf)))
 
-    return _simplify(root)
+    return dict(_simplify(root))
 
 
 def _simplify(obj):
@@ -203,13 +202,10 @@ def _simplify(obj):
     if not isinstance(obj, dict):
         return obj
 
-    result = {
-        k: _simplify(v) if isinstance(v, dict) else v
-        for k, v in obj.items()
-    }
+    result = {k: _simplify(v) if isinstance(v, dict) else v for k, v in obj.items()}
 
-    internal = [k for k in result if k.startswith('_')]
-    regular = [k for k in result if not k.startswith('_')]
+    internal = [k for k in result if k.startswith("_")]
+    regular = [k for k in result if not k.startswith("_")]
 
     # single anonymous block, no named children → unwrap
     if not regular and len(internal) == 1:
@@ -243,74 +239,89 @@ _PAGE_REGISTRY: dict[int, dict[int, tuple[str, str]]] = {
         2: ("endpoints", "cboe-index-data.md"),
         3: ("endpoints", "cboe-indices-list.md"),
         4: ("endpoints", "company-news.md"),
-        5: ("endpoints", "earnings-trends.md"),
-        6: ("endpoints", "economic-events.md"),
-        7: ("endpoints", "exchange-details.md"),
-        8: ("endpoints", "exchange-tickers.md"),
-        9: ("endpoints", "exchanges-list.md"),
-        10: ("endpoints", "fundamentals-data.md"),
-        11: ("endpoints", "historical-market-cap.md"),
-        12: ("endpoints", "historical-stock-prices.md"),
-        13: ("endpoints", "illio-market-insights-best-worst.md"),
-        14: ("endpoints", "illio-market-insights-beta-bands.md"),
-        15: ("endpoints", "illio-market-insights-largest-volatility.md"),
-        16: ("endpoints", "illio-market-insights-performance.md"),
-        17: ("endpoints", "illio-market-insights-risk-return.md"),
-        18: ("endpoints", "illio-market-insights-volatility.md"),
-        19: ("endpoints", "illio-performance-insights.md"),
-        20: ("endpoints", "illio-risk-insights.md"),
-        21: ("endpoints", "index-components.md"),
-        22: ("endpoints", "indices-list.md"),
-        23: ("endpoints", "insider-transactions.md"),
-        24: ("endpoints", "intraday-historical-data.md"),
-        25: ("endpoints", "investverte-esg-list-companies.md"),
-        26: ("endpoints", "investverte-esg-list-countries.md"),
-        27: ("endpoints", "investverte-esg-list-sectors.md"),
-        28: ("endpoints", "investverte-esg-view-company.md"),
-        29: ("endpoints", "investverte-esg-view-country.md"),
-        30: ("endpoints", "investverte-esg-view-sector.md"),
-        31: ("endpoints", "live-price-data.md"),
-        32: ("endpoints", "macro-indicator.md"),
-        33: ("endpoints", "marketplace-tick-data.md"),
-        34: ("endpoints", "news-word-weights.md"),
-        35: ("endpoints", "praams-bank-balance-sheet-by-isin.md"),
-        36: ("endpoints", "praams-bank-balance-sheet-by-ticker.md"),
-        37: ("endpoints", "praams-bank-income-statement-by-isin.md"),
-        38: ("endpoints", "praams-bank-income-statement-by-ticker.md"),
-        39: ("endpoints", "praams-bond-analyze-by-isin.md"),
-        40: ("endpoints", "praams-report-bond-by-isin.md"),
-        41: ("endpoints", "praams-report-equity-by-isin.md"),
-        42: ("endpoints", "praams-report-equity-by-ticker.md"),
-        43: ("endpoints", "praams-risk-scoring-by-isin.md"),
-        44: ("endpoints", "praams-risk-scoring-by-ticker.md"),
-        45: ("endpoints", "praams-smart-investment-screener-bond.md"),
-        46: ("endpoints", "praams-smart-investment-screener-equity.md"),
-        47: ("endpoints", "sentiment-data.md"),
-        48: ("endpoints", "stock-market-logos.md"),
-        49: ("endpoints", "stock-market-logos-svg.md"),
-        50: ("endpoints", "stock-screener-data.md"),
-        51: ("endpoints", "stocks-from-search.md"),
-        52: ("endpoints", "symbol-change-history.md"),
-        53: ("endpoints", "technical-indicators.md"),
-        54: ("endpoints", "tradinghours-list-markets.md"),
-        55: ("endpoints", "tradinghours-lookup-markets.md"),
-        56: ("endpoints", "tradinghours-market-details.md"),
-        57: ("endpoints", "tradinghours-market-status.md"),
-        58: ("endpoints", "upcoming-dividends.md"),
-        59: ("endpoints", "upcoming-earnings.md"),
-        60: ("endpoints", "upcoming-ipos.md"),
-        61: ("endpoints", "upcoming-splits.md"),
-        62: ("endpoints", "us-live-extended-quotes.md"),
-        63: ("endpoints", "us-options-contracts.md"),
-        64: ("endpoints", "us-options-eod.md"),
-        65: ("endpoints", "us-options-underlyings.md"),
-        66: ("endpoints", "us-tick-data.md"),
-        67: ("endpoints", "ust-bill-rates.md"),
-        68: ("endpoints", "ust-long-term-rates.md"),
-        69: ("endpoints", "ust-real-yield-rates.md"),
-        70: ("endpoints", "ust-yield-rates.md"),
-        71: ("endpoints", "user-details.md"),
-        72: ("endpoints", "websockets-realtime.md"),
+        5: ("endpoints", "credit-cds-market-aggregates.md"),
+        6: ("endpoints", "credit-corporate-cmdi.md"),
+        7: ("endpoints", "credit-corporate-hqm-yields.md"),
+        8: ("endpoints", "credit-sovereign-cds-spreads.md"),
+        9: ("endpoints", "credit-sovereign-credit-ratings.md"),
+        10: ("endpoints", "credit-sovereign-default-spreads.md"),
+        11: ("endpoints", "credit-sovereign-risk-premium.md"),
+        12: ("endpoints", "earnings-trends.md"),
+        13: ("endpoints", "economic-events.md"),
+        14: ("endpoints", "exchange-details.md"),
+        15: ("endpoints", "exchange-tickers.md"),
+        16: ("endpoints", "exchanges-list.md"),
+        17: ("endpoints", "fundamentals-data.md"),
+        18: ("endpoints", "historical-market-cap.md"),
+        19: ("endpoints", "historical-stock-prices.md"),
+        20: ("endpoints", "index-components.md"),
+        21: ("endpoints", "indices-list.md"),
+        22: ("endpoints", "insider-transactions.md"),
+        23: ("endpoints", "intraday-historical-data.md"),
+        24: ("endpoints", "investverte-esg-list-companies.md"),
+        25: ("endpoints", "investverte-esg-list-countries.md"),
+        26: ("endpoints", "investverte-esg-list-sectors.md"),
+        27: ("endpoints", "investverte-esg-view-company.md"),
+        28: ("endpoints", "investverte-esg-view-country.md"),
+        29: ("endpoints", "investverte-esg-view-sector.md"),
+        30: ("endpoints", "live-price-data.md"),
+        31: ("endpoints", "macro-indicator.md"),
+        32: ("endpoints", "marketplace-tick-data.md"),
+        33: ("endpoints", "news-word-weights.md"),
+        34: ("endpoints", "praams-bank-balance-sheet-by-isin.md"),
+        35: ("endpoints", "praams-bank-balance-sheet-by-ticker.md"),
+        36: ("endpoints", "praams-bank-income-statement-by-isin.md"),
+        37: ("endpoints", "praams-bank-income-statement-by-ticker.md"),
+        38: ("endpoints", "praams-bond-analyze-by-isin.md"),
+        39: ("endpoints", "praams-report-bond-by-isin.md"),
+        40: ("endpoints", "praams-report-equity-by-isin.md"),
+        41: ("endpoints", "praams-report-equity-by-ticker.md"),
+        42: ("endpoints", "praams-risk-scoring-by-isin.md"),
+        43: ("endpoints", "praams-risk-scoring-by-ticker.md"),
+        44: ("endpoints", "praams-smart-investment-screener-bond.md"),
+        45: ("endpoints", "praams-smart-investment-screener-equity.md"),
+        46: ("endpoints", "rates-funding-stress.md"),
+        47: ("endpoints", "rates-policy-rates.md"),
+        48: ("endpoints", "rates-reference-rates.md"),
+        49: ("endpoints", "sanctions-entities.md"),
+        50: ("endpoints", "sanctions-programs.md"),
+        51: ("endpoints", "sanctions-sources.md"),
+        52: ("endpoints", "sanctions-vessels.md"),
+        53: ("endpoints", "sentiment-data.md"),
+        54: ("endpoints", "stock-market-logos.md"),
+        55: ("endpoints", "stock-market-logos-svg.md"),
+        56: ("endpoints", "stock-screener-data.md"),
+        57: ("endpoints", "stocks-from-search.md"),
+        58: ("endpoints", "symbol-change-history.md"),
+        59: ("endpoints", "technical-indicators.md"),
+        60: ("endpoints", "tradinghours-list-markets.md"),
+        61: ("endpoints", "tradinghours-lookup-markets.md"),
+        62: ("endpoints", "tradinghours-market-details.md"),
+        63: ("endpoints", "tradinghours-market-status.md"),
+        64: ("endpoints", "upcoming-dividends.md"),
+        65: ("endpoints", "upcoming-earnings.md"),
+        66: ("endpoints", "upcoming-ipos.md"),
+        67: ("endpoints", "upcoming-splits.md"),
+        68: ("endpoints", "us-live-extended-quotes.md"),
+        69: ("endpoints", "us-options-contracts.md"),
+        70: ("endpoints", "us-options-eod.md"),
+        71: ("endpoints", "us-options-underlyings.md"),
+        72: ("endpoints", "us-tick-data.md"),
+        73: ("endpoints", "user-details.md"),
+        74: ("endpoints", "ust-bill-rates.md"),
+        75: ("endpoints", "ust-long-term-rates.md"),
+        76: ("endpoints", "ust-real-yield-rates.md"),
+        77: ("endpoints", "ust-yield-rates.md"),
+        78: ("endpoints", "websockets-realtime.md"),
+        79: ("endpoints", "real-estate-countries.md"),
+        80: ("endpoints", "real-estate-detailed-prices.md"),
+        81: ("endpoints", "real-estate-detailed-series.md"),
+        82: ("endpoints", "real-estate-selected-prices.md"),
+        83: ("endpoints", "congressional-trades.md"),
+        84: ("endpoints", "sec-filings.md"),
+        85: ("endpoints", "asx-corporate-actions.md"),
+        86: ("endpoints", "historical-commodity-prices.md"),
+        87: ("endpoints", "insider-transactions-form4.md"),
     },
     # type 3 — general reference
     3: {
@@ -347,7 +358,7 @@ _PAGE_REGISTRY: dict[int, dict[int, tuple[str, str]]] = {
 }
 
 
-def _serve_global_readme(fallback: bool = False) -> str:
+def _serve_global_readme(fallback: bool = False) -> list:
     """Return the global README, optionally flagged as a fallback."""
     file_path = _RESOURCES_DIR / "README.md"
     if not file_path.is_file():
@@ -360,20 +371,19 @@ def _serve_global_readme(fallback: bool = False) -> str:
         structured = _parse_markdown(content)
     except Exception as e:
         structured = {"parsing_error": str(e)}
-    result = {"type": 0, "id": 0, "title": "Global Readme",
-              "content": structured, "raw": content}
+    result = {"type": 0, "id": 0, "title": "Global Readme", "content": structured, "raw": content}
     if fallback:
         result["fallback"] = True
-    return json.dumps(result, indent=2)
+    return format_json_response(result)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Retrieve Resource Description", readOnlyHint=True))
     async def retrieve_description_by_id(
-        type: Optional[Union[int, str]] = 0,
-        id: Optional[Union[int, str]] = None,
-        api_token: Optional[str] = None,
-    ) -> str:
+        type: int | str | None = 0,
+        id: int | str | None = None,
+        api_token: str | None = None,  # noqa: ARG001 — kept for MCP tool interface parity
+    ) -> ResourceResponse:
         """
 
         Retrieve built-in EODHD API documentation by numeric type and id. Use when
@@ -385,7 +395,7 @@ def register(mcp: FastMCP):
         Types:
           0 — Global README / help
           1 — Subscription plans (ids 1-7; id 0 = subscriptions README)
-          2 — Endpoint documentation (ids 1-72; id 0 = endpoints README)
+          2 — Endpoint documentation (ids 1-84; id 0 = endpoints README)
           3 — General reference (ids 1-28; id 0 = general README)
 
         Subscription plan pages (type=1):
@@ -395,24 +405,8 @@ def register(mcp: FastMCP):
           7 — Calendar Feed
 
         Endpoint documentation pages (type=2):
-          1 — Bulk Fundamentals, 2 — CBOE Index Data, 3 — CBOE Indices List,
-          4 — Company News, 5 — Earnings Trends, 6 — Economic Events,
-          7 — Exchange Details, 8 — Exchange Tickers, 9 — Exchanges List,
-          10 — Fundamentals Data, 11 — Historical Market Cap,
-          12 — Historical Stock Prices, 13-20 — Illio insights,
-          21 — Index Components, 22 — Indices List, 23 — Insider Transactions,
-          24 — Intraday Historical Data, 25-30 — Investverte ESG,
-          31 — Live Price Data, 32 — Macro Indicator,
-          33 — Marketplace Tick Data, 34 — News Word Weights,
-          35-46 — PRAAMS endpoints, 47 — Sentiment Data,
-          48 — Stock Market Logos, 49 — Stock Market Logos SVG,
-          50 — Stock Screener Data, 51 — Stocks From Search,
-          52 — Symbol Change History, 53 — Technical Indicators,
-          54-57 — Trading Hours, 58 — Upcoming Dividends,
-          59 — Upcoming Earnings, 60 — Upcoming IPOs,
-          61 — Upcoming Splits, 62 — US Live Extended Quotes,
-          63-65 — US Options, 66 — US Tick Data, 67-70 — UST Rates,
-          71 — User Details, 72 — WebSockets Realtime
+          The id → endpoint mapping changes as endpoints are added, so it is not duplicated
+          here: call ``type=2, id=0`` to get the current index, then request the id you need.
 
         General reference pages (type=3):
           1 — API Authentication Demo Access, 2 — Authentication,
@@ -450,8 +444,6 @@ def register(mcp: FastMCP):
             "docs for the All-In-One subscription plan" → type=1, id=5
             "how does the historical stock prices endpoint work" → type=2, id=12
             "explain rate limits" → type=3, id=22
-
-        
         """
         if type is None:
             page_type = 0
@@ -497,8 +489,6 @@ def register(mcp: FastMCP):
         except Exception as e:
             structured = {"parsing_error": str(e)}
 
-        return json.dumps(
-            {"type": page_type, "id": page_id, "title": title,
-             "content": structured, "raw": content},
-            indent=2,
+        return format_json_response(
+            {"type": page_type, "id": page_id, "title": title, "content": structured, "raw": content}
         )

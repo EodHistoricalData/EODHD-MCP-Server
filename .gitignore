@@ -166,3 +166,6 @@ sandbox.py
 # MCP bundle artifacts (built for releases, not source)
 *.mcpb
 .worktrees
+
+# manual smoke output
+tests/manual/smoke_live_all_report.json

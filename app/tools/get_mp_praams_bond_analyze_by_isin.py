@@ -1,26 +1,19 @@
-#get_mp_praams_bond_analyze_by_isin.py
+# app/tools/get_mp_praams_bond_analyze_by_isin.py
 
-import json
-from typing import Optional
-from urllib.parse import quote_plus
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
-def _q(key: str, val: Optional[str | int]) -> str:
-    """
-    Helper to build query parameters safely.
-    Skips None/empty, URL-encodes values.
-    """
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
-def _canon_isin(v: str) -> Optional[str]:
+def _canon_isin(v: str) -> str | None:
     """
     Very light validation/normalization for Praams bond ISIN path param.
 
@@ -40,7 +33,7 @@ def _canon_isin(v: str) -> Optional[str]:
     return s.upper()
 
 
-async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
+async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> list:
     """
     Core runner for Praams Bond Risk & Return analysis by ISIN.
 
@@ -57,39 +50,33 @@ async def _run_praams_bond_by_isin(isin: str, api_token: Optional[str]) -> str:
 
     # Build URL
     # Example: /api/mp/praams/analyse/bond/US7593518852?api_token=...  (JSON only)
-    url = f"{EODHD_API_BASE}/mp/praams/analyse/bond/{ci}?1=1"
-    if api_token:
-        url += _q("api_token", api_token)  # otherwise appended by make_request via env
+    url = build_url(f"mp/praams/analyse/bond/{ci}", {"api_token": api_token})
 
     # Call upstream
     data = await make_request(url)
-    if data is None:
-        raise ToolError("No response from API.")
-
-
-    if isinstance(data, dict) and data.get("error"):
-        raise ToolError(str(data["error"]))
     # Normalize and return
     # The Praams bond API wraps the payload in: {"success": ..., "item": {...}, "errors": [...]}
     # We just pretty-print whatever comes back.
     try:
-        return json.dumps(data, indent=2)
-    except Exception:
-        raise ToolError("Unexpected JSON response format from API.")
+        return format_json_response(data)
+    except ToolError:
+        raise
+    except Exception as e:
+        logger.debug("API response parse error", exc_info=True)
+        raise ToolError("Unexpected JSON response format from API.") from e
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Bond Analysis (by ISIN)", readOnlyHint=True))
     async def get_mp_praams_bond_analyze_by_isin(
-        isin: str,                       # e.g. 'US7593518852' (demo supports US7593518852, US91282CJN20)
-        api_token: Optional[str] = None, # per-call override (else env EODHD_API_KEY)
-    ) -> str:
+        isin: str,  # e.g. 'US7593518852' (demo supports US7593518852, US91282CJN20)
+        api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)
+    ) -> ResourceResponse:
         """
 
         [PRAAMS] Get deep risk-return analysis for a bond identified by ISIN code.
-        Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-test results,
+        Returns PRAAMS ratio, coupon profile, credit/solvency assessment, stress-manual results,
         volatility, liquidity, country risk narratives, and issuer-level fundamentals.
-        If you only have a company name or ticker, call resolve_ticker first to obtain the ISIN.
         Use for detailed bond-specific due diligence. Consumes 10 API calls per request.
         For bond screening across multiple instruments, use get_mp_praams_smart_screener_bond.
         For a full PDF bond report, use get_mp_praams_report_bond_by_isin.
@@ -108,7 +95,7 @@ def register(mcp: FastMCP):
                 - growthMomentum (object): issuer growth & momentum
                 - marketView (object): spread history, yield curve positioning
                 - volatility (object): price volatility, duration-adjusted risk
-                - stressTest (object): stress-test scenarios and score
+                - stressTest (object): stress-manual scenarios and score
                 - liquidity (object): trading volume, bid-ask spread, score
                 - countryRisk (object): country-level risk assessment and score
                 - solvency (object): issuer creditworthiness, leverage, coverage ratios
@@ -122,12 +109,4 @@ def register(mcp: FastMCP):
           - Output is JSON only
 
         """
-        return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)
-
-    # Optional alias for convenience/back-compat (shorter name)
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
-    async def mp_praams_bond_analyze_by_isin(
-        isin: str,
-        api_token: Optional[str] = None,
-    ) -> str:
         return await _run_praams_bond_by_isin(isin=isin, api_token=api_token)

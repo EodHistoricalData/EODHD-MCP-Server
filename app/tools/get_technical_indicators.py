@@ -1,20 +1,19 @@
-#get_technical_indicators.py
-import json
-import re
-from datetime import datetime
-from typing import Optional, Union
+# app/tools/get_technical_indicators.py
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
-ALLOWED_ORDER = {"a", "d"}                 # ascending, descending (per docs)
+logger = logging.getLogger(__name__)
+
+ALLOWED_ORDER = {"a", "d"}  # ascending, descending (per docs)
 ALLOWED_FMT = {"json", "csv"}
-ALLOWED_AGG_PERIOD = {"d", "w", "m"}       # for splitadjusted only
+ALLOWED_AGG_PERIOD = {"d", "w", "m"}  # for splitadjusted only
 PERIOD_MIN, PERIOD_MAX = 2, 100_000
 
 # Canonical function list + convenience normalization
@@ -31,7 +30,7 @@ ALLOWED_FUNCTIONS = {
     "stddev",
     "stochrsi",
     "slope",
-    "dmi",               # aka dx
+    "dmi",  # aka dx
     "adx",
     "macd",
     "atr",
@@ -48,26 +47,25 @@ FUNC_ALIASES = {
 
 # splitadjusted_only is documented to work with these functions:
 SPLITADJ_ONLY_SUPPORTED = {
-    "sma", "ema", "wma", "volatility", "rsi", "slope", "macd",
+    "sma",
+    "ema",
+    "wma",
+    "volatility",
+    "rsi",
+    "slope",
+    "macd",
 }
 
-def _valid_date(s: str) -> bool:
-    if not isinstance(s, str) or not DATE_RE.match(s):
-        return False
-    try:
-        datetime.strptime(s, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
 
-def _normalize_function(fn: str) -> Optional[str]:
+def _normalize_function(fn: str) -> str | None:
     if not isinstance(fn, str) or not fn.strip():
         return None
     f = fn.strip().lower()
     f = FUNC_ALIASES.get(f, f)
     return f if f in ALLOWED_FUNCTIONS else None
 
-def _validate_period(name: str, val: Optional[Union[int, str]]) -> Optional[str]:
+
+def _validate_period(name: str, val: int | str | None) -> str | None:
     if val is None or val == "":
         return None
     try:
@@ -78,7 +76,8 @@ def _validate_period(name: str, val: Optional[Union[int, str]]) -> Optional[str]
         return f"Parameter '{name}' out of range [{PERIOD_MIN}, {PERIOD_MAX}]."
     return None
 
-def _validate_float(name: str, val: Optional[Union[int, float, str]]) -> Optional[str]:
+
+def _validate_float(name: str, val: int | float | str | None) -> str | None:
     if val is None or val == "":
         return None
     try:
@@ -87,48 +86,41 @@ def _validate_float(name: str, val: Optional[Union[int, float, str]]) -> Optiona
         return f"Parameter '{name}' must be a number."
     return None
 
+
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Technical Indicators", readOnlyHint=True))
     async def get_technical_indicators(
         ticker: str,
-        function: str,                          # required (e.g., 'sma', 'macd', 'stochastic', ...)
+        function: str,  # required (e.g., 'sma', 'macd', 'stochastic', ...)
         # common optional
-        start_date: Optional[str] = None,        # 'from' (YYYY-MM-DD)
-        end_date: Optional[str] = None,          # 'to'   (YYYY-MM-DD)
-        order: str = "a",                        # 'a' | 'd'
-        fmt: str = "json",                       # 'json' | 'csv'
-        filter: Optional[str] = None,            # e.g., 'last_ema', 'last_volume'
-        splitadjusted_only: Optional[Union[int, bool, str]] = None,  # 0/1 or bool (only for some functions)
-
+        start_date: str | None = None,  # 'from' (YYYY-MM-DD)
+        end_date: str | None = None,  # 'to'   (YYYY-MM-DD)
+        order: str = "a",  # 'a' | 'd'
+        fmt: str = "json",  # 'json' | 'csv'
+        filter: str | None = None,  # e.g., 'last_ema', 'last_volume'
+        splitadjusted_only: int | bool | str | None = None,  # 0/1 or bool (only for some functions)
         # shared indicator params
-        period: Optional[Union[int, str]] = None,
-
+        period: int | str | None = None,
         # splitadjusted
-        agg_period: Optional[str] = None,        # 'd'|'w'|'m' (splitadjusted only)
-
+        agg_period: str | None = None,  # 'd'|'w'|'m' (splitadjusted only)
         # stochastic
-        fast_kperiod: Optional[Union[int, str]] = None,
-        slow_kperiod: Optional[Union[int, str]] = None,
-        slow_dperiod: Optional[Union[int, str]] = None,
-
+        fast_kperiod: int | str | None = None,
+        slow_kperiod: int | str | None = None,
+        slow_dperiod: int | str | None = None,
         # stochrsi
-        fast_dperiod: Optional[Union[int, str]] = None,
-
+        fast_dperiod: int | str | None = None,
         # macd
-        fast_period: Optional[Union[int, str]] = None,
-        slow_period: Optional[Union[int, str]] = None,
-        signal_period: Optional[Union[int, str]] = None,
-
+        fast_period: int | str | None = None,
+        slow_period: int | str | None = None,
+        signal_period: int | str | None = None,
         # sar
-        acceleration: Optional[Union[float, str]] = None,
-        maximum: Optional[Union[float, str]] = None,
-
+        acceleration: float | str | None = None,
+        maximum: float | str | None = None,
         # beta
-        code2: Optional[str] = None,
-
+        code2: str | None = None,
         # token
-        api_token: Optional[str] = None,
-    ) -> str:
+        api_token: str | None = None,
+    ) -> ResourceResponse:
         """
 
         Compute technical indicators for any ticker over a date range.
@@ -138,8 +130,6 @@ def register(mcp: FastMCP):
         Consumes 5 API calls per request.
         For raw OHLCV price data, use get_historical_stock_prices instead.
         For fundamental analysis, use get_fundamentals_data instead.
-
-        ticker: If you only have a company name or ISIN, call resolve_ticker first.
 
         Returns:
             Array of objects, each with 'date' (str, YYYY-MM-DD) plus indicator-specific fields:
@@ -169,17 +159,18 @@ def register(mcp: FastMCP):
             "RSI(14) for Bitcoin last 3 months" → ticker="BTC-USD.CC", function="rsi", period=14, start_date="2025-12-06"
             "MACD for Siemens with custom periods" → ticker="SIE.XETRA", function="macd", fast_period=12, slow_period=26, signal_period=9
 
-        
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Required/typed validation ---
-        if not ticker or not isinstance(ticker, str):
-            raise ToolError("Parameter 'ticker' is required and must be a string (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         fn = _normalize_function(function)
         if not fn:
             raise ToolError(
-                "Invalid 'function'. Allowed: "
-                + ", ".join(sorted(ALLOWED_FUNCTIONS | set(FUNC_ALIASES.keys())))
+                "Invalid 'function'. Allowed: " + ", ".join(sorted(ALLOWED_FUNCTIONS | set(FUNC_ALIASES.keys())))
             )
 
         if order not in ALLOWED_ORDER:
@@ -188,13 +179,9 @@ def register(mcp: FastMCP):
         if fmt not in ALLOWED_FMT:
             raise ToolError(f"Invalid 'fmt'. Allowed values: {sorted(ALLOWED_FMT)}")
 
-        if start_date is not None and not _valid_date(start_date):
-            raise ToolError("Parameter 'start_date' must be YYYY-MM-DD when provided.")
-        if end_date is not None and not _valid_date(end_date):
-            raise ToolError("Parameter 'end_date' must be YYYY-MM-DD when provided.")
-        if start_date and end_date:
-            if datetime.strptime(start_date, "%Y-%m-%d") > datetime.strptime(end_date, "%Y-%m-%d"):
-                raise ToolError("'start_date' cannot be after 'end_date'.")
+        start_date = coerce_date_param(start_date, "start_date")
+        end_date = coerce_date_param(end_date, "end_date")
+        validate_date_range(start_date, end_date)
 
         if filter and fmt != "json":
             raise ToolError("Parameter 'filter' works only with fmt='json'.")
@@ -215,7 +202,7 @@ def register(mcp: FastMCP):
                 raise ToolError(msg)
 
         # floats for SAR
-        for name, val in [
+        for name, val in [  # type: ignore[assignment]
             ("acceleration", acceleration),
             ("maximum", maximum),
         ]:
@@ -243,76 +230,47 @@ def register(mcp: FastMCP):
             # (Optional strictness) warn if function not in supported set — we'll just allow pass-through.
 
         # --- Build URL ---
-        # Base: /api/technical/{ticker}
-        url = f"{EODHD_API_BASE}/technical/{ticker}?function={fn}&order={order}&fmt={fmt}"
-
-        if start_date:
-            url += f"&from={start_date}"
-        if end_date:
-            url += f"&to={end_date}"
-        if filter:
-            url += f"&filter={filter}"
-        if period is not None:
-            url += f"&period={int(period)}"
-
+        params: dict = {
+            "function": fn,
+            "order": order,
+            "fmt": fmt,
+            "from": start_date,
+            "to": end_date,
+            "filter": filter,
+            "period": int(period) if period is not None else None,
+            "splitadjusted_only": splitadjusted_only,
+            "api_token": api_token,
+        }
         # function-specific extras
         if fn == "splitadjusted":
-            if agg_period:
-                url += f"&agg_period={agg_period}"
-
+            params["agg_period"] = agg_period
+        if fn in {"stochastic", "stochrsi"}:
+            params["fast_kperiod"] = int(fast_kperiod) if fast_kperiod is not None else None
         if fn == "stochastic":
-            if fast_kperiod is not None:
-                url += f"&fast_kperiod={int(fast_kperiod)}"
-            if slow_kperiod is not None:
-                url += f"&slow_kperiod={int(slow_kperiod)}"
-            if slow_dperiod is not None:
-                url += f"&slow_dperiod={int(slow_dperiod)}"
-
+            params["slow_kperiod"] = int(slow_kperiod) if slow_kperiod is not None else None
+            params["slow_dperiod"] = int(slow_dperiod) if slow_dperiod is not None else None
         if fn == "stochrsi":
-            if fast_kperiod is not None:
-                url += f"&fast_kperiod={int(fast_kperiod)}"
-            if fast_dperiod is not None:
-                url += f"&fast_dperiod={int(fast_dperiod)}"
-
+            params["fast_dperiod"] = int(fast_dperiod) if fast_dperiod is not None else None
         if fn == "macd":
-            if fast_period is not None:
-                url += f"&fast_period={int(fast_period)}"
-            if slow_period is not None:
-                url += f"&slow_period={int(slow_period)}"
-            if signal_period is not None:
-                url += f"&signal_period={int(signal_period)}"
-
+            params["fast_period"] = int(fast_period) if fast_period is not None else None
+            params["slow_period"] = int(slow_period) if slow_period is not None else None
+            params["signal_period"] = int(signal_period) if signal_period is not None else None
         if fn == "sar":
-            if acceleration is not None:
-                url += f"&acceleration={float(acceleration)}"
-            if maximum is not None:
-                url += f"&maximum={float(maximum)}"
-
+            params["acceleration"] = float(acceleration) if acceleration is not None else None
+            params["maximum"] = float(maximum) if maximum is not None else None
         if fn == "beta":
-            if code2:
-                url += f"&code2={code2}"
-
-        # splitadjusted_only (works with several functions)
-        if splitadjusted_only is not None:
-            url += f"&splitadjusted_only={splitadjusted_only}"
-
-        if api_token:
-            url += f"&api_token={api_token}"
+            params["code2"] = code2
+        url = build_url(f"technical/{ticker}", params)
 
         # --- Execute request ---
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # --- Normalize/return ---
-        if data is None:
-            raise ToolError("No response from API.")
 
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"technical/{ticker}-{fn}.csv")
 
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):
-                # For CSV (if make_request is updated to return text)
-                return json.dumps({"csv": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        return format_json_response(data)

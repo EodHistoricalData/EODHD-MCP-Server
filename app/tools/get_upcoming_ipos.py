@@ -1,30 +1,26 @@
-#get_upcoming_ipos.py
+# app/tools/get_upcoming_ipos.py
 
-import json
-from typing import Optional
-from urllib.parse import quote_plus
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
-def _q(key: str, val: Optional[str]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Upcoming IPOs", readOnlyHint=True))
     async def get_upcoming_ipos(
-        from_date: Optional[str] = None,     # format YYYY-MM-DD (mapped to 'from')
-        to_date: Optional[str] = None,       # format YYYY-MM-DD (mapped to 'to')
-        fmt: str = "json",                   # 'json' or 'csv' (default per API is csv; we default to json for dev-friendliness)
-        api_token: Optional[str] = None,     # per-call override; otherwise env EODHD_API_KEY is used
-    ) -> str:
+        from_date: str | None = None,  # format YYYY-MM-DD (mapped to 'from')
+        to_date: str | None = None,  # format YYYY-MM-DD (mapped to 'to')
+        fmt: str = "json",  # 'json' or 'csv' (default per API is csv; we default to json for dev-friendliness)
+        api_token: str | None = None,  # per-call override; otherwise env EODHD_API_KEY is used
+    ) -> ResourceResponse:
         """
 
         Get upcoming and recent IPO (Initial Public Offering) listings.
@@ -54,42 +50,42 @@ def register(mcp: FastMCP):
             "IPOs in March 2026" → from_date="2026-03-01", to_date="2026-03-31"
             "Upcoming IPOs next 30 days" → from_date="2026-03-06", to_date="2026-04-05"
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # Normalize/validate fmt
         fmt = (fmt or "json").lower()
         if fmt not in ("json", "csv"):
             raise ToolError("Invalid 'fmt'. Allowed values: 'json', 'csv'.")
 
-        # Build URL
-        url = f"{EODHD_API_BASE}/calendar/ipos?1=1"
-        if from_date:
-            url += _q("from", from_date)
-        if to_date:
-            url += _q("to", to_date)
-        url += _q("fmt", fmt)
+        # --- Coerce dates ---
+        from_date = coerce_date_param(from_date, "from_date")
+        to_date = coerce_date_param(to_date, "to_date")
+        validate_date_range(from_date, to_date, "from_date", "to_date")
 
-        if api_token:
-            url += _q("api_token", api_token)  # otherwise appended by make_request via env
+        # Build URL
+        url = build_url(
+            "calendar/ipos",
+            {
+                "from": from_date,
+                "to": to_date,
+                "fmt": fmt,
+                "api_token": api_token,
+            },
+        )
 
         # Call
-        data = await make_request(url)
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data)
 
         # Handle response
-        if data is None:
-            raise ToolError("No response from API.")
 
-        # If fmt=csv, many clients of make_request return raw text (str)
         if fmt == "csv":
-            if isinstance(data, str):
-                # Wrap CSV in a small envelope for consistency
-                return json.dumps({"fmt": "csv", "data": data}, indent=2)
-            # Unexpected structure
-            raise ToolError("Unexpected CSV response format from API.")
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path="calendar/ipos.csv")
 
-        # fmt == json
-        try:
-            # data should be a dict/list already; ensure string output
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected JSON response format from API.")
+        return format_json_response(data)

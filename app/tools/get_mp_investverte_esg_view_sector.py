@@ -1,21 +1,27 @@
-#get_mp_investverte_esg_view_sector.py
+# app/tools/get_mp_investverte_esg_view_sector.py
 
-import json
-from typing import Optional
+
+import logging
+from urllib.parse import quote
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
+
+
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Sector Detail", readOnlyHint=True))
     async def get_mp_investverte_esg_view_sector(
-        symbol: str,                    # e.g., "Airlines"
-        fmt: Optional[str] = "json",
-        api_token: Optional[str] = None,  # per-call override
-    ) -> str:
+        symbol: str,  # e.g., "Airlines"
+        fmt: str | None = "json",
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         [InvestVerte] Get detailed ESG time-series data for a specific sector by name.
@@ -54,29 +60,29 @@ def register(mcp: FastMCP):
             "Airlines sector ESG data" → symbol="Airlines"
             "Aerospace & Defense ESG ratings" → symbol="Aerospace & Defense"
 
-        
+
         """
         if not symbol or not isinstance(symbol, str):
+            raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")
+
+        symbol = symbol.strip()
+        if not symbol:
             raise ToolError("Parameter 'symbol' is required and must be a non-empty string (e.g., 'Airlines').")
 
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
         # Base URL for Investverte sector view endpoint
-        url = f"{EODHD_API_BASE}/mp/investverte/sector/{symbol}?fmt={fmt}"
-        if api_token:
-            url += f"&api_token={api_token}"
+        path_symbol = quote(symbol, safe="")
+        url = build_url(f"mp/investverte/sector/{path_symbol}", {"fmt": fmt, "api_token": api_token})
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            # Propagate API error message
-            raise ToolError(str(data["error"]))
-
         try:
             # Expected: dict with keys like "find", "industry", "years"
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

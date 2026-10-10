@@ -1,29 +1,35 @@
-# get_fundamentals_data.py
+# app/tools/get_fundamentals_data.py
 
-import json
 import datetime as dt
-from typing import Any, Dict, List, Optional, Tuple, Union
+import logging
+from typing import Any
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.response_formatter import ResourceResponse, format_json_response, raise_on_api_error
+
+logger = logging.getLogger(__name__)
 
 # --------------------------------
 # Utilities & small helpers
 # --------------------------------
 
-def _to_date(s: Optional[str]) -> Optional[dt.date]:
+
+def _to_date(s: str | None) -> dt.date | None:
     if not s:
         return None
     try:
         return dt.date.fromisoformat(s)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return None
 
-def _in_range(date_str: str, start: Optional[dt.date], end: Optional[dt.date]) -> bool:
+
+def _in_range(date_str: str, start: dt.date | None, end: dt.date | None) -> bool:
     """
     Inclusive date range check. Accepts YYYY-MM-DD.
     If start or end is None -> unbounded on that side.
@@ -32,6 +38,7 @@ def _in_range(date_str: str, start: Optional[dt.date], end: Optional[dt.date]) -
     try:
         d = dt.date.fromisoformat(date_str)
     except Exception:
+        logger.debug("Suppressed exception", exc_info=True)
         return False
     if start and d < start:
         return False
@@ -39,27 +46,20 @@ def _in_range(date_str: str, start: Optional[dt.date], end: Optional[dt.date]) -
         return False
     return True
 
-def _build_url(ticker: str, params: Dict[str, Any]) -> str:
-    base = f"{EODHD_API_BASE}/fundamentals/{ticker}?fmt=json"
-    parts: List[str] = []
-    for k, v in params.items():
-        if v is None:
-            continue
-        if isinstance(v, bool):
-            parts.append(f"{k}={'1' if v else '0'}")
-        else:
-            parts.append(f"{k}={v}")
-    if parts:
-        return base + "&" + "&".join(parts)
-    return base
 
-def _merge_tree(dest: Dict[str, Any], src: Dict[str, Any]) -> None:
+def _build_url(ticker: str, params: dict[str, Any]) -> str:
+    all_params: dict[str, Any] = {"fmt": "json"}
+    all_params.update(params)
+    return build_url(f"fundamentals/{ticker}", all_params)
+
+
+def _merge_tree(dest: dict[str, Any], src: dict[str, Any]) -> None:
     """Shallow-merge top-level dicts (right wins on conflicts)."""
     for k, v in src.items():
         dest[k] = v
 
 
-def _token_override(api_token: Optional[str], api_key: Optional[str]) -> Optional[str]:
+def _token_override(api_token: str | None, api_key: str | None) -> str | None:
     """
     Accept api_token (preferred) and api_key (alias) as per-call overrides.
     """
@@ -74,13 +74,14 @@ def _token_override(api_token: Optional[str], api_key: Optional[str]) -> Optiona
 # Fetchers
 # --------------------------------
 
+
 async def _fetch_filtered_block(
     ticker: str,
-    api_token: Optional[str],
+    api_token: str | None,
     filter_expr: str,
-    extra_params: Optional[Dict[str, Any]] = None,
+    extra_params: dict[str, Any] | None = None,
 ) -> Any:
-    params: Dict[str, Any] = {"filter": filter_expr}
+    params: dict[str, Any] = {"filter": filter_expr}
     if api_token:
         params["api_token"] = api_token
     if extra_params:
@@ -88,21 +89,25 @@ async def _fetch_filtered_block(
             params[k] = v
     url = _build_url(ticker, params)
     data = await make_request(url)
+    raise_on_api_error(data)
     return data
 
-async def _fetch_general(ticker: str, api_token: Optional[str]) -> Dict[str, Any]:
+
+async def _fetch_general(ticker: str, api_token: str | None) -> dict[str, Any]:
     url = _build_url(ticker, {"filter": "General", "api_token": api_token} if api_token else {"filter": "General"})
     data = await make_request(url)
+    raise_on_api_error(data)
     if not isinstance(data, dict) or "Type" not in data:
         raise RuntimeError("Unexpected 'General' response: missing 'Type'")
     return data
 
+
 async def _fetch_sections_bulk(
     ticker: str,
-    api_token: Optional[str],
-    sections: List[str],
-    extra_params: Optional[Dict[str, Any]] = None,
-) -> Dict[str, Any]:
+    api_token: str | None,
+    sections: list[str],
+    extra_params: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """
     Request multiple top-level sections with comma-separated filter.
     Returns a dict (top-level keys = requested sections).
@@ -116,19 +121,20 @@ async def _fetch_sections_bulk(
     # If a single section came back as a direct block, wrap it to keep the shape predictable.
     return {sections[0]: data}
 
+
 async def _discover_financial_dates_from_outstanding_shares(
     ticker: str,
-    api_token: Optional[str],
-    start: Optional[dt.date],
-    end: Optional[dt.date],
-) -> Tuple[List[str], List[str], Dict[str, Any]]:
+    api_token: str | None,
+    start: dt.date | None,
+    end: dt.date | None,
+) -> tuple[list[str], list[str], dict[str, Any]]:
     """
     Returns (quarterly_dates, annual_dates, full_outstandingShares_block)
     The dates returned are taken from 'dateFormatted' and filtered by [start, end].
     """
     os_block = await _fetch_filtered_block(ticker, api_token, "outstandingShares")
-    q_dates: List[str] = []
-    a_dates: List[str] = []
+    q_dates: list[str] = []
+    a_dates: list[str] = []
 
     if isinstance(os_block, dict):
         for kind in ("quarterly", "annual"):
@@ -147,16 +153,17 @@ async def _discover_financial_dates_from_outstanding_shares(
 
     return q_dates, a_dates, os_block if isinstance(os_block, dict) else {}
 
+
 async def _fetch_financials_for_dates(
     ticker: str,
-    api_token: Optional[str],
-    quarter_dates: List[str],
-    annual_dates: List[str],
-) -> Dict[str, Any]:
+    api_token: str | None,
+    quarter_dates: list[str],
+    annual_dates: list[str],
+) -> dict[str, Any]:
     """
     Fetch leaves for Financials statements on the specific dates discovered via outstandingShares.
     """
-    result: Dict[str, Any] = {
+    result: dict[str, Any] = {
         "Financials": {
             "Balance_Sheet": {"quarterly": {}, "yearly": {}},
             "Cash_Flow": {"quarterly": {}, "yearly": {}},
@@ -181,11 +188,12 @@ async def _fetch_financials_for_dates(
 
     return result
 
+
 def _prune_common_stock_by_date(
-    assembled: Dict[str, Any],
-    start: Optional[dt.date],
-    end: Optional[dt.date],
-) -> Dict[str, Any]:
+    assembled: dict[str, Any],
+    start: dt.date | None,
+    end: dt.date | None,
+) -> dict[str, Any]:
     """
     Applies pruning rules:
     1) outstandingShares annual/quarterly — remove nodes with dateFormatted outside [from, to]
@@ -237,7 +245,8 @@ def _prune_common_stock_by_date(
 
     return assembled
 
-def _default_sections_for_type(asset_type: str) -> List[str]:
+
+def _default_sections_for_type(asset_type: str) -> list[str]:
     t = asset_type.strip().lower()
     if t == "common stock":
         return [
@@ -269,25 +278,26 @@ def _default_sections_for_type(asset_type: str) -> List[str]:
 # MCP Tool
 # --------------------------------
 
+
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Company Fundamentals", readOnlyHint=True))
     async def get_fundamentals_data(
-        ticker: str,                                   # "AAPL.US", "VTI.US", "SWPPX.US", "GSPC.INDX", etc.
-        api_token: Optional[str] = None,               # per-call override (preferred name)
-        api_key: Optional[str] = None,                 # per-call override (alias)
+        ticker: str,  # "AAPL.US", "VTI.US", "SWPPX.US", "GSPC.INDX", etc.
+        api_token: str | None = None,  # per-call override (preferred name)
+        api_key: str | None = None,  # per-call override (alias)
         # Common Stock date pruning window (inclusive). For Indices, pass 'from'/'to' via extra_params.
-        from_date: Optional[str] = None,               # "YYYY-MM-DD"
-        to_date: Optional[str] = None,                 # "YYYY-MM-DD"
+        from_date: str | None = None,  # "YYYY-MM-DD"
+        to_date: str | None = None,  # "YYYY-MM-DD"
         # Explicit sections (top-level) to fetch; if omitted, defaults by detected Type.
-        sections: Optional[List[str]] = None,          # e.g. ["General","Highlights","Earnings"]
+        sections: list[str] | None = None,  # e.g. ["General","Highlights","Earnings"]
         # For indices or extra flags: {"historical": 1, "from": "2020-01-01", "to": "2023-01-01"}
-        extra_params: Optional[Dict[str, Any]] = None,
+        extra_params: dict[str, Any] | None = None,
         # For Common Stock, whether to include Financials. When a date window is provided,
         # the tool only fetches leaves for in-range dates discovered via outstandingShares.
         include_financials: bool = True,
         # Keep parity with your other tools
         fmt: str = "json",
-    ) -> str:
+    ) -> ResourceResponse:
         """
 
         Retrieve fundamental data for a single stock, ETF, mutual fund, index, or crypto.
@@ -297,8 +307,6 @@ def register(mcp: FastMCP):
         Supports date-range pruning to limit financials and earnings to a specific window.
         For bulk fundamentals across many tickers at once, use get_bulk_fundamentals instead.
         For price data, use get_historical_stock_prices or get_live_price_data instead.
-
-        - ticker: If you only have a company name or ISIN, call resolve_ticker first.
 
         Returns:
             Nested object; structure depends on asset Type:
@@ -333,24 +341,30 @@ def register(mcp: FastMCP):
             "Tesla earnings and valuation for 2025" → ticker="TSLA.US", sections=["Earnings", "Valuation"], from_date="2025-01-01", to_date="2025-12-31"
             "Vanguard Total Stock Market ETF info" → ticker="VTI.US", sections=["General", "ETF_Data"]
 
-        
+
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
         """
         # --- Validate basics
         if fmt != "json":
             raise ToolError("Only 'json' is supported by this tool.")
 
-        if not ticker or "." not in ticker:
-            raise ToolError("Parameter 'ticker' must be in 'SYMBOL.EXCHANGE' format (e.g., 'AAPL.US').")
+        ticker = sanitize_ticker(ticker)
 
         token = _token_override(api_token, api_key)
+        from_date = coerce_date_param(from_date, "from_date")
+        to_date = coerce_date_param(to_date, "to_date")
+        validate_date_range(from_date, to_date, "from_date", "to_date")
         start = _to_date(from_date)
         end = _to_date(to_date)
-        if to_date and from_date and start and end and end < start:
-            raise ToolError("'to_date' must be >= 'from_date'.")
 
         # --- 1) Detect Type (via General)
         try:
             general = await _fetch_general(ticker, token)
+        except ToolError:
+            raise
         except Exception as e:
             raise ToolError(f"Failed to get General: {e}")
 
@@ -362,10 +376,10 @@ def register(mcp: FastMCP):
         chosen_sections = sections if sections else _default_sections_for_type(asset_type)
         non_general_sections = [s for s in chosen_sections if s != "General"]
 
-        assembled: Dict[str, Any] = {"General": general}
+        assembled: dict[str, Any] = {"General": general}
 
         # --- 3) Fetch non-Financials in bulk where possible
-        non_financial_sections: List[str] = []
+        non_financial_sections: list[str] = []
         try:
             # We never ask for 'Financials' in the bulk; we fetch that separately below.
             for s in non_general_sections:
@@ -379,6 +393,8 @@ def register(mcp: FastMCP):
                     extra_params=extra_params if isinstance(extra_params, dict) else None,
                 )
                 _merge_tree(assembled, bulk)
+        except ToolError:
+            raise
         except Exception as e:
             raise ToolError("Failed to fetch sections " + repr(non_financial_sections) + ": " + repr(e))
 
@@ -398,7 +414,7 @@ def register(mcp: FastMCP):
                     _merge_tree(assembled, fin_tree)
                 else:
                     # No date window -> download full maps (quarterly & yearly) for each statement
-                    fin_full: Dict[str, Any] = {"Financials": {}}
+                    fin_full: dict[str, Any] = {"Financials": {}}
                     for stmt in ("Balance_Sheet", "Cash_Flow", "Income_Statement"):
                         fin_full["Financials"].setdefault(stmt, {})
                         for period in ("quarterly", "yearly"):
@@ -406,6 +422,8 @@ def register(mcp: FastMCP):
                             block = await _fetch_filtered_block(ticker, token, path)
                             fin_full["Financials"][stmt][period] = block
                     _merge_tree(assembled, fin_full)
+            except ToolError:
+                raise
             except Exception as e:
                 raise ToolError(f"Failed to fetch Financials: {e}")
 
@@ -415,6 +433,7 @@ def register(mcp: FastMCP):
 
         # --- 6) Return full JSON (do not reduce)
         try:
-            return json.dumps(assembled, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(assembled)
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

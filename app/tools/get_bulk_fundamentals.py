@@ -1,33 +1,30 @@
-#get_bulk_fundamentals.py
+# app/tools/get_bulk_fundamentals.py
 
-import json
-from typing import Optional, Union
+import logging
 from urllib.parse import quote_plus
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url, sanitize_exchange
+from app.response_formatter import ResourceResponse, format_json_response, format_text_response, raise_on_api_error
 
-def _q(key: str, val: Optional[str | int]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Bulk Fundamentals", readOnlyHint=True))
     async def get_bulk_fundamentals(
-        exchange: str,                                # e.g. "NASDAQ", "NYSE", "US", "LSE"
-        symbols: Optional[str] = None,                # comma-separated list, e.g. "AAPL,MSFT,GOOG"
-        offset: Optional[Union[int, str]] = None,     # pagination start (default 0)
-        limit: Optional[Union[int, str]] = None,      # max symbols (default 500, max 500)
-        version: Optional[str] = None,                # "1.2" for single-symbol-like output
-        fmt: str = "json",                            # 'json' (default) or 'csv'
-        api_token: Optional[str] = None,              # per-call override
-    ) -> str:
+        exchange: str,  # e.g. "NASDAQ", "NYSE", "US", "LSE"
+        symbols: str | None = None,  # comma-separated list, e.g. "AAPL,MSFT,GOOG"
+        offset: int | str | None = None,  # pagination start (default 0)
+        limit: int | str | None = None,  # max symbols (default 500, max 500)
+        version: str | None = None,  # "1.2" for single-symbol-like output
+        fmt: str = "json",  # 'json' (default) or 'csv'
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Fetch fundamental data for all stocks on an exchange in bulk. Use when the user needs
@@ -44,7 +41,6 @@ def register(mcp: FastMCP):
         Args:
             exchange (str): Exchange code (e.g., 'NASDAQ', 'NYSE', 'US', 'LSE').
             symbols (str, optional): Comma-separated list of specific symbols to filter.
-            If you only have a company name or ISIN, call resolve_ticker first.
             offset (int, optional): Pagination start (default 0).
             limit (int, optional): Max symbols to return (default 500, max 500).
             version (str, optional): '1.2' for single-symbol-like output format.
@@ -75,26 +71,20 @@ def register(mcp: FastMCP):
             "AAPL and MSFT fundamentals from NYSE" → get_bulk_fundamentals(exchange="US", symbols="AAPL,MSFT")
             "LSE fundamentals, second page" → get_bulk_fundamentals(exchange="LSE", offset=500, limit=500)
 
-        
-        """
-        if not exchange or not isinstance(exchange, str):
-            raise ToolError(
-                "Parameter 'exchange' is required and must be a non-empty string "
-                "(e.g., 'NASDAQ', 'NYSE', 'US')."
-            )
 
-        exchange = exchange.strip().upper()
+        Demo:
+            To manual data structure, use the manual API key "demo" (documentation: https://eodhd.com/financial-apis/).
+            The "demo" key works for AAPL.US, MSFT.US, TSLA.US (stocks), VTI.US (ETF), SWPPX.US (mutual funds),
+            EURUSD.FOREX, and BTC-USD.CC in all relevant APIs.
+        """
+        exchange = sanitize_exchange(exchange, param_name="exchange").upper()
 
         allowed_fmt = {"json", "csv"}
         fmt = (fmt or "json").lower()
         if fmt not in allowed_fmt:
             raise ToolError(f"Invalid 'fmt'. Allowed: {sorted(allowed_fmt)}")
 
-        url = f"{EODHD_API_BASE}/bulk-fundamentals/{quote_plus(exchange)}?fmt={fmt}"
-
-        if symbols:
-            url += _q("symbols", symbols.strip())
-
+        off = None
         if offset is not None:
             try:
                 off = int(offset)
@@ -102,8 +92,8 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'offset' must be a non-negative integer.")
             if off < 0:
                 raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            url += f"&offset={off}"
 
+        lim = None
         if limit is not None:
             try:
                 lim = int(limit)
@@ -111,24 +101,25 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'limit' must be a positive integer (max 500).")
             if lim <= 0 or lim > 500:
                 raise ToolError("Parameter 'limit' must be between 1 and 500.")
-            url += f"&limit={lim}"
 
-        if version:
-            url += _q("version", version.strip())
+        url = build_url(
+            f"bulk-fundamentals/{quote_plus(exchange)}",
+            {
+                "fmt": fmt,
+                "symbols": symbols.strip() if symbols else None,
+                "offset": off,
+                "limit": lim,
+                "version": version.strip() if version else None,
+                "api_token": api_token,
+            },
+        )
 
-        if api_token:
-            url += f"&api_token={api_token}"
+        data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
+        raise_on_api_error(data, tool="get_bulk_fundamentals")
 
-        data = await make_request(url)
+        if fmt == "csv":
+            if not isinstance(data, str):
+                raise ToolError("Unexpected CSV response format from API.")
+            return format_text_response(data, "text/csv", resource_path=f"bulk-fundamentals/{quote_plus(exchange)}.csv")
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
-        try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            if isinstance(data, str):
-                return json.dumps({"csv": data}, indent=2)
-            raise ToolError("Unexpected response format from API.")
+        return format_json_response(data)

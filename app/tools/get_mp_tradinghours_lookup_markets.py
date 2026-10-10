@@ -1,32 +1,27 @@
-#get_mp_tradinghours_lookup_markets.py
+# app/tools/get_mp_tradinghours_lookup_markets.py
 
-import json
-from typing import Optional
-from urllib.parse import quote_plus
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
 
-def _q(key: str, val: Optional[str | int]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
-
-
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="TradingHours: Market Lookup", readOnlyHint=True))
     async def get_mp_tradinghours_lookup_markets(
-        q: Optional[str] = None,              # free-form search term
-        group: Optional[str] = None,           # core, extended, all, allowed (default: all)
-        api_token: Optional[str] = None,       # per-call override
-    ) -> str:
+        q: str | None = None,  # free-form search term
+        group: str | None = None,  # core, extended, all, allowed (default: all)
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         [TradingHours] Search for markets by name, MIC code, country, or free-form query.
@@ -68,29 +63,28 @@ def register(mcp: FastMCP):
             "search for London Stock Exchange" → q="London Stock Exchange"
             "markets in Japan, core tier" → q="Japan", group="core"
 
-        
+
         """
         if group is not None:
             group = group.strip().lower()
             if group not in ALLOWED_GROUPS:
                 raise ToolError(f"Invalid 'group'. Allowed: {sorted(ALLOWED_GROUPS)}")
 
-        url = f"{EODHD_API_BASE}/mp/tradinghours/markets/lookup?1=1"
-        if q:
-            url += _q("q", q.strip())
-        if group:
-            url += _q("group", group)
-        if api_token:
-            url += _q("api_token", api_token)
+        url = build_url(
+            "mp/tradinghours/markets/lookup",
+            {
+                "q": q.strip() if q else None,
+                "group": group,
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

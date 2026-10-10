@@ -1,23 +1,25 @@
-#get_ust_real_yield_rates.py
+# app/tools/get_ust_real_yield_rates.py
 
-import json
-from typing import Optional, Union
+
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
+
+from app.api_client import make_request
+from app.input_formatter import build_query_param, build_url
+from app.response_formatter import ResourceResponse, format_json_response
+
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Treasury Real Yield Rates", readOnlyHint=True))
     async def get_ust_real_yield_rates(
-        year: Optional[Union[int, str]] = None,   # filter[year], e.g. 2024
-        limit: Optional[Union[int, str]] = None,   # page[limit]
-        offset: Optional[Union[int, str]] = None,  # page[offset]
-        api_token: Optional[str] = None,            # per-call override
-    ) -> str:
+        year: int | str | None = None,  # filter[year], e.g. 2024
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         Fetch US Treasury inflation-adjusted (real) yield curve rates. Use when asked about TIPS yields,
@@ -29,34 +31,30 @@ def register(mcp: FastMCP):
 
         Args:
             year (int, optional): Filter by year (1900 to current+1). Defaults to current year.
-            limit (int, optional): Records per page.
-            offset (int, optional): Pagination offset.
             api_token (str, optional): Per-call token override; env token used otherwise.
 
 
         Returns:
-            JSON array of objects, each with:
-            - date (str): Rate date, YYYY-MM-DD.
-            - 5YR (str): 5-year real yield rate.
-            - 7YR (str): 7-year real yield rate.
-            - 10YR (str): 10-year real yield rate.
-            - 20YR (str): 20-year real yield rate.
-            - 30YR (str): 30-year real yield rate.
+            An envelope object with:
+            - meta (object): { "total": int } — total number of records returned.
+            - data (array): daily real yield objects, each with:
+                - date (str): observation date (YYYY-MM-DD)
+                - tenor (str): maturity (e.g. 5Y, 7Y, 10Y, 20Y, 30Y)
+                - rate (float): real (inflation-adjusted) yield for the given tenor
+            - links (object): { "next": null } — always null; the full dataset for the year is
+              returned and the endpoint does not paginate.
 
         Notes:
             - 1 API call per request.
             - Included in All-In-One, EOD All World, EOD + Intraday All World Extended, Free plans.
             - Compare with nominal yields for implied inflation expectations.
+            - No pagination or date-range filtering: filter[year] is the only supported filter.
 
         Examples:
-            "real yield rates for 2025" → year=2025
-            "last 10 inflation-adjusted treasury yields" → limit=10
-            "real yield curve data for 2023, page 2" → year=2023, limit=50, offset=50
-
-        
+            "real yield rates for 2025" → get_ust_real_yield_rates(year=2025)
+            "current real yield curve" → get_ust_real_yield_rates()
         """
-        url = f"{EODHD_API_BASE}/ust/real-yield-rates?1=1"
-
+        y: int | None = None
         if year is not None:
             try:
                 y = int(year)
@@ -64,37 +62,19 @@ def register(mcp: FastMCP):
                 raise ToolError("Parameter 'year' must be an integer (e.g. 2024).")
             if y < 1900:
                 raise ToolError("Parameter 'year' must be >= 1900.")
-            url += f"&filter[year]={y}"
 
-        if limit is not None:
-            try:
-                lim = int(limit)
-            except (ValueError, TypeError):
-                raise ToolError("Parameter 'limit' must be a positive integer.")
-            if lim <= 0:
-                raise ToolError("Parameter 'limit' must be a positive integer.")
-            url += f"&page[limit]={lim}"
-
-        if offset is not None:
-            try:
-                off = int(offset)
-            except (ValueError, TypeError):
-                raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            if off < 0:
-                raise ToolError("Parameter 'offset' must be a non-negative integer.")
-            url += f"&page[offset]={off}"
-
-        if api_token:
-            url += f"&api_token={api_token}"
+        url = build_url(
+            "ust/real-yield-rates",
+            {"api_token": api_token},
+        )
+        url += build_query_param("filter[year]", y)
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e

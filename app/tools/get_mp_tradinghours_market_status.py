@@ -1,28 +1,24 @@
-#get_mp_tradinghours_market_status.py
+# app/tools/get_mp_tradinghours_market_status.py
 
-import json
-from typing import Optional
-from urllib.parse import quote_plus
+import logging
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
-from app.config import EODHD_API_BASE
-from app.api_client import make_request
 from mcp.types import ToolAnnotations
 
+from app.api_client import make_request
+from app.input_formatter import build_url
+from app.response_formatter import ResourceResponse, format_json_response
 
-def _q(key: str, val: Optional[str | int]) -> str:
-    if val is None or val == "":
-        return ""
-    return f"&{key}={quote_plus(str(val))}"
+logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="TradingHours: Market Status", readOnlyHint=True))
     async def get_mp_tradinghours_market_status(
-        fin_id: str,                           # e.g. "us.nyse"
-        api_token: Optional[str] = None,       # per-call override
-    ) -> str:
+        fin_id: str,  # e.g. "us.nyse"
+        api_token: str | None = None,  # per-call override
+    ) -> ResourceResponse:
         """
 
         [TradingHours] Check whether a market is currently open or closed. Use when asked
@@ -59,26 +55,25 @@ def register(mcp: FastMCP):
             "check if London Stock Exchange is trading" → fin_id="gb.lse"
             "NASDAQ market status" → fin_id="us.nasdaq"
 
-        
+
         """
         if not fin_id or not isinstance(fin_id, str):
-            raise ToolError(
-                "Parameter 'fin_id' is required (e.g. 'us.nyse')."
-            )
+            raise ToolError("Parameter 'fin_id' is required (e.g. 'us.nyse').")
 
-        url = f"{EODHD_API_BASE}/mp/tradinghours/markets/status?1=1"
-        url += _q("fin_id", fin_id.strip())
-        if api_token:
-            url += _q("api_token", api_token)
+        url = build_url(
+            "mp/tradinghours/markets/status",
+            {
+                "fin_id": fin_id.strip(),
+                "api_token": api_token,
+            },
+        )
 
         data = await make_request(url)
 
-        if data is None:
-            raise ToolError("No response from API.")
-        if isinstance(data, dict) and data.get("error"):
-            raise ToolError(str(data["error"]))
-
         try:
-            return json.dumps(data, indent=2)
-        except Exception:
-            raise ToolError("Unexpected response format from API.")
+            return format_json_response(data)
+        except ToolError:
+            raise
+        except Exception as e:
+            logger.debug("API response parse error", exc_info=True)
+            raise ToolError("Unexpected response format from API.") from e
