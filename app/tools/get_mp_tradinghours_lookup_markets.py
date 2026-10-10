@@ -16,7 +16,7 @@ ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="TradingHours: Market Lookup", readOnlyHint=True))
     async def get_mp_tradinghours_lookup_markets(
         q: str | None = None,  # free-form search term
         group: str | None = None,  # core, extended, all, allowed (default: all)

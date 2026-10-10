@@ -26,7 +26,13 @@ MAIN_TOOLS: list[str] = [
     "get_historical_dividends",
     "get_historical_splits",
     "get_insider_transactions",
+    "get_insider_transactions_form4",
+    "get_congressional_trades",
+    "sec_filings",
+    "get_asx_corporate_actions",
+    "get_historical_commodity_prices",
     "capture_realtime_ws",
+    "get_realtime_minute_bars",
     "get_us_tick_data",
     "get_stock_screener_data",
     "get_economic_events",
@@ -50,6 +56,28 @@ MAIN_TOOLS: list[str] = [
     "retrieve_description_by_id",
     "get_support_resistance_levels",
     "resolve_ticker",
+    # Credit & Sovereign Risk
+    "get_credit_sovereign_risk_premium",
+    "get_credit_sovereign_credit_ratings",
+    "get_credit_sovereign_cds_spreads",
+    "get_credit_sovereign_default_spreads",
+    "get_credit_corporate_cmdi",
+    "get_credit_corporate_hqm_yields",
+    "get_credit_cds_market_aggregates",
+    # Sanctions / OFAC
+    "get_sanctions_entities",
+    "get_sanctions_vessels",
+    "get_sanctions_programs",
+    "get_sanctions_sources",
+    # Interest Rates
+    "get_rates_reference_rates",
+    "get_rates_policy_rates",
+    "get_rates_funding_stress",
+    # Real Estate Data
+    "get_real_estate_countries",
+    "get_real_estate_selected_prices",
+    "get_real_estate_detailed_prices",
+    "get_real_estate_detailed_series",
 ]
 
 MARKETPLACE_TOOLS: list[str] = [

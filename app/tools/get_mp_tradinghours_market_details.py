@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="TradingHours: Market Details", readOnlyHint=True))
     async def get_mp_tradinghours_market_details(
         fin_id: str,  # e.g. "us.nyse"
         api_token: str | None = None,  # per-call override

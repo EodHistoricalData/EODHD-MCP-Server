@@ -280,7 +280,7 @@ def _default_sections_for_type(asset_type: str) -> list[str]:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Company Fundamentals", readOnlyHint=True))
     async def get_fundamentals_data(
         ticker: str,  # "AAPL.US", "VTI.US", "SWPPX.US", "GSPC.INDX", etc.
         api_token: str | None = None,  # per-call override (preferred name)

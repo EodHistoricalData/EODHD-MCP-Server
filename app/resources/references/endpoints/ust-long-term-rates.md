@@ -61,7 +61,7 @@ Provides long-term Treasury rates. This feed combines "Daily Treasury Real Long-
 |-------|------|-------------|
 | meta | object | Metadata including total record count |
 | data | array | Array of long-term rate records |
-| links | object | Pagination links (next page URL or null) |
+| links | object | Always `next: null` — the full dataset for the year is returned; the endpoint does not paginate |
 
 **Data item fields:**
 
@@ -92,6 +92,7 @@ python eodhd_client.py --endpoint ust/long-term-rates --filter-year 2020
 - Over_10_Years: Composite rate over 10-year maturity
 - Real_Rate: Real long-term rate average
 - If `filter[year]` is omitted, defaults to the current year
+- The full dataset for the selected year is always returned; there is no pagination or date-range filtering (`page[limit]`, `page[offset]`, `from`, `to` are not supported)
 - The extrapolation_factor field may be null for most records
 - API call consumption: 1 call per request
 - Part of the US Treasury (UST) Interest Rates API (beta)
@@ -104,7 +105,7 @@ The API returns standard HTTP status codes to indicate success or failure:
 |-------------|---------|-------------|
 | **200** | OK | Request succeeded. Data returned successfully. |
 | **402** | Payment Required | API limit used up. Upgrade plan or wait for limit reset. |
-| **403** | Unauthorized | Invalid API key. Check your `api_token` parameter. |
+| **403** | Forbidden | The plan on this API key does not include this data. A missing or wrong `api_token` answers 401. |
 | **429** | Too Many Requests | Exceeded rate limit (requests per minute). Slow down requests. |
 
 ### Error Response Format

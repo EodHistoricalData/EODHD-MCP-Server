@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Upcoming IPOs", readOnlyHint=True))
     async def get_upcoming_ipos(
         from_date: str | None = None,  # format YYYY-MM-DD (mapped to 'from')
         to_date: str | None = None,  # format YYYY-MM-DD (mapped to 'to')

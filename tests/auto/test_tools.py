@@ -1,5 +1,5 @@
 # tests/auto/test_tools.py
-"""Parametrized auto for all 74 tool files.
+"""Parametrized auto for all tool files.
 
 Covers:
   1. URL construction — mock make_request, verify URL path + query params
@@ -124,6 +124,8 @@ URL_CASES = [
     # Search / symbol tools
     ("get_stocks_from_search", {"query": "apple"}, "get_stocks_from_search", ["/search/apple"]),
     ("get_symbol_change_history", {}, "get_symbol_change_history", ["/symbol-change-history"]),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", ["/div/AAPL.US", "fmt=json"]),
+    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", ["/splits/AAPL.US", "fmt=json"]),
     ("resolve_ticker", {"query": "apple"}, "resolve_ticker", ["/search/apple", "fmt=json"]),
     # Calendar endpoints
     ("get_upcoming_earnings", {}, "get_upcoming_earnings", ["/calendar/earnings"]),
@@ -141,9 +143,74 @@ URL_CASES = [
         "get_historical_market_cap",
         ["/historical-market-cap/AAPL.US"],
     ),
-    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", ["/div/AAPL.US", "fmt=json"]),
-    ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", ["/splits/AAPL.US", "fmt=json"]),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", ["/insider-transactions"]),
+    (
+        "get_congressional_trades",
+        {"chamber": "senate", "transaction_type": "purchase,sale"},
+        "get_congressional_trades",
+        ["/congressional-trades", "chamber=senate"],
+    ),
+    (
+        "get_congressional_trades",
+        {
+            "symbol": "AAPL.US",
+            "chamber": "senate",
+            "bioguide_id": "s000250",
+            "transaction_type": "purchase,sale",
+            "transaction_date_from": "2026-01-01",
+            "transaction_date_to": "2026-06-30",
+            "disclosure_date_from": "2026-01-15",
+            "disclosure_date_to": "2026-12-31",
+            "limit": 100,
+            "offset": 20,
+        },
+        "get_congressional_trades",
+        [
+            "/congressional-trades",
+            "symbol=AAPL&",
+            "chamber=senate",
+            "bioguide_id=S000250",
+            "transaction_type=purchase%2Csale",
+            "transaction_date_from=2026-01-01",
+            "transaction_date_to=2026-06-30",
+            "disclosure_date_from=2026-01-15",
+            "disclosure_date_to=2026-12-31",
+            "page[limit]=100",
+            "page[offset]=20",
+        ],
+    ),
+    (
+        "get_congressional_trades",
+        {"symbol": "BRK.B", "limit": 5},
+        "get_congressional_trades",
+        ["/congressional-trades", "symbol=BRK.B", "page[limit]=5"],
+    ),
+    (
+        "get_congressional_trades",
+        {"symbol": "BRK.B.US", "limit": 5},
+        "get_congressional_trades",
+        ["/congressional-trades", "symbol=BRK.B&", "page[limit]=5"],
+    ),
+    # SEC Filings — path-segment form selector; only list endpoints paginate
+    ("get_sec_filings", {"symbol": "AAPL.US"}, "sec_filings", ["/sec-filings/AAPL.US"]),
+    (
+        "get_sec_filings",
+        {"symbol": "AAPL", "form": "10k", "limit": 100, "offset": 20},
+        "sec_filings",
+        ["/sec-filings/AAPL/10k", "page[limit]=100", "page[offset]=20"],
+    ),
+    (
+        "get_sec_filings",
+        {"symbol": "TSLA.US", "form": "10q"},
+        "sec_filings",
+        ["/sec-filings/TSLA.US/10q"],
+    ),
+    (  # flexible form spelling "8-K" is normalized to the "8k" segment
+        "get_sec_filings",
+        {"symbol": "AAPL.US", "form": "8-K", "limit": 5},
+        "sec_filings",
+        ["/sec-filings/AAPL.US/8k", "page[limit]=5"],
+    ),
     # Technical
     (
         "get_technical_indicators",
@@ -177,6 +244,67 @@ URL_CASES = [
     ("get_ust_long_term_rates", {}, "get_ust_long_term_rates", ["/ust/long-term-rates"]),
     ("get_ust_real_yield_rates", {}, "get_ust_real_yield_rates", ["/ust/real-yield-rates"]),
     ("get_ust_yield_rates", {}, "get_ust_yield_rates", ["/ust/yield-rates"]),
+    # Real Estate (BIS property prices)
+    (
+        "get_real_estate_detailed_prices",
+        {
+            "code": "us",
+            "area": "0",
+            "property_type": "2",
+            "vintage": "1",
+            "freq": "Q",
+            "from_period": "2020-Q1",
+            "to_period": "2024-Q4",
+            "sort": "-period",
+            "limit": 10,
+            "offset": 20,
+        },
+        "get_real_estate_detailed_prices",
+        [
+            "/real-estate/US/detailed",
+            "sort=-period",
+            "filter[area]=0",
+            "filter[property_type]=2",
+            "filter[vintage]=1",
+            "filter[freq]=Q",
+            "filter[from]=2020-Q1",
+            "filter[to]=2024-Q4",
+            "page[limit]=10",
+            "page[offset]=20",
+        ],
+    ),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "4T", "type": "real", "metric": "yoy", "from_period": "2020-q1", "sort": "value", "limit": 5},
+        "get_real_estate_selected_prices",
+        [
+            "/real-estate/4T",
+            "sort=value",
+            "filter[type]=real",
+            "filter[metric]=yoy",
+            "filter[from]=2020-Q1",
+            "page[limit]=5",
+        ],
+    ),
+    ("get_real_estate_countries", {}, "get_real_estate_countries", ["/real-estate/countries", "fmt=json"]),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "us", "type": "real", "metric": "index"},
+        "get_real_estate_selected_prices",
+        ["/real-estate/US", "filter[type]=real", "filter[metric]=index"],
+    ),
+    (
+        "get_real_estate_detailed_prices",
+        {"code": "AE", "property_type": "1"},
+        "get_real_estate_detailed_prices",
+        ["/real-estate/AE/detailed", "filter[property_type]=1"],
+    ),
+    (
+        "get_real_estate_detailed_series",
+        {"code": "us"},
+        "get_real_estate_detailed_series",
+        ["/real-estate/US/detailed/series"],
+    ),
     # Intraday
     ("get_intraday_historical_data", {"ticker": "AAPL.US"}, "get_intraday_historical_data", ["/intraday/AAPL.US"]),
     # Marketplace — indices
@@ -289,8 +417,18 @@ URL_CASES = [
     ),
     # Marketplace — tick data & options
     ("get_mp_tick_data", {"ticker": "AAPL.US"}, "get_mp_tick_data", ["/mp/unicornbay/tickdata/ticks", "s=AAPL.US"]),
-    ("get_us_options_contracts", {}, "get_mp_us_options_contracts", ["/mp/unicornbay/options/contracts"]),
-    ("get_us_options_eod", {}, "get_mp_us_options_eod", ["/mp/unicornbay/options/eod"]),
+    (
+        "get_us_options_contracts",
+        {"underlying_symbol": "AAPL"},
+        "get_mp_us_options_contracts",
+        ["/mp/unicornbay/options/contracts", "filter[underlying_symbol]=AAPL"],
+    ),
+    (
+        "get_us_options_eod",
+        {"underlying_symbol": "AAPL"},
+        "get_mp_us_options_eod",
+        ["/mp/unicornbay/options/eod", "filter[underlying_symbol]=AAPL"],
+    ),
     ("get_us_options_underlyings", {}, "get_mp_us_options_underlyings", ["/mp/unicornbay/options/underlying-symbols"]),
     # Marketplace — trading hours
     ("get_mp_tradinghours_list_markets", {}, "get_mp_tradinghours_list_markets", ["/mp/tradinghours/markets"]),
@@ -312,6 +450,178 @@ URL_CASES = [
         "get_mp_tradinghours_market_status",
         ["/mp/tradinghours/markets/status"],
     ),
+    # Credit & Sovereign Risk — bracketed filter[...] keys
+    (
+        "get_credit_sovereign_risk_premium",
+        {"country": "USA", "region": "North America", "as_of": "2025-01-01", "limit": 50, "offset": 20},
+        "get_credit_sovereign_risk_premium",
+        [
+            "/credit-risk/sovereign/risk-premium",
+            "filter[country]=USA",
+            "filter[region]=North+America",
+            "filter[as_of]=2025-01-01",
+            "page[limit]=50",
+            "page[offset]=20",
+        ],
+    ),
+    (
+        "get_credit_sovereign_credit_ratings",
+        {"country": "DEU", "as_of": "2025-01-01"},
+        "get_credit_sovereign_credit_ratings",
+        ["/credit-risk/sovereign/credit-ratings", "filter[country]=DEU", "filter[as_of]=2025-01-01"],
+    ),
+    (
+        "get_credit_sovereign_cds_spreads",
+        {"country": "ITA"},
+        "get_credit_sovereign_cds_spreads",
+        ["/credit-risk/sovereign/cds-spreads", "filter[country]=ITA"],
+    ),
+    (
+        "get_credit_sovereign_default_spreads",
+        {"rating": "Baa2"},
+        "get_credit_sovereign_default_spreads",
+        ["/credit-risk/sovereign/default-spreads", "filter[rating]=Baa2"],
+    ),
+    (
+        "get_credit_corporate_cmdi",
+        {"date_from": "2025-01-01", "date_to": "2025-12-31"},
+        "get_credit_corporate_cmdi",
+        ["/credit-risk/corporate/cmdi", "filter[from]=2025-01-01", "filter[to]=2025-12-31"],
+    ),
+    (
+        "get_credit_corporate_hqm_yields",
+        {"tenor": 10, "type": "spot"},
+        "get_credit_corporate_hqm_yields",
+        ["/credit-risk/corporate/hqm-yields", "filter[tenor]=10", "filter[type]=spot"],
+    ),
+    (
+        "get_credit_cds_market_aggregates",
+        {"metric": "gross_notional", "dimension": "grade", "value": "IG", "region": "Europe"},
+        "get_credit_cds_market_aggregates",
+        [
+            "/credit-risk/cds-market/aggregates",
+            "filter[metric]=gross_notional",
+            "filter[dimension]=grade",
+            "filter[value]=IG",
+            "filter[region]=Europe",
+        ],
+    ),
+    # Sanctions — BARE keys (NOT filter[...]); pagination still uses page[...]
+    (
+        "get_sanctions_entities",
+        {"source": "ofac", "type": "individual", "program": "UKRAINE-EO13662", "country": "Russia", "active": True},
+        "get_sanctions_entities",
+        [
+            "/sanctions/entities",
+            "source=ofac",
+            "type=individual",
+            "program=UKRAINE-EO13662",
+            "country=Russia",
+            "active=true",
+        ],
+    ),
+    (
+        "get_sanctions_vessels",
+        {"source": "ofac", "imo": "9160670", "flag": "Panama", "vessel_type": "Crude Oil Tanker"},
+        "get_sanctions_vessels",
+        ["/sanctions/vessels", "source=ofac", "imo=9160670", "flag=Panama", "vessel_type=Crude+Oil+Tanker"],
+    ),
+    (
+        "get_sanctions_programs",
+        {},
+        "get_sanctions_programs",
+        ["/sanctions/programs"],
+    ),
+    (
+        "get_sanctions_sources",
+        {},
+        "get_sanctions_sources",
+        ["/sanctions/sources"],
+    ),
+    # Interest Rates — bracketed filter[...] keys
+    (
+        "get_rates_reference_rates",
+        {"code": "SOFR", "currency": "USD", "date_from": "2025-01-01", "date_to": "2025-06-30"},
+        "get_rates_reference_rates",
+        [
+            "/rates/reference-rates",
+            "filter[code]=SOFR",
+            "filter[currency]=USD",
+            "filter[from]=2025-01-01",
+            "filter[to]=2025-06-30",
+        ],
+    ),
+    (  # comma-separated currency accepted (upstream CsvIn)
+        "get_rates_reference_rates",
+        {"currency": "usd,eur"},
+        "get_rates_reference_rates",
+        ["/rates/reference-rates", "filter[currency]=USD%2CEUR"],
+    ),
+    (
+        "get_rates_policy_rates",
+        {"country": "US", "central_bank": "FED"},
+        "get_rates_policy_rates",
+        ["/rates/policy-rates", "filter[country]=US", "filter[central_bank]=FED"],
+    ),
+    (  # comma-separated tenor/type accepted (upstream CsvIn)
+        "get_credit_corporate_hqm_yields",
+        {"tenor": "5,10", "type": "spot,par"},
+        "get_credit_corporate_hqm_yields",
+        ["/credit-risk/corporate/hqm-yields", "filter[tenor]=5%2C10", "filter[type]=spot%2Cpar"],
+    ),
+    (
+        "get_rates_funding_stress",
+        {"code": "EFFR_SOFR", "date_from": "2025-01-01"},
+        "get_rates_funding_stress",
+        ["/spreads/funding-stress", "filter[code]=EFFR_SOFR", "filter[from]=2025-01-01"],
+    ),
+    (  # flexible date input is coerced to YYYY-MM-DD before it reaches the API
+        "get_credit_corporate_cmdi",
+        {"date_from": "2025/01/02", "date_to": "Mar 4, 2025"},
+        "get_credit_corporate_cmdi",
+        ["/credit-risk/corporate/cmdi", "filter[from]=2025-01-02", "filter[to]=2025-03-04"],
+    ),
+    (  # as_of is coerced the same way
+        "get_credit_sovereign_cds_spreads",
+        {"as_of": "30/06/2025"},
+        "get_credit_sovereign_cds_spreads",
+        ["/credit-risk/sovereign/cds-spreads", "filter[as_of]=2025-06-30"],
+    ),
+    (  # code CSVs are trimmed and upper-cased (upstream validates element-wise)
+        "get_rates_policy_rates",
+        {"code": "fed_target_lower, ecb_dfr", "central_bank": "fed", "country": "us"},
+        "get_rates_policy_rates",
+        [
+            "/rates/policy-rates",
+            "filter[code]=FED_TARGET_LOWER%2CECB_DFR",
+            "filter[central_bank]=FED",
+            "filter[country]=US",
+        ],
+    ),
+    (
+        "get_rates_funding_stress",
+        {"code": "effr_sofr, obfr_effr"},
+        "get_rates_funding_stress",
+        ["/spreads/funding-stress", "filter[code]=EFFR_SOFR%2COBFR_EFFR"],
+    ),
+    (
+        "get_rates_reference_rates",
+        {"code": "sofrindex"},
+        "get_rates_reference_rates",
+        ["/rates/reference-rates", "filter[code]=SOFRINDEX"],
+    ),
+]
+
+# Endpoints whose proxy controllers forward no pagination params at all.
+NON_PAGINATED_CASES = [
+    ("get_rates_funding_stress", {"code": "EFFR_SOFR"}, "get_rates_funding_stress"),
+    ("get_sanctions_programs", {}, "get_sanctions_programs"),
+    ("get_sanctions_sources", {}, "get_sanctions_sources"),
+    # UST endpoints ignore page[limit]/page[offset]/from/to; only filter[year] applies.
+    ("get_ust_yield_rates", {}, "get_ust_yield_rates"),
+    ("get_ust_bill_rates", {}, "get_ust_bill_rates"),
+    ("get_ust_real_yield_rates", {}, "get_ust_real_yield_rates"),
+    ("get_ust_long_term_rates", {}, "get_ust_long_term_rates"),
 ]
 
 
@@ -324,6 +634,80 @@ async def test_url_construction(mcp, tool_name, args, mock_module, url_fragments
     url = str(mock.call_args_list[0].args[0])
     for frag in url_fragments:
         assert frag in url, f"Expected '{frag}' in URL: {url}"
+
+
+# Marketplace providers that key on the bare symbol: SYMBOL.EXCHANGE must be normalized
+# before it reaches the URL (the suffixed form 404s / 500s upstream).
+# (tool_name, args, mock_module, expected_url_fragment)
+SUFFIX_STRIPPING_CASES = [
+    (
+        "get_mp_praams_bank_balance_sheet_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_balance_sheet_by_ticker",
+        "/mp/praams/bank/balance_sheet/ticker/AAPL",
+    ),
+    (
+        "get_mp_praams_bank_income_statement_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_bank_income_statement_by_ticker",
+        "/mp/praams/bank/income_statement/ticker/AAPL",
+    ),
+    (
+        "get_mp_praams_report_equity_by_ticker",
+        {"ticker": "AAPL.US", "email": "manual@manual.com"},
+        "get_mp_praams_report_equity_by_ticker",
+        "/mp/praams/reports/equity/ticker/AAPL",
+    ),
+    (
+        "get_mp_praams_risk_scoring_by_ticker",
+        {"ticker": "AAPL.US"},
+        "get_mp_praams_risk_scoring_by_ticker",
+        "/mp/praams/analyse/equity/ticker/AAPL",
+    ),
+    (
+        "get_us_options_eod",
+        {"underlying_symbol": "AAPL.US"},
+        "get_mp_us_options_eod",
+        "filter[underlying_symbol]=AAPL",
+    ),
+    (
+        "get_us_options_contracts",
+        {"underlying_symbol": "AAPL.US"},
+        "get_mp_us_options_contracts",
+        "filter[underlying_symbol]=AAPL",
+    ),
+    (
+        "get_mp_investverte_esg_view_company",
+        {"symbol": "AAPL.US"},
+        "get_mp_investverte_esg_view_company",
+        "/mp/investverte/esg/AAPL",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,args,mock_module,expected_fragment",
+    SUFFIX_STRIPPING_CASES,
+    ids=[c[0] for c in SUFFIX_STRIPPING_CASES],
+)
+async def test_exchange_suffix_stripped(mcp, tool_name, args, mock_module, expected_fragment):
+    """SYMBOL.EXCHANGE input is normalized to the bare symbol these providers require."""
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
+    url = str(mock.call_args_list[0].args[0])
+    assert expected_fragment in url, f"Expected '{expected_fragment}' in URL: {url}"
+    assert "AAPL.US" not in url, f"Exchange suffix leaked into URL: {url}"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name,args,mock_module", NON_PAGINATED_CASES, ids=[c[0] for c in NON_PAGINATED_CASES])
+async def test_no_pagination_params(mcp, tool_name, args, mock_module):
+    """Endpoints without upstream pagination must not send page[...] params."""
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
+    url = str(mock.call_args_list[0].args[0])
+    assert "page[limit]" not in url, f"Unexpected page[limit] in URL: {url}"
+    assert "page[offset]" not in url, f"Unexpected page[offset] in URL: {url}"
+    assert "fmt=" not in url, f"Unexpected fmt in URL: {url}"
 
 
 # ---------------------------------------------------------------------------
@@ -346,6 +730,8 @@ VALIDATION_CASES = [
     # Format validation
     ("get_exchanges_list", {"fmt": "xml"}, "json"),
     ("get_historical_stock_prices", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)format|json|csv"),
+    ("get_historical_dividends", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)json"),
+    ("get_historical_splits", {"ticker": "AAPL.US", "fmt": "xml"}, "(?i)json"),
     # Period/order validation
     ("get_historical_stock_prices", {"ticker": "AAPL.US", "period": "x"}, "(?i)period|must be"),
     ("get_historical_stock_prices", {"ticker": "AAPL.US", "order": "x"}, "(?i)order|must be"),
@@ -403,7 +789,63 @@ VALIDATION_CASES = [
     ("resolve_ticker", {"query": "apple", "preferred_exchange": "U/S"}, "(?i)preferred_exchange|break the request url"),
     ("get_us_options_contracts", {"underlying_symbol": "AAPL/US"}, "(?i)underlying_symbol|break the request url"),
     ("get_us_options_eod", {"contract": "AAPL/US"}, "(?i)contract|break the request url"),
+    # Upstream needs at least one of contract / underlying_symbol; the tool says so up front.
+    ("get_us_options_eod", {}, "(?i)contract.*underlying_symbol|underlying_symbol.*contract"),
+    ("get_us_options_contracts", {}, "(?i)contract.*underlying_symbol|underlying_symbol.*contract"),
     ("get_mp_investverte_esg_view_company", {"symbol": "AAPL/US"}, "(?i)symbol|break the request url"),
+    # Real Estate — code required, enum + fmt + pagination validation, URL-breaking code
+    ("get_real_estate_selected_prices", {"code": ""}, "required"),
+    ("get_real_estate_detailed_prices", {"code": ""}, "required"),
+    ("get_real_estate_detailed_series", {"code": ""}, "required"),
+    ("get_real_estate_selected_prices", {"code": "US", "type": "bogus"}, "(?i)type|invalid"),
+    ("get_real_estate_selected_prices", {"code": "US", "metric": "bogus"}, "(?i)metric|invalid"),
+    ("get_real_estate_detailed_prices", {"code": "US", "freq": "X"}, "(?i)freq|invalid"),
+    ("get_real_estate_countries", {"fmt": "xml"}, "(?i)fmt|json|csv"),
+    ("get_real_estate_countries", {"limit": 501}, "(?i)limit|between|must be"),
+    ("get_real_estate_countries", {"offset": -1}, "(?i)offset|non-negative|must be"),
+    ("get_real_estate_selected_prices", {"code": "US/X"}, "(?i)code|break the request url"),
+    ("get_real_estate_detailed_prices", {"code": "US/X"}, "(?i)code|alphanumeric|break the request url"),
+    ("get_real_estate_detailed_series", {"code": "US/X"}, "(?i)code|alphanumeric|break the request url"),
+    ("get_real_estate_selected_prices", {"code": "TOOLONGCODE"}, "(?i)code|alphanumeric"),
+    ("get_real_estate_selected_prices", {"code": "US", "from_period": "2020-01-01"}, "(?i)from_period|quarter|YYYY"),
+    ("get_real_estate_selected_prices", {"code": "US", "to_period": "2020Q1"}, "(?i)to_period|quarter|YYYY"),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "US", "from_period": "2024-Q4", "to_period": "2020-Q1"},
+        "(?i)later than|from_period",
+    ),
+    ("get_real_estate_selected_prices", {"code": "US", "sort": "bogus"}, "(?i)sort|invalid"),
+    ("get_real_estate_detailed_prices", {"code": "US", "sort": "bogus"}, "(?i)sort|invalid"),
+    ("get_real_estate_detailed_prices", {"code": "US", "fmt": "xml"}, "(?i)fmt|json|csv"),
+    ("get_real_estate_selected_prices", {"code": "US", "fmt": "xml"}, "(?i)fmt|json|csv"),
+    ("get_real_estate_detailed_prices", {"code": "US", "area": "TOOLONG"}, "(?i)area|at most"),
+    ("get_real_estate_detailed_prices", {"code": "US", "property_type": "ABC"}, "(?i)property_type|at most"),
+    ("get_real_estate_detailed_prices", {"code": "US", "vintage": "AB"}, "(?i)vintage|at most"),
+    ("get_real_estate_detailed_prices", {"code": "US", "limit": 251}, "(?i)limit|250"),
+    ("get_real_estate_countries", {"limit": 0}, "(?i)limit|positive"),
+    ("get_real_estate_countries", {"limit": "many"}, "(?i)limit|positive|integer"),
+    ("get_real_estate_countries", {"offset": "far"}, "(?i)offset|non-negative|integer"),
+    # Congressional trades — enums, ids, dates and pagination bounds
+    ("get_congressional_trades", {"chamber": "lords"}, "(?i)chamber|senate|house"),
+    ("get_congressional_trades", {"transaction_type": "gift"}, "(?i)transaction_type|purchase|sale|exchange"),
+    ("get_congressional_trades", {"transaction_type": "purchase,gift"}, "(?i)transaction_type|purchase|sale|exchange"),
+    ("get_congressional_trades", {"bioguide_id": "S00025"}, "(?i)bioguide_id|six digits"),
+    ("get_congressional_trades", {"bioguide_id": "0000250"}, "(?i)bioguide_id|six digits"),
+    ("get_congressional_trades", {"symbol": "AAPL&x=1"}, "(?i)symbol|break the request url"),
+    ("get_congressional_trades", {"transaction_date_from": "not-a-date"}, "(?i)transaction_date_from|date"),
+    (
+        "get_congressional_trades",
+        {"transaction_date_from": "2026-06-01", "transaction_date_to": "2026-01-01"},
+        "(?i)transaction_date|before|after|earlier|range",
+    ),
+    (
+        "get_congressional_trades",
+        {"disclosure_date_from": "2026-06-01", "disclosure_date_to": "2026-01-01"},
+        "(?i)disclosure_date|before|after|earlier|range",
+    ),
+    ("get_congressional_trades", {"limit": 101}, "(?i)limit|100"),
+    ("get_congressional_trades", {"limit": 0}, "(?i)limit|positive"),
+    ("get_congressional_trades", {"offset": -1}, "(?i)offset|non-negative"),
     # WebSocket — invalid feed
     ("capture_realtime_ws", {"feed": "invalid_feed", "symbols": "AAPL"}, "(?i)feed|must be|invalid|supported"),
     # Stock screener — limit range
@@ -414,6 +856,43 @@ VALIDATION_CASES = [
         "get_cboe_index_data",
         {"index_code": "", "feed_type": "x", "date": "2017-01-01"},
         "(?i)index_code|required|empty",
+    ),
+    # Credit & Sovereign Risk — limit / offset / enum / date validation
+    ("get_credit_sovereign_risk_premium", {"limit": 0}, "(?i)limit|positive"),
+    ("get_credit_sovereign_risk_premium", {"limit": "abc"}, "(?i)limit|positive"),
+    ("get_credit_sovereign_risk_premium", {"as_of": "not-a-date"}, "(?i)as_of|date"),
+    ("get_credit_sovereign_risk_premium", {"limit": 101}, "(?i)limit|100"),
+    ("get_credit_sovereign_risk_premium", {"offset": -1}, "(?i)offset|non-negative"),
+    ("get_credit_corporate_hqm_yields", {"tenor": 4}, "(?i)tenor|one of"),
+    ("get_credit_corporate_hqm_yields", {"type": "invalid"}, "(?i)type|one of"),
+    ("get_credit_cds_market_aggregates", {"metric": "invalid"}, "(?i)metric|one of"),
+    ("get_credit_cds_market_aggregates", {"dimension": "invalid"}, "(?i)dimension|one of"),
+    # Sanctions — enum / query-length / limit validation
+    ("get_sanctions_entities", {"type": "invalid"}, "(?i)type|one of"),
+    ("get_sanctions_entities", {"q": "a"}, "(?i)'q'|characters"),
+    ("get_sanctions_entities", {"limit": 101}, "(?i)limit|100"),
+    ("get_sanctions_vessels", {"q": "a"}, "(?i)'q'|characters"),
+    ("get_rates_reference_rates", {"currency": "USD,JPY"}, "(?i)currency|one of"),
+    ("get_credit_corporate_hqm_yields", {"tenor": "5,4"}, "(?i)tenor|one of"),
+    # Interest Rates — enum / limit / date validation
+    ("get_rates_reference_rates", {"currency": "JPY"}, "(?i)currency|one of"),
+    ("get_rates_reference_rates", {"limit": 101}, "(?i)limit|100"),
+    ("get_rates_policy_rates", {"offset": -1}, "(?i)offset|non-negative"),
+    ("get_rates_reference_rates", {"date_from": "not-a-date"}, "(?i)date_from|date"),
+    (
+        "get_rates_reference_rates",
+        {"date_from": "2025-12-31", "date_to": "2025-01-01"},
+        "(?i)date_from.*date_to|cannot be after",
+    ),
+    (
+        "get_credit_corporate_cmdi",
+        {"date_from": "2025-12-31", "date_to": "2025-01-01"},
+        "(?i)date_from.*date_to|cannot be after",
+    ),
+    (
+        "get_rates_funding_stress",
+        {"date_from": "2025-12-31", "date_to": "2025-01-01"},
+        "(?i)date_from.*date_to|cannot be after",
     ),
 ]
 
@@ -552,6 +1031,10 @@ ERROR_RESPONSE_TOOLS = [
     ("get_economic_events", {}, "get_economic_events"),
     ("resolve_ticker", {"query": "apple"}, "resolve_ticker"),
     ("get_cboe_indices_list", {}, "get_cboe_indices_list"),
+    ("get_real_estate_countries", {}, "get_real_estate_countries"),
+    ("get_real_estate_selected_prices", {"code": "US"}, "get_real_estate_selected_prices"),
+    ("get_real_estate_detailed_prices", {"code": "US"}, "get_real_estate_detailed_prices"),
+    ("get_real_estate_detailed_series", {"code": "US"}, "get_real_estate_detailed_series"),
     ("mp_indices_list", {}, "get_mp_indices_list"),
     ("get_mp_investverte_esg_list_companies", {}, "get_mp_investverte_esg_list_companies"),
     ("get_mp_investverte_esg_view_company", {"symbol": "AAPL"}, "get_mp_investverte_esg_view_company"),
@@ -592,6 +1075,24 @@ ERROR_RESPONSE_TOOLS = [
         {"isin": "US0378331005"},
         "get_mp_praams_bank_income_statement_by_isin",
     ),
+    # Credit & Sovereign Risk
+    ("get_credit_sovereign_risk_premium", {"country": "USA"}, "get_credit_sovereign_risk_premium"),
+    ("get_credit_sovereign_credit_ratings", {"country": "DEU"}, "get_credit_sovereign_credit_ratings"),
+    ("get_credit_sovereign_cds_spreads", {"country": "ITA"}, "get_credit_sovereign_cds_spreads"),
+    ("get_credit_sovereign_default_spreads", {"rating": "Baa2"}, "get_credit_sovereign_default_spreads"),
+    ("get_credit_corporate_cmdi", {}, "get_credit_corporate_cmdi"),
+    ("get_credit_corporate_hqm_yields", {"tenor": 10, "type": "spot"}, "get_credit_corporate_hqm_yields"),
+    ("get_credit_cds_market_aggregates", {"metric": "gross_notional"}, "get_credit_cds_market_aggregates"),
+    # Sanctions
+    ("get_sanctions_entities", {"source": "ofac"}, "get_sanctions_entities"),
+    ("get_sanctions_vessels", {"source": "ofac"}, "get_sanctions_vessels"),
+    ("get_sanctions_programs", {}, "get_sanctions_programs"),
+    ("get_sanctions_sources", {}, "get_sanctions_sources"),
+    # Interest Rates
+    ("get_rates_reference_rates", {"code": "SOFR"}, "get_rates_reference_rates"),
+    ("get_rates_policy_rates", {"central_bank": "FED"}, "get_rates_policy_rates"),
+    ("get_rates_funding_stress", {"code": "EFFR_SOFR"}, "get_rates_funding_stress"),
+    ("get_congressional_trades", {"symbol": "AAPL"}, "get_congressional_trades"),
 ]
 
 
@@ -642,18 +1143,66 @@ SUCCESS_TOOLS = [
     ("get_user_details", {}, "get_user_details", {"name": "manual"}),
     ("get_upcoming_earnings", {}, "get_upcoming_earnings", {"earnings": []}),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator", [{"value": 1.5}]),
+    (
+        "get_congressional_trades",
+        {"symbol": "AAPL"},
+        "get_congressional_trades",
+        {"data": [{"chamber": "senate", "asset": {"symbol": "AAPL"}}], "meta": {"total": 1}},
+    ),
+    (
+        "get_real_estate_selected_prices",
+        {"code": "US"},
+        "get_real_estate_selected_prices",
+        {"data": [{"period": "2020-Q1", "value": 100.0}], "meta": {"total": 1}},
+    ),
+    (
+        "get_real_estate_detailed_prices",
+        {"code": "US"},
+        "get_real_estate_detailed_prices",
+        {"data": [{"period": "2020-Q1", "value": 100.0, "covered_area": "0"}], "meta": {"total": 1}},
+    ),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data", {"AAPL.US": []}),
     ("stock_screener", {}, "get_stock_screener_data", [{"ticker": "AAPL"}]),
     # Expanded success-path coverage
     ("get_exchange_details", {"exchange_code": "US"}, "get_exchange_details", {"Name": "US"}),
     ("get_upcoming_dividends", {"symbol": "AAPL.US"}, "get_upcoming_dividends", [{"symbol": "AAPL"}]),
     ("get_upcoming_splits", {}, "get_upcoming_splits", [{"code": "AAPL"}]),
-    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", [{"date": "2025-05-12"}]),
+    ("get_historical_dividends", {"ticker": "AAPL.US"}, "get_historical_dividends", [{"date": "2025-02-07"}]),
     ("get_historical_splits", {"ticker": "AAPL.US"}, "get_historical_splits", [{"date": "2020-08-31"}]),
     ("get_insider_transactions", {"symbol": "AAPL.US"}, "get_insider_transactions", [{"shares": 1000}]),
     ("get_symbol_change_history", {}, "get_symbol_change_history", [{"old_code": "FB"}]),
     ("get_cboe_indices_list", {}, "get_cboe_indices_list", [{"code": "BDE30P"}]),
+    ("get_real_estate_countries", {}, "get_real_estate_countries", {"data": [{"code": "US"}]}),
+    (
+        "get_real_estate_detailed_series",
+        {"code": "US"},
+        "get_real_estate_detailed_series",
+        {"data": [{"title": "Whole country"}], "meta": {"country_code": "US", "total": 1}},
+    ),
     ("mp_indices_list", {}, "get_mp_indices_list", [{"symbol": "GSPC"}]),
+    # Restored after prod and main turned out to be different lineages: these three
+    # answered on prod for months while main had never carried them. Registration alone
+    # would not have caught the port — the tools imported fine and every call raised,
+    # because format_json_response is sync here and was awaitable on the branch they
+    # came from. A success-path case is what proves a tool actually returns.
+    (
+        "get_asx_corporate_actions",
+        {"limit": 2},
+        "get_asx_corporate_actions",
+        {"data": [{"code": "WMX.AU", "date": "2026-12-16", "value": 0.0068}]},
+    ),
+    (
+        "get_historical_commodity_prices",
+        {"code": "BRENT"},
+        "get_historical_commodity_prices",
+        {"meta": {"name": "Crude Oil Prices: Brent - Europe"}, "data": [{"date": "2026-08-01", "value": 89.75}]},
+    ),
+    (
+        "get_insider_transactions_form4",
+        {"symbol": "AAPL"},
+        "get_insider_transactions_form4",
+        {"data": [{"accession_number": "0001140361-26-035636", "filed_at": "2026-09-03"}]},
+    ),
 ]
 
 
@@ -774,3 +1323,109 @@ class TestNewsArticleSanitization:
         article = parsed[0]
         assert article["title"] == "Breaking News"
         assert article["content"] == "A" * 6000
+
+
+# Providers key most instruments on the bare symbol but a few on the suffixed form,
+# so the tool must retry with the caller's original symbol on a 4xx.
+SYMBOL_FALLBACK_CASES = [
+    (
+        "get_mp_investverte_esg_view_company",
+        {"symbol": "000039.SZ"},
+        "get_mp_investverte_esg_view_company",
+        "/mp/investverte/esg/000039",
+        "/mp/investverte/esg/000039.SZ",
+    ),
+    (
+        "get_mp_praams_risk_scoring_by_ticker",
+        {"ticker": "000039.SZ"},
+        "get_mp_praams_risk_scoring_by_ticker",
+        "/mp/praams/analyse/equity/ticker/000039",
+        "/mp/praams/analyse/equity/ticker/000039.SZ",
+    ),
+    (
+        "get_mp_praams_report_equity_by_ticker",
+        {"ticker": "000039.SZ", "email": "manual@manual.com"},
+        "get_mp_praams_report_equity_by_ticker",
+        "/mp/praams/reports/equity/ticker/000039",
+        "/mp/praams/reports/equity/ticker/000039.SZ",
+    ),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,args,mock_module,bare_fragment,suffixed_fragment",
+    SYMBOL_FALLBACK_CASES,
+    ids=[c[0] for c in SYMBOL_FALLBACK_CASES],
+)
+async def test_symbol_form_fallback_on_client_error(
+    mcp, tool_name, args, mock_module, bare_fragment, suffixed_fragment
+):
+    """A 4xx for the bare symbol must be retried with the symbol exactly as supplied."""
+    mock = AsyncMock(side_effect=[{"error": "Not Found", "status_code": 404}, _default_mock_return(mock_module)])
+    with patch(_mock_path(mock_module), mock):
+        await _invoke_tool(mcp, tool_name, args)
+
+    urls = [str(call.args[0]) for call in mock.call_args_list]
+    assert len(urls) == 2, f"expected a retry, got {urls}"
+    assert bare_fragment in urls[0] and suffixed_fragment not in urls[0]
+    assert suffixed_fragment in urls[1]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "tool_name,args,mock_module",
+    [(case[0], case[1], case[2]) for case in SYMBOL_FALLBACK_CASES],
+    ids=[c[0] for c in SYMBOL_FALLBACK_CASES],
+)
+async def test_symbol_form_fallback_not_used_when_bare_symbol_works(mcp, tool_name, args, mock_module):
+    """The retry must cost nothing when the bare symbol already resolves."""
+    _text, mock = await _call(mcp, tool_name, args, mock_module)
+
+    assert mock.call_count == 1
+
+
+# Real Estate tools serve CSV as text; the JSON branch must not swallow it and vice versa.
+CSV_CASES = [
+    ("get_real_estate_countries", {"fmt": "csv"}, "get_real_estate_countries"),
+    ("get_real_estate_selected_prices", {"code": "US", "fmt": "csv"}, "get_real_estate_selected_prices"),
+    ("get_real_estate_detailed_prices", {"code": "US", "fmt": "csv"}, "get_real_estate_detailed_prices"),
+]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name,args,mock_module", CSV_CASES, ids=[c[0] for c in CSV_CASES])
+async def test_csv_mode_returns_text_unchanged(mcp, tool_name, args, mock_module):
+    csv_body = "code,name\nUS,United States\n"
+    text, mock = await _call(mcp, tool_name, args, mock_module, mock_return=csv_body)
+
+    assert text == csv_body
+    url = str(mock.call_args_list[0].args[0])
+    assert "fmt=csv" in url
+    assert mock.call_args_list[0].kwargs.get("response_mode") == "text"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("tool_name,args,mock_module", CSV_CASES, ids=[c[0] for c in CSV_CASES])
+async def test_csv_mode_rejects_json_payload(mcp, tool_name, args, mock_module):
+    """A dict where CSV text was requested is a contract break, not something to pass through."""
+    with pytest.raises(ToolError, match=r"(?i)csv"):
+        await _call(mcp, tool_name, args, mock_module, mock_return={"data": []})
+
+
+@pytest.mark.asyncio
+async def test_csv_limit_is_higher_than_json_limit_for_detailed_prices(mcp):
+    """The JSON cap exists for response size; CSV keeps the upstream maximum."""
+    _text, mock = await _call(
+        mcp,
+        "get_real_estate_detailed_prices",
+        {"code": "US", "fmt": "csv", "limit": 500},
+        "get_real_estate_detailed_prices",
+        mock_return="period,value\n2020-Q1,100\n",
+    )
+    assert "page[limit]=500" in str(mock.call_args_list[0].args[0])
+
+    with pytest.raises(ToolError, match=r"(?i)limit"):
+        await _call(
+            mcp, "get_real_estate_detailed_prices", {"code": "US", "limit": 500}, "get_real_estate_detailed_prices"
+        )

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Bulk Fundamentals", readOnlyHint=True))
     async def get_bulk_fundamentals(
         exchange: str,  # e.g. "NASDAQ", "NYSE", "US", "LSE"
         symbols: str | None = None,  # comma-separated list, e.g. "AAPL,MSFT,GOOG"
@@ -115,7 +115,7 @@ def register(mcp: FastMCP):
         )
 
         data = await make_request(url, response_mode="text" if fmt == "csv" else "json")
-        raise_on_api_error(data)
+        raise_on_api_error(data, tool="get_bulk_fundamentals")
 
         if fmt == "csv":
             if not isinstance(data, str):

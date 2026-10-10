@@ -1,7 +1,7 @@
 # EODHD MCP Server v1
-MCP server exposing 75 EODHD financial data API tools via HTTP, SSE, and stdio transports.
+MCP server exposing 88 EODHD financial data API tools via HTTP, SSE, and stdio transports.
 ## Stack
-Python 3.10+, FastMCP >=2.0, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
+Python 3.10+, FastMCP >=3.4, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
 ## Commands
 ```bash
 pytest tests/auto/ -v --tb=short                         # run auto
@@ -20,13 +20,13 @@ python server.py --stdio                                 # run (stdio)
 - `app/api_client.py` — shared async httpx client with retry, rate-limit, auth injection
 - `app/input_formatter.py` — input sanitisation (ticker, exchange) and date coercion
 - `app/response_formatter.py` — MCP EmbeddedResource formatting and API error raising
-- `app/tools/` — 75 tool modules, each exports `register(mcp: FastMCP)`
+- `app/tools/` — 88 tool modules, each exports `register(mcp: FastMCP)`
 - `app/tools/__init__.py` — `ALL_TOOLS` list, `register_all(mcp)`, safe dynamic import
 - `app/prompts/` — example workflows
 - `app/resources/` — markdown reference docs as MCP resources
 ## Key Rules
 - Every tool file must export `register(mcp)` — called by `register_all()`
-- All tools are read-only (`readOnlyHint=True`)
+- All tools are read-only (`readOnlyHint=True`) except the three Praams report tools (`readOnlyHint=False`)
 - Sanitise inputs via `sanitize_ticker()`, `sanitize_exchange()` from `app/input_formatter.py` (only reject URL-breaking chars; let API validate)
 - Raise `ToolError` for user-facing errors
 - Return via `response_formatter` (`format_json_response`, `format_text_response`, `format_binary_response`)

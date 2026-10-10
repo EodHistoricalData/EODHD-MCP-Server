@@ -1,14 +1,17 @@
 # server.py
 import argparse
+import asyncio
 import logging
 import os
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from app.api_client import close_client
+from app import telemetry
+from app.api_client import close_client, install_token_redaction
 from app.prompts import register_all as register_all_prompts
 from app.resources import register_all as register_all_resources
+from app.telemetry_middleware import install as install_telemetry
 from app.tools import register_all as register_all_tools
 from dotenv import load_dotenv
 from fastmcp import FastMCP
@@ -84,6 +87,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         stream=sys.stderr,
     )
+    install_token_redaction()
     logger = logging.getLogger("eodhd-mcp")
 
     if unknown:
@@ -99,6 +103,12 @@ def main(argv: list[str] | None = None) -> int:
         """Startup / shutdown hook running inside the server's event loop."""
         yield
         # ── shutdown ──
+        logger.info("Flushing telemetry…")
+        try:
+            await telemetry.shutdown()
+        except Exception:
+            logger.exception("Failed to flush telemetry.")
+
         logger.info("Closing shared HTTP client…")
         try:
             await close_client()
@@ -106,6 +116,7 @@ def main(argv: list[str] | None = None) -> int:
             logger.exception("Failed to close shared HTTP client.")
 
     mcp: FastMCP = FastMCP("eodhd-datasets", lifespan=_lifespan)
+    install_telemetry(mcp)
     register_all_tools(mcp)
     register_all_resources(mcp)
     register_all_prompts(mcp)
@@ -160,7 +171,10 @@ def main(argv: list[str] | None = None) -> int:
         logger.error("No transport selected.")
         return 2
 
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, asyncio.CancelledError):
+        # The transport runs inside anyio, which delivers SIGINT as a CancelledError.
+        # That inherits from BaseException, so the handler below never saw it and an
+        # ordinary Ctrl+C ended with a traceback and exit code 1.
         logger.info("Shutdown requested (Ctrl+C).")
         return 0
     except Exception:

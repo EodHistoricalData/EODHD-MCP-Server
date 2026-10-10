@@ -13,7 +13,9 @@
 
 Model Context Protocol (MCP) server for [EOD Historical Data](https://eodhd.com/) APIs.
 
-The current server exposes **69 read-only MCP tools** across three transports:
+The current server exposes **88 MCP tools** across three transports — 85 are read-only; the three
+Praams report tools trigger provider-side report generation and email delivery, so they are annotated
+`readOnlyHint=False`:
 
 - `streamable-http` via `server.py` on `/mcp` by default
 - `sse`
@@ -34,6 +36,9 @@ It also ships bundled MCP prompts and documentation resources.
 - Macro indicators, economic events, exchanges, and listings
 - CBOE index tools
 - Treasury bill, yield, real yield, and long-term rates
+- Credit & sovereign risk: risk premiums, credit ratings, CDS/default spreads, corporate CMDI/HQM yields, CDS-market aggregates
+- Sanctions / OFAC: entities, vessels, programs, sources
+- Interest rates: reference rates (SOFR etc.), central-bank policy rates, funding-stress spreads
 
 ### Marketplace and partner datasets
 
@@ -44,7 +49,8 @@ It also ships bundled MCP prompts and documentation resources.
 
 ## Current Behavior
 
-- All tools are read-only and register through `app/tools/__init__.py`.
+- All tools are read-only except the three Praams report tools; every tool registers through
+  `app/tools/__init__.py`.
 - All HTTP requests go through the shared async client in `app/api_client.py`.
 - Upstream API errors are preserved as MCP `ToolError`s with status code and upstream details where available.
 - API tokens are injected into EODHD requests as `api_token=...` query parameters.
@@ -80,6 +86,11 @@ MCP_PATH=/mcp
 LOG_LEVEL=INFO
 # Optional:
 EODHD_RETRY_ENABLED=false
+# Deployment label added to the outbound User-Agent (e.g. v1 / v2):
+EODHD_MCP_EDITION=
+# Usage telemetry — both are required, and nothing is emitted unless both are set:
+EODHD_MCP_TELEMETRY_URL=
+EODHD_MCP_TELEMETRY_KEY=
 ```
 
 ## Running the Server
@@ -248,3 +259,12 @@ The compose service starts `python server.py` and maps `${MCP_PORT_OUT}` to `${M
 - Some marketplace endpoints require specific EODHD subscription access.
 - A valid API key can still receive upstream permission errors for tools or watchlists not included in the account plan.
 - The server now preserves those upstream reasons in agent-visible tool errors instead of masking them behind generic failures.
+
+## Privacy Policy
+
+This connector is operated by EOD Historical Data (Unicorn Data Services). It sends the
+parameters you provide (for example tickers, date ranges, and your API key) to the EODHD
+APIs to fulfil each request, and returns the responses to your MCP client. It does not
+collect or store conversation content beyond what is required to serve a request.
+
+Full privacy policy: https://eodhd.com/financial-apis/privacy-policy

@@ -9,7 +9,14 @@ from fastmcp.exceptions import ToolError
 from mcp.types import ToolAnnotations
 
 from app.api_client import make_request
-from app.input_formatter import build_query_param, build_url, coerce_date_param, sanitize_ticker, validate_date_range
+from app.input_formatter import (
+    build_query_param,
+    build_url,
+    coerce_date_param,
+    sanitize_ticker,
+    strip_exchange_suffix,
+    validate_date_range,
+)
 from app.response_formatter import ResourceResponse, format_json_response
 
 logger = logging.getLogger(__name__)
@@ -30,7 +37,7 @@ def _q_fields_eod(fields: str | Sequence[str] | None) -> str:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Options EOD Prices", readOnlyHint=True))
     async def get_us_options_eod(
         underlying_symbol: str | None = None,  # filter[underlying_symbol]
         contract: str | None = None,  # filter[contract]
@@ -98,6 +105,11 @@ def register(mcp: FastMCP):
             raise ToolError("'page_offset' must be an integer between 0 and 10000.")
         if not isinstance(page_limit, int) or not (1 <= page_limit <= 1000):
             raise ToolError("'page_limit' must be an integer between 1 and 1000.")
+        if not str(contract or "").strip() and not str(underlying_symbol or "").strip():
+            raise ToolError(
+                "Provide 'contract' or 'underlying_symbol' — the API rejects a request with neither "
+                "(HTTP 422: filter.contract is required when filter.underlying_symbol is absent)."
+            )
 
         # --- coerce dates ---
         exp_date_eq = coerce_date_param(exp_date_eq, "exp_date_eq")
@@ -112,7 +124,9 @@ def register(mcp: FastMCP):
         if isinstance(underlying_symbol, str) and not underlying_symbol.strip():
             underlying_symbol = None
         elif underlying_symbol is not None:
-            underlying_symbol = sanitize_ticker(underlying_symbol, param_name="underlying_symbol")
+            underlying_symbol = strip_exchange_suffix(
+                sanitize_ticker(underlying_symbol, param_name="underlying_symbol")
+            )
 
         if isinstance(contract, str) and not contract.strip():
             contract = None

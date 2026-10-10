@@ -16,7 +16,7 @@ ALLOWED_COMPARISON = {None, "mom", "qoq", "yoy"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Economic Calendar Events", readOnlyHint=True))
     async def get_economic_events(
         start_date: str | None = None,  # maps to from= (YYYY-MM-DD)
         end_date: str | None = None,  # maps to to=   (YYYY-MM-DD)

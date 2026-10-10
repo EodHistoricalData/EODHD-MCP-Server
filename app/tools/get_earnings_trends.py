@@ -28,7 +28,7 @@ def _normalize_symbols(symbols: str | list[str] | None) -> str | None:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Earnings Trends", readOnlyHint=True))
     async def get_earnings_trends(
         symbols: str | list[str],  # REQUIRED by API: 'AAPL.US' or ['AAPL.US','MSFT.US']
         fmt: str = "json",  # Trends are JSON-only (kept for consistency)

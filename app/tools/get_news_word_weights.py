@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="News Word Weights", readOnlyHint=True))
     async def get_news_word_weights(
         ticker: str,  # maps to 's'
         start_date: str | None = None,  # maps to filter[date_from]

@@ -67,7 +67,7 @@ async def _run_praams_equity_by_isin(isin: str, api_token: str | None) -> list:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Risk Scoring (by ISIN)", readOnlyHint=True))
     async def get_mp_praams_risk_scoring_by_isin(
         isin: str,  # e.g. 'US0378331005' (demo supports US0378331005, US88160R1014, US0231351067)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

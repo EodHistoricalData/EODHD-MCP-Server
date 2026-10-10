@@ -16,7 +16,7 @@ ALLOWED_TYPES = {"common_stock", "preferred_stock", "stock", "etf", "fund"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Exchange Tickers", readOnlyHint=True))
     async def get_exchange_tickers(
         exchange_code: str,  # e.g., "US", "LSE", "XETRA", "WAR"
         delisted: bool | None = None,  # adds delisted=1 when True

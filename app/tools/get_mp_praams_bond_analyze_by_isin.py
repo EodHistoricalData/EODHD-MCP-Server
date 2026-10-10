@@ -67,7 +67,7 @@ async def _run_praams_bond_by_isin(isin: str, api_token: str | None) -> list:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Bond Analysis (by ISIN)", readOnlyHint=True))
     async def get_mp_praams_bond_analyze_by_isin(
         isin: str,  # e.g. 'US7593518852' (demo supports US7593518852, US91282CJN20)
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

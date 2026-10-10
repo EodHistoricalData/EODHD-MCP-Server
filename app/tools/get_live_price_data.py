@@ -31,7 +31,7 @@ def _normalize_symbols(symbols: Iterable[str] | None) -> list[str]:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Live (Delayed) Prices", readOnlyHint=True))
     async def get_live_price_data(
         ticker: str,
         additional_symbols: Sequence[str] | None = None,

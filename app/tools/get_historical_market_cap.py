@@ -16,7 +16,7 @@ ALLOWED_FMT = {"json", "csv"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Historical Market Capitalization", readOnlyHint=True))
     async def get_historical_market_cap(
         ticker: str,  # e.g., "AAPL" or "AAPL.US"
         start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)

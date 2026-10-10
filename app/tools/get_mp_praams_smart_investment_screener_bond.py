@@ -360,7 +360,7 @@ async def _run_explore_bond(
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Praams: Smart Bond Screener", readOnlyHint=True))
     async def get_mp_praams_smart_screener_bond(
         # pagination
         skip: int | None = 0,

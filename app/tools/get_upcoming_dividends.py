@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Upcoming Dividends", readOnlyHint=True))
     async def get_upcoming_dividends(
         symbol: str | None = None,  # maps to filter[symbol]
         date_eq: str | None = None,  # maps to filter[date_eq], YYYY-MM-DD

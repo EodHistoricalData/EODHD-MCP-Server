@@ -51,7 +51,7 @@ def _normalize_signals(signals: str | list[str] | None) -> str | None:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Stock Screener", readOnlyHint=True))
     async def stock_screener(
         filters: str | list[list[Any]] | None = None,
         signals: str | list[str] | None = None,

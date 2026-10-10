@@ -88,7 +88,7 @@ def _validate_float(name: str, val: int | float | str | None) -> str | None:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Technical Indicators", readOnlyHint=True))
     async def get_technical_indicators(
         ticker: str,
         function: str,  # required (e.g., 'sma', 'macd', 'stochastic', ...)

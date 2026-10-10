@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Indices List", readOnlyHint=True))
     async def mp_indices_list(
         fmt: str = "json",  # API returns JSON; expose for symmetry
         api_token: str | None = None,  # per-call override (else env EODHD_API_KEY)

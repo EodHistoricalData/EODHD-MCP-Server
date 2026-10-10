@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="CBOE Index Data", readOnlyHint=True))
     async def get_cboe_index_data(
         index_code: str,  # e.g., "BDE30P"
         feed_type: str,  # e.g., "snapshot_official_closing"

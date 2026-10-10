@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Exchanges List", readOnlyHint=True))
     async def get_exchanges_list(
         fmt: str = "json",  # API supports csv too; tool defaults to json
         api_token: str | None = None,  # per-call override (env token otherwise)

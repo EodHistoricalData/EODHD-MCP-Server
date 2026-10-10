@@ -16,7 +16,7 @@ ALLOWED_FMT = {"json", "csv"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Tick Data", readOnlyHint=True))
     async def get_us_tick_data(
         ticker: str,  # maps to s=
         from_timestamp: int | str,  # UNIX seconds (UTC)

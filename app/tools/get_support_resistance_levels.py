@@ -105,7 +105,7 @@ CALC_MAP: dict[str, ThreePointCalc] = {
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Support & Resistance Levels", readOnlyHint=True))
     async def get_support_resistance_levels(
         ticker: str,
         method: str = "classic",
