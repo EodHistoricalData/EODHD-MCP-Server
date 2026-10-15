@@ -55,7 +55,7 @@ def register(mcp: FastMCP):
             start_date (str, optional): YYYY-MM-DD. Mapped to 'from'.
             end_date (str, optional): YYYY-MM-DD. Mapped to 'to'.
             limit (int): 1..1000 (default 50).
-            offset (int): >= 0 (default 0).
+            offset (int): 0..9000 (default 0). To reach older articles, narrow the period with start_date/end_date.
             fmt (str): 'json' or 'xml' (default 'json').
             api_token (str, optional): Per-call token override; env token used if omitted.
 
