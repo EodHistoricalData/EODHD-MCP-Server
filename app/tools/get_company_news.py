@@ -40,6 +40,7 @@ def register(mcp: FastMCP):
         offset: int = 0,  # default 0
         fmt: str = "json",  # 'json' or 'xml' (API default json)
         api_token: str | None = None,  # per-call override
+        direction: int = 0,  # 0 newest first (default), 1 arrival order
     ) -> ResourceResponse:
         """
 
@@ -55,9 +56,15 @@ def register(mcp: FastMCP):
             start_date (str, optional): YYYY-MM-DD. Mapped to 'from'.
             end_date (str, optional): YYYY-MM-DD. Mapped to 'to'.
             limit (int): 1..1000 (default 50).
-            offset (int): 0..9000 (default 0). To reach older articles, narrow the period with start_date/end_date.
+            offset (int): 0..10000 (default 0); offset + limit must not exceed 10000.
+                To reach older articles, narrow the period with start_date/end_date.
             fmt (str): 'json' or 'xml' (default 'json').
             api_token (str, optional): Per-call token override; env token used if omitted.
+            direction (int): 0 or 1 (default 0). 0 = newest first. 1 = articles in the order they entered
+                the database, so you can page forward with offset without duplicates. With direction=1,
+                start_date and end_date are required and the window between them must not exceed 31 days
+                (both ends counted); otherwise the API answers 422. Within a direction=1 page, dates are not
+                strictly ascending (order is arrival, not publication date).
 
         Returns:
             Array of articles, each with:
@@ -99,6 +106,10 @@ def register(mcp: FastMCP):
             raise ToolError("'limit' must be an integer between 1 and 1000.")
         if not isinstance(offset, int) or offset < 0:
             raise ToolError("'offset' must be a non-negative integer.")
+        if isinstance(direction, bool) or direction not in (0, 1):
+            raise ToolError("'direction' must be 0 (newest first) or 1 (arrival order).")
+        if direction == 1 and not (start_date and end_date):
+            raise ToolError("direction=1 requires both 'start_date' and 'end_date' (window up to 31 days).")
 
         # --- Build URL per docs ---
         url = build_url(
@@ -107,6 +118,7 @@ def register(mcp: FastMCP):
                 "fmt": fmt,
                 "limit": limit,
                 "offset": offset,
+                "direction": 1 if direction == 1 else None,  # default 0 is not sent
                 "s": ticker,
                 "t": tag,
                 "from": start_date,
