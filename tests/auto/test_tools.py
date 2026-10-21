@@ -116,6 +116,12 @@ URL_CASES = [
     ("get_live_price_data", {"ticker": "AAPL.US"}, "get_live_price_data", ["/real-time/AAPL.US", "fmt=json"]),
     # get_fundamentals_data excluded: multi-request tool, tested separately below
     ("get_company_news", {"ticker": "AAPL.US"}, "get_company_news", ["/news", "s=AAPL.US"]),
+    (
+        "get_company_news",
+        {"ticker": "AAPL.US", "start_date": "2026-01-01", "end_date": "2026-01-31", "direction": 1},
+        "get_company_news",
+        ["/news", "direction=1", "from=2026-01-01", "to=2026-01-31"],
+    ),
     ("get_sentiment_data", {"symbols": "AAPL.US"}, "get_sentiment_data", ["/sentiments", "s=AAPL.US"]),
     ("get_macro_indicator", {"country": "USA"}, "get_macro_indicator", ["/macro-indicator/USA"]),
     ("get_user_details", {}, "get_user_details", ["/user"]),
@@ -743,6 +749,8 @@ VALIDATION_CASES = [
     ("get_sentiment_data", {"symbols": ""}, "required"),
     # Company news — needs ticker or tag
     ("get_company_news", {}, "(?i)ticker|tag|required|at least"),
+    ("get_company_news", {"ticker": "AAPL.US", "direction": 1}, "(?i)direction.*start_date|requires both"),
+    ("get_company_news", {"ticker": "AAPL.US", "direction": 2}, "(?i)direction.*0.*1"),
     # Resolve ticker — query required
     ("resolve_ticker", {"query": ""}, "(?i)query|required|empty"),
     # Bulk fundamentals — limit range
@@ -1299,6 +1307,35 @@ class TestSanitizeData:
         assert _sanitize_data(42) == 42
         assert _sanitize_data(None) is None
         assert _sanitize_data(3.14) == 3.14
+
+
+class TestNewsDirection:
+    @pytest.mark.asyncio
+    async def test_default_request_does_not_send_direction(self, mcp):
+        _text, mock = await _call(mcp, "get_company_news", {"ticker": "AAPL.US"}, "get_company_news")
+        assert "direction" not in str(mock.call_args_list[0].args[0])
+
+    @pytest.mark.asyncio
+    async def test_direction_zero_is_not_sent(self, mcp):
+        _text, mock = await _call(mcp, "get_company_news", {"ticker": "AAPL.US", "direction": 0}, "get_company_news")
+        assert "direction" not in str(mock.call_args_list[0].args[0])
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        "args",
+        [
+            {"ticker": "AAPL.US", "direction": 1},
+            {"ticker": "AAPL.US", "direction": 1, "start_date": "2026-01-01"},
+            {"ticker": "AAPL.US", "direction": 1, "end_date": "2026-01-31"},
+            {"ticker": "AAPL.US", "direction": 2},
+            {"ticker": "AAPL.US", "direction": -1},
+        ],
+    )
+    async def test_invalid_direction_rejected_before_request(self, mcp, args):
+        mock = AsyncMock(return_value=API_SUCCESS)
+        with patch(_mock_path("get_company_news"), mock), pytest.raises(ToolError, match="direction"):
+            await _invoke_tool(mcp, "get_company_news", args)
+        mock.assert_not_called()
 
 
 class TestNewsArticleSanitization:

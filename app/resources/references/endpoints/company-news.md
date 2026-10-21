@@ -27,7 +27,8 @@ Example: 10 API calls for one request with two tickers.
 | from | No | string (YYYY-MM-DD) | Start date for filtering news |
 | to | No | string (YYYY-MM-DD) | End date for filtering news |
 | limit | No | integer | Number of results (default: 50, min: 1, max: 1000) |
-| offset | No | integer | Offset for pagination (default: 0, max: 9000; to reach older articles, narrow the period with from and to) |
+| offset | No | integer | Offset for pagination (default: 0, max: 10000, and offset + limit must not exceed 10000; to reach older articles, narrow the period with from and to) |
+| direction | No | integer | `0` (default) = newest first. `1` = articles in the order they entered the database, so you can page forward with `offset` without duplicates. With `direction=1`, `from` and `to` are required and the window must not exceed 31 days (both ends counted), otherwise the API answers 422. Any other value also gives 422. Within a page, dates are not strictly ascending (order is arrival, not publication date). |
 | fmt | No | string | Response format: json or xml (default: json) |
 | api_token | Yes | string | Your API access token |
 
@@ -94,6 +95,10 @@ curl "https://eodhd.com/api/news?s=AAPL.US&from=2025-01-01&to=2025-01-31&api_tok
 
 # Using the helper client
 python eodhd_client.py --endpoint news --symbol AAPL.US --limit 10
+
+# Forward pagination in arrival order (from/to required, window up to 31 days)
+curl "https://eodhd.com/api/news?s=AAPL.US&from=2025-01-01&to=2025-01-31&direction=1&limit=100&offset=0&api_token=demo&fmt=json"
+curl "https://eodhd.com/api/news?s=AAPL.US&from=2025-01-01&to=2025-01-31&direction=1&limit=100&offset=100&api_token=demo&fmt=json"
 
 # With date filtering
 python eodhd_client.py --endpoint news --symbol TSLA.US --from-date 2025-01-01 --to-date 2025-01-31 --limit 20
