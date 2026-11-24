@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Interest Rates: Central-Bank Policy Rates", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Interest Rates: Central-Bank Policy Rates", read_only_hint=True))
     async def get_rates_policy_rates(
         code: str | None = None,  # filter[code]: e.g. FED_TARGET_LOWER, ECB_DFR, BOE_BANK_RATE
         country: str | None = None,  # filter[country]: US | EU | GB

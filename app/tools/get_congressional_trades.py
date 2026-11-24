@@ -38,7 +38,7 @@ def _strip_us_suffix(symbol: str) -> str:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Congressional Trades", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Congressional Trades", read_only_hint=True))
     async def get_congressional_trades(
         symbol: str | None = None,  # ticker filter, e.g. AAPL
         chamber: str | None = None,  # senate | house

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Sanctions/OFAC: Sources", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Sanctions/OFAC: Sources", read_only_hint=True))
     async def get_sanctions_sources(
         api_token: str | None = None,  # per-call override
     ) -> ResourceResponse:

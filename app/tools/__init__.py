@@ -1,8 +1,12 @@
 # app/tools/__init__.py
 
 import importlib
+import inspect
 import logging
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
+from typing import Any
+
+from fastmcp.utilities.docstring_parsing import parse_docstring
 
 logger = logging.getLogger("eodhd-mcp.tools")
 
@@ -119,6 +123,41 @@ THIRD_PARTY_TOOLS: list[str] = [
 ALL_TOOLS: list[str] = MAIN_TOOLS + MARKETPLACE_TOOLS + THIRD_PARTY_TOOLS
 
 
+class _DocstringTools:
+    """Hands a tool module the server, keeping tool descriptions as fastmcp 3.4 built them.
+
+    fastmcp 3.4 cut a docstring only at its `Args:` section (the parameters move into the
+    input schema) and otherwise kept it whole. fastmcp 4 also cuts at `Returns:`,
+    `Examples:` and similar sections, so tools without an `Args:` block would silently
+    lose the return-shape and example text written for the agent. For those tools the
+    whole docstring is passed as an explicit description.
+    """
+
+    def __init__(self, mcp: Any):
+        self._mcp = mcp
+
+    def tool(self, *args: Any, **kwargs: Any) -> Any:
+        if args and callable(args[0]):
+            fn, rest = args[0], args[1:]
+
+            return self._mcp.tool(fn, *rest, **{**_description_kwargs(fn), **kwargs})
+
+        def decorator(fn: Callable[..., Any]) -> Any:
+            return self._mcp.tool(*args, **{**_description_kwargs(fn), **kwargs})(fn)
+
+        return decorator
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._mcp, name)
+
+
+def _description_kwargs(fn: Callable[..., Any]) -> dict[str, Any]:
+    if parse_docstring(fn).parameters:
+        return {}
+
+    return {"description": inspect.getdoc(fn)}
+
+
 def _safe_register(mcp, module_name: str, attr: str = "register") -> None:
     """
     Import .{module_name} and call its register(mcp), logging and skipping on errors.
@@ -138,7 +177,7 @@ def _safe_register(mcp, module_name: str, attr: str = "register") -> None:
         return
 
     try:
-        fn(mcp)
+        fn(_DocstringTools(mcp))
         logger.info("Registered tool: %s.%s", module_name, attr)
     except Exception as e:
         logger.error("Failed to register tool '%s': %s: %s", module_name, type(e).__name__, e)

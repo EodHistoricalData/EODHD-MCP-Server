@@ -22,7 +22,7 @@ VALID_MARKETS = ("us", "eu")
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Real-Time Minute Bars", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Real-Time Minute Bars", read_only_hint=True))
     async def get_realtime_minute_bars(
         market: str,
         symbol: str,

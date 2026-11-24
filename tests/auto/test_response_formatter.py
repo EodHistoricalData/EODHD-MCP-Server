@@ -156,11 +156,11 @@ class TestFormatTextResponse:
         resource = result[0].resource
         assert isinstance(resource, TextResourceContents)
         assert resource.text == "hello"
-        assert resource.mimeType == "text/plain"
+        assert resource.mime_type == "text/plain"
 
     def test_csv_mime(self):
         result = format_text_response("a,b\n1,2", "text/csv")
-        assert result[0].resource.mimeType == "text/csv"
+        assert result[0].resource.mime_type == "text/csv"
 
     def test_strips_invisible_chars(self):
         result = format_text_response("hel\u200blo", "text/plain")
@@ -200,7 +200,7 @@ class TestFormatBinaryResponse:
         result = format_binary_response(data, "application/octet-stream")
         resource = result[0].resource
         assert isinstance(resource, BlobResourceContents)
-        assert resource.mimeType == "application/octet-stream"
+        assert resource.mime_type == "application/octet-stream"
 
     def test_base64_encoding(self):
         data = b"hello bytes"
@@ -234,7 +234,7 @@ class TestFormatJsonResponse:
 
     def test_mime_type_json(self):
         result = format_json_response({"a": 1})
-        assert result[0].resource.mimeType == "application/json"
+        assert result[0].resource.mime_type == "application/json"
 
     def test_text_is_valid_json(self):
         result = format_json_response({"key": "value", "num": 42})

@@ -378,7 +378,7 @@ def _serve_global_readme(fallback: bool = False) -> list:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Retrieve Resource Description", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Retrieve Resource Description", read_only_hint=True))
     async def retrieve_description_by_id(
         type: int | str | None = 0,
         id: int | str | None = None,

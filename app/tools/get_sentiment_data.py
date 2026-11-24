@@ -25,7 +25,7 @@ def _normalize_symbols(symbols: str) -> str:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="News Sentiment", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="News Sentiment", read_only_hint=True))
     async def get_sentiment_data(
         symbols: str,
         start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)

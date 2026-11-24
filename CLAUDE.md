@@ -2,7 +2,7 @@
 MCP server exposing 88 EODHD financial data API tools via HTTP, SSE, and stdio transports.
 
 ## Stack
-Python 3.10+, FastMCP >=3.4, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
+Python 3.10+, FastMCP >=4.1.8,<4.2 (MCP 2026-07-28), httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
 
 ## Commands
 ```bash

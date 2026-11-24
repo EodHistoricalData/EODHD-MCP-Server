@@ -14,7 +14,6 @@ from typing import Any, NoReturn
 
 from fastmcp.exceptions import ToolError
 from mcp.types import BlobResourceContents, EmbeddedResource, TextResourceContents
-from pydantic import AnyUrl
 
 from . import quota
 
@@ -121,8 +120,8 @@ def _sanitize_data(obj: Any) -> Any:
     return obj
 
 
-def _resource_uri(path: str) -> AnyUrl:
-    return AnyUrl(f"eodhd://api/{path.lstrip('/')}")
+def _resource_uri(path: str) -> str:
+    return f"eodhd://api/{path.lstrip('/')}"
 
 
 def _pick_error_text(data: dict[str, Any], *keys: str) -> str | None:
@@ -270,7 +269,7 @@ def format_text_response(text: str, mime_type: str, *, resource_path: str = "res
                 type="resource",
                 resource=TextResourceContents(
                     uri=_resource_uri(resource_path),
-                    mimeType=mime_type,
+                    mime_type=mime_type,
                     text=_strip_invisible_chars(text),
                 ),
             )
@@ -286,7 +285,7 @@ def format_binary_response(data: bytes, mime_type: str, *, resource_path: str = 
                 type="resource",
                 resource=BlobResourceContents(
                     uri=_resource_uri(resource_path),
-                    mimeType=mime_type,
+                    mime_type=mime_type,
                     blob=base64.b64encode(data).decode("ascii"),
                 ),
             )
@@ -306,7 +305,7 @@ def format_json_response(data: Any, *, resource_path: str = "response") -> JsonR
                 type="resource",
                 resource=TextResourceContents(
                     uri=_resource_uri(resource_path),
-                    mimeType="application/json",
+                    mime_type="application/json",
                     text=json.dumps(sanitized, indent=2),
                 ),
             )
@@ -332,7 +331,7 @@ def _with_quota_notice(response: ResourceResponse) -> ResourceResponse:
             type="resource",
             resource=TextResourceContents(
                 uri=_resource_uri("quota-notice"),
-                mimeType="text/plain",
+                mime_type="text/plain",
                 text=notice,
             ),
         ),

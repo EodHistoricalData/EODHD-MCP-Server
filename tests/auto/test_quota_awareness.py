@@ -378,7 +378,7 @@ class TestReachesTheAgent:
         response = format_json_response(data)
 
         assert len(response) == 2  # the data, plus the notice as its own resource
-        assert response[1].resource.mimeType == "text/plain"
+        assert response[1].resource.mime_type == "text/plain"
         assert "96,000 of 100,000" in response[1].resource.text
 
     @pytest.mark.asyncio

@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Historical Dividends", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Historical Dividends", read_only_hint=True))
     async def get_historical_dividends(
         ticker: str,  # SYMBOL.EXCHANGE_ID, e.g. "AAPL.US"
         start_date: str | None = None,  # maps to 'from' (YYYY-MM-DD)

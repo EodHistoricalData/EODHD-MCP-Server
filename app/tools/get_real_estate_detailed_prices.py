@@ -32,7 +32,7 @@ JSON_MAX_LIMIT = 250
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Detailed Property Prices", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Detailed Property Prices", read_only_hint=True))
     async def get_real_estate_detailed_prices(
         code: str,
         area: str | None = None,  # filter[area]: BIS covered-area dimension code

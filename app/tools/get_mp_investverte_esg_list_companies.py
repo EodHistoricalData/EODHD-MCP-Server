@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Companies List", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Companies List", read_only_hint=True))
     async def get_mp_investverte_esg_list_companies(
         fmt: str | None = "json",
         api_token: str | None = None,  # per-call override

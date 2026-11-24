@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="US Treasury Real Yield Rates", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="US Treasury Real Yield Rates", read_only_hint=True))
     async def get_ust_real_yield_rates(
         year: int | str | None = None,  # filter[year], e.g. 2024
         api_token: str | None = None,  # per-call override

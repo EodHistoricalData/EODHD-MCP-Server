@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="CBOE Indices List", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="CBOE Indices List", read_only_hint=True))
     async def get_cboe_indices_list(
         fmt: str | None = "json",
         api_token: str | None = None,  # per-call override

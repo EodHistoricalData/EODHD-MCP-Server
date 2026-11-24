@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Credit: Sovereign Risk Premium", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Credit: Sovereign Risk Premium", read_only_hint=True))
     async def get_credit_sovereign_risk_premium(
         country: str | None = None,  # filter[country], ISO-3 code(s), comma-separated
         region: str | None = None,  # filter[region]

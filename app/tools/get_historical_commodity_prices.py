@@ -18,7 +18,7 @@ DEFAULT_INTERVAL = "monthly"
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Historical Commodity Prices", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Historical Commodity Prices", read_only_hint=True))
     async def get_historical_commodity_prices(
         code: str,  # commodity code, e.g. "WTI", "BRENT", "ALL_COMMODITIES"
         interval: str = DEFAULT_INTERVAL,  # daily|weekly|monthly|quarterly|annual

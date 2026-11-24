@@ -29,7 +29,7 @@ ALLOWED_TYPES = {"par", "spot"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Credit: Corporate HQM Yields", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Credit: Corporate HQM Yields", read_only_hint=True))
     async def get_credit_corporate_hqm_yields(
         tenor: int | str | None = None,  # filter[tenor]: 1,2,3,5,7,10,15,20,25,30
         type: str | None = None,  # filter[type]: par | spot

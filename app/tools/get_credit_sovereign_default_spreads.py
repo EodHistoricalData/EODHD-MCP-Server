@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Credit: Sovereign Default Spreads", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Credit: Sovereign Default Spreads", read_only_hint=True))
     async def get_credit_sovereign_default_spreads(
         rating: str | None = None,  # filter[rating], e.g. Aaa, Baa2
         as_of: str | None = None,  # filter[as_of], YYYY-MM-DD

@@ -32,7 +32,7 @@ async def _fetch_by_symbol_form(url_for, bare: str, as_given: str):
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Company Detail", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="InvestVerte ESG: Company Detail", read_only_hint=True))
     async def get_mp_investverte_esg_view_company(
         symbol: str,  # e.g., "AAPL" or "000039.SZ"
         year: int | str | None = None,  # e.g., 2021

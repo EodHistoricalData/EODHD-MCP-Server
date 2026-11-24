@@ -28,7 +28,7 @@ MAX_PAGE_LIMIT = 1000
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="ASX Corporate Actions", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="ASX Corporate Actions", read_only_hint=True))
     async def get_asx_corporate_actions(
         action_type: str | None = None,  # maps to 'type' (dividends, splits, …)
         symbol: str | None = None,  # .AU ticker, maps to 'symbol' (e.g. "PMV.AU")

@@ -29,7 +29,7 @@ ALLOWED_CURRENCIES = {"USD", "GBP", "EUR"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Interest Rates: Reference Rates", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Interest Rates: Reference Rates", read_only_hint=True))
     async def get_rates_reference_rates(
         code: str | None = None,  # filter[code], e.g. SOFR, EFFR, SONIA, ESTR (CSV allowed)
         currency: str | None = None,  # filter[currency]: USD | GBP | EUR

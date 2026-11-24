@@ -26,7 +26,7 @@ _MIN_QUERY_LEN = 2
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Sanctions/OFAC: Entities", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Sanctions/OFAC: Entities", read_only_hint=True))
     async def get_sanctions_entities(
         source: str | None = None,  # e.g. "ofac"
         type: str | None = None,  # individual | entity | vessel | aircraft
