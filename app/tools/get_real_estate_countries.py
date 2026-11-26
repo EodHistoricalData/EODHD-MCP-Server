@@ -22,7 +22,7 @@ ALLOWED_FMT = {"json", "csv"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Country Codes", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Country Codes", read_only_hint=True))
     async def get_real_estate_countries(
         sort: str | None = None,  # code | -code | name | -name
         fmt: str = "json",  # json | csv

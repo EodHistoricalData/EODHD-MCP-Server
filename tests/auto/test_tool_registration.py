@@ -39,12 +39,12 @@ def test_installed_fastmcp_matches_pin():
     """The title guarantee below depends on the fastmcp version pinned in requirements.txt."""
     installed = tuple(int(part) for part in version("fastmcp").split(".")[:3] if part.isdigit())
 
-    assert installed >= (3, 4, 4), (
-        f"fastmcp {version('fastmcp')} is installed but requirements.txt pins >=3.4.4,<3.5; "
-        "older versions do not emit the top-level Tool.title the connector directory reads"
+    assert installed >= (4, 1, 8), (
+        f"fastmcp {version('fastmcp')} is installed but requirements.txt pins >=4.1.8,<4.2; "
+        "older versions do not speak MCP 2026-07-28 (server/discover, per-request envelope)"
     )
-    assert installed < (3, 5), (
-        f"fastmcp {version('fastmcp')} is installed but requirements.txt pins <3.5; "
+    assert installed < (4, 2), (
+        f"fastmcp {version('fastmcp')} is installed but requirements.txt pins <4.2; "
         "the suite has not been run against a newer minor"
     )
 
@@ -89,9 +89,23 @@ async def test_read_only_hint_matches_tool_behaviour(mcp_with_tools):
     """Read-only hints must be accurate: report tools have provider-side side effects."""
     wrong = []
     for tool in await _wire_tools(mcp_with_tools):
-        hint = tool.annotations.readOnlyHint if tool.annotations else None
+        hint = tool.annotations.read_only_hint if tool.annotations else None
         expected = tool.name not in WRITE_TOOLS
         if hint is not expected:
             wrong.append((tool.name, hint, expected))
 
     assert not wrong, f"tools with a wrong readOnlyHint (name, actual, expected): {wrong}"
+
+
+@pytest.mark.asyncio
+async def test_descriptions_keep_the_sections_written_for_the_agent(mcp_with_tools):
+    """fastmcp 4 would cut `Returns:` / `Examples:` from tools that have no `Args:` block."""
+    tools = {tool.name: tool for tool in await _wire_tools(mcp_with_tools)}
+
+    exchanges = tools["get_exchanges_list"].description
+    user = tools["get_user_details"].description
+
+    assert "Returns:" in exchanges
+    assert "Examples:" in exchanges
+    assert "Args:" not in user
+    assert "Returns:" not in user

@@ -25,7 +25,7 @@ _MIN_QUERY_LEN = 2
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Sanctions/OFAC: Vessels", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Sanctions/OFAC: Vessels", read_only_hint=True))
     async def get_sanctions_vessels(
         source: str | None = None,  # e.g. "ofac"
         imo: str | None = None,  # IMO number

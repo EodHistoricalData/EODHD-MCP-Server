@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Detailed Series Catalog", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Detailed Series Catalog", read_only_hint=True))
     async def get_real_estate_detailed_series(
         code: str,
         api_token: str | None = None,  # per-call override

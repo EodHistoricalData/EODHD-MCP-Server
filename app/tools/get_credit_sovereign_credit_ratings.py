@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Credit: Sovereign Credit Ratings", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Credit: Sovereign Credit Ratings", read_only_hint=True))
     async def get_credit_sovereign_credit_ratings(
         country: str | None = None,  # filter[country], ISO-3 code(s), comma-separated
         as_of: str | None = None,  # filter[as_of], YYYY-MM-DD

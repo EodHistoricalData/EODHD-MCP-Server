@@ -157,7 +157,7 @@ def _session_facts(context: MiddlewareContext) -> tuple[str | None, str | None, 
 
         client_info = None
         try:
-            client_info = fastmcp_context.session.client_params.clientInfo
+            client_info = fastmcp_context.session.client_params.client_info
         except Exception:
             logger.debug("Client info unavailable for this session", exc_info=True)
 

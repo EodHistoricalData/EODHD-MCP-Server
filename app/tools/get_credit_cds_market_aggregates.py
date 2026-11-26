@@ -22,7 +22,7 @@ ALLOWED_DIMENSIONS = {"grade", "cleared_status"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Credit: CDS Market Aggregates", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Credit: CDS Market Aggregates", read_only_hint=True))
     async def get_credit_cds_market_aggregates(
         metric: str | None = None,  # filter[metric]: gross_notional
         dimension: str | None = None,  # filter[dimension]: grade | cleared_status

@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Interest Rates: Funding-Stress Spreads", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Interest Rates: Funding-Stress Spreads", read_only_hint=True))
     async def get_rates_funding_stress(
         code: str | None = None,  # filter[code], e.g. EFFR_SOFR spread
         date_from: str | None = None,  # filter[from], YYYY-MM-DD

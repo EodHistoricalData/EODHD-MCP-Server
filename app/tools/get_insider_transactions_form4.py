@@ -16,7 +16,7 @@ MAX_PAGE_LIMIT = 100
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Insider Transactions (SEC Form 4)", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Insider Transactions (SEC Form 4)", read_only_hint=True))
     async def get_insider_transactions_form4(
         symbol: str,  # US ticker, e.g. "AAPL" or "AAPL.US" (.US suffix optional)
         limit: int = DEFAULT_PAGE_LIMIT,  # maps to 'page[limit]' (1..100)

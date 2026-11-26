@@ -745,7 +745,7 @@ class TestSessionFacts:
                 lambda self: (_ for _ in ()).throw(AttributeError("no session"))
             )
         else:
-            context.fastmcp_context.session.client_params.clientInfo = client_info
+            context.fastmcp_context.session.client_params.client_info = client_info
 
         return context
 

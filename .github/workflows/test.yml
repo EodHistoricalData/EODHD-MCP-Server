@@ -61,4 +61,17 @@ jobs:
       - name: Run semgrep (SAST + taint)
         run: pipx run semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
       - name: Run pip-audit
-        run: pip-audit --ignore-vuln CVE-2026-4539 --ignore-vuln PYSEC-2026-3447  # pygments 2.19.2 (no fix) + setuptools build-env advisory
+        # pygments 2.19.2: no fix. setuptools: build-env advisories of the runner image
+        # (PYSEC-2026-3447; GHSA-xmj3-9gf7-h52w is Windows-only).
+        # dnspython 2.8.0 (via pydantic[email] -> email-validator; this server does no DNS
+        # email checks) and filelock 4.1.0 (a dependency of pip-audit itself): the fixed
+        # releases need Python >= 3.11, this job and the image run 3.10.
+        env:
+          IGNORED: >-
+            CVE-2026-4539 PYSEC-2026-3447 GHSA-xmj3-9gf7-h52w
+            CVE-2026-114605 CVE-2026-128089
+            CVE-2026-112906 CVE-2026-112907 CVE-2026-112908 CVE-2026-112909 CVE-2026-112910
+            CVE-2026-112911 CVE-2026-112912 CVE-2026-112913 CVE-2026-112914 CVE-2026-112915
+            CVE-2026-112934 CVE-2026-112935 CVE-2026-112937 CVE-2026-112938 CVE-2026-112939
+            CVE-2026-112940 CVE-2026-112941
+        run: pip-audit $(printf -- '--ignore-vuln %s ' $IGNORED)

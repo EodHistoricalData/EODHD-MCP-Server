@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Credit: Corporate CMDI", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Credit: Corporate CMDI", read_only_hint=True))
     async def get_credit_corporate_cmdi(
         date_from: str | None = None,  # filter[from], YYYY-MM-DD
         date_to: str | None = None,  # filter[to], YYYY-MM-DD

@@ -42,7 +42,7 @@ def _normalize_form(form: str | None) -> str | None:
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="SEC Filings", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="SEC Filings", read_only_hint=True))
     async def get_sec_filings(
         symbol: str,  # US-listed ticker, e.g. AAPL or AAPL.US (the .US suffix is optional)
         form: str | None = None,  # None = overview; else "10k" | "10q" | "8k"

@@ -31,7 +31,7 @@ ALLOWED_FMT = {"json", "csv"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Selected Property Prices", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Real Estate: Selected Property Prices", read_only_hint=True))
     async def get_real_estate_selected_prices(
         code: str,
         type: str | None = None,  # filter[type]: nominal | real

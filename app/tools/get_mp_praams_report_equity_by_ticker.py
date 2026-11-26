@@ -49,7 +49,9 @@ async def _run_praams_report_equity_by_ticker(
 
 def register(mcp: FastMCP):
     @mcp.tool(
-        annotations=ToolAnnotations(title="Praams: Equity Report (by Ticker)", readOnlyHint=False, idempotentHint=False)
+        annotations=ToolAnnotations(
+            title="Praams: Equity Report (by Ticker)", read_only_hint=False, idempotent_hint=False
+        )
     )
     async def get_mp_praams_report_equity_by_ticker(
         ticker: str,  # e.g. "AAPL", "TSLA", "AMZN"

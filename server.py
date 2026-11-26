@@ -7,7 +7,7 @@ import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from app import telemetry
+from app import protocol, telemetry
 from app.api_client import close_client, install_token_redaction
 from app.prompts import register_all as register_all_prompts
 from app.resources import register_all as register_all_resources
@@ -115,7 +115,8 @@ def main(argv: list[str] | None = None) -> int:
         except Exception:
             logger.exception("Failed to close shared HTTP client.")
 
-    mcp: FastMCP = FastMCP("eodhd-datasets", lifespan=_lifespan)
+    mcp: FastMCP = FastMCP("eodhd-datasets", lifespan=_lifespan, **protocol.server_options())
+    protocol.install(mcp)
     install_telemetry(mcp)
     register_all_tools(mcp)
     register_all_resources(mcp)

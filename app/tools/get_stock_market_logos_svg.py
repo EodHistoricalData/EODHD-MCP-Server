@@ -12,7 +12,7 @@ from app.response_formatter import ResourceResponse, format_text_response, raise
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="Stock & Market Logos (SVG)", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="Stock & Market Logos (SVG)", read_only_hint=True))
     async def get_stock_market_logos_svg(
         symbol: str,  # e.g. "AAPL.US", "RY.TO"
         api_token: str | None = None,  # per-call override

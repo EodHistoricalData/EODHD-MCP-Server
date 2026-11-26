@@ -16,7 +16,7 @@ ALLOWED_GROUPS = {"core", "extended", "all", "allowed"}
 
 
 def register(mcp: FastMCP):
-    @mcp.tool(annotations=ToolAnnotations(title="TradingHours: Markets List", readOnlyHint=True))
+    @mcp.tool(annotations=ToolAnnotations(title="TradingHours: Markets List", read_only_hint=True))
     async def get_mp_tradinghours_list_markets(
         group: str | None = None,  # core, extended, all, allowed (default: all)
         api_token: str | None = None,  # per-call override

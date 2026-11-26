@@ -50,7 +50,9 @@ async def _run_praams_report_equity_by_isin(
 
 def register(mcp: FastMCP):
     @mcp.tool(
-        annotations=ToolAnnotations(title="Praams: Equity Report (by ISIN)", readOnlyHint=False, idempotentHint=False)
+        annotations=ToolAnnotations(
+            title="Praams: Equity Report (by ISIN)", read_only_hint=False, idempotent_hint=False
+        )
     )
     async def get_mp_praams_report_equity_by_isin(
         isin: str,  # e.g. "US0378331005" (Apple)

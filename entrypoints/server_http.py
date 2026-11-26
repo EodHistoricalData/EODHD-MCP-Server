@@ -10,6 +10,7 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
+from app import protocol
 from app.api_client import install_token_redaction
 from app.prompts import register_all as register_all_prompts
 from app.resources import register_all as register_all_resources
@@ -21,7 +22,8 @@ load_dotenv()
 
 
 def main() -> None:
-    mcp = FastMCP("eodhd-datasets")
+    mcp = FastMCP("eodhd-datasets", **protocol.server_options())
+    protocol.install(mcp)
     register_all_tools(mcp)
     register_all_resources(mcp)
     register_all_prompts(mcp)
