@@ -20,7 +20,7 @@ mypy app/ server.py --ignore-missing-imports --explicit-package-bases
 # Security
 bandit -r app/ -ll -ii -x app/resources/
 semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
-pip-audit --ignore-vuln PYSEC-2026-3447
+pip-audit
 
 # Run server
 python server.py

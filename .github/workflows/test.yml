@@ -61,6 +61,6 @@ jobs:
       - name: Run semgrep (SAST + taint)
         run: pipx run semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
       - name: Run pip-audit
-        # Python 3.12: dnspython/filelock/pygments resolve to fixed releases, no ignores needed.
-        # PYSEC-2026-3447: setuptools of the runner build env, not shipped in the image.
-        run: pip-audit --ignore-vuln PYSEC-2026-3447
+        # Python 3.12: dnspython/filelock/pygments resolve to fixed releases and the runner has
+        # no vulnerable setuptools, so no ignores are needed.
+        run: pip-audit
