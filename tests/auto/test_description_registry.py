@@ -50,6 +50,8 @@ STABLE_ANCHORS = {
     (2, 78): "websockets-realtime.md",
     (2, 79): "real-estate-countries.md",
     (2, 83): "congressional-trades.md",
+    (2, 88): "etf-holdings.md",
+    (2, 89): "etf-held-by.md",
     (1, 1): "free.md",
     (3, 1): "api-authentication-demo-access.md",
 }

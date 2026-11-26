@@ -28,6 +28,8 @@ MAIN_TOOLS: list[str] = [
     "get_insider_transactions",
     "get_insider_transactions_form4",
     "get_congressional_trades",
+    "get_etf_holdings",
+    "get_etf_held_by",
     "sec_filings",
     "get_asx_corporate_actions",
     "get_historical_commodity_prices",
