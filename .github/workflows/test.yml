@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - name: Install dependencies and linters
         run: pip install -r requirements.txt ruff mypy
       - name: Ruff check
@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - name: Install dependencies
         run: pip install -r requirements.txt bandit pip-audit
       - name: Run bandit (SAST)
@@ -61,4 +61,6 @@ jobs:
       - name: Run semgrep (SAST + taint)
         run: pipx run semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
       - name: Run pip-audit
-        run: pip-audit --ignore-vuln CVE-2026-4539 --ignore-vuln PYSEC-2026-3447  # pygments 2.19.2 (no fix) + setuptools build-env advisory
+        # Python 3.12: dnspython/filelock/pygments resolve to fixed releases, no ignores needed.
+        # PYSEC-2026-3447: setuptools of the runner build env, not shipped in the image.
+        run: pip-audit --ignore-vuln PYSEC-2026-3447

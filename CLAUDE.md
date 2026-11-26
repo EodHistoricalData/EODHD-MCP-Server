@@ -2,7 +2,7 @@
 MCP server exposing 88 EODHD financial data API tools via HTTP, SSE, and stdio transports.
 
 ## Stack
-Python 3.10+, FastMCP >=3.4, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
+Python 3.12+, FastMCP >=3.4, httpx (async HTTP), Ruff, MyPy, pytest, Bandit, Semgrep, pip-audit
 
 ## Commands
 ```bash
@@ -20,7 +20,7 @@ mypy app/ server.py --ignore-missing-imports --explicit-package-bases
 # Security
 bandit -r app/ -ll -ii -x app/resources/
 semgrep scan --config p/python --config p/owasp-top-ten --config p/secrets --config p/jwt --error app/
-pip-audit --ignore-vuln CVE-2026-4539
+pip-audit --ignore-vuln PYSEC-2026-3447
 
 # Run server
 python server.py
@@ -133,8 +133,8 @@ intentional and must not be "fixed" to raise exceptions. Rationale:
 
 ## CI Pipeline
 Three jobs: lint, test, security.
-- Lint: Python 3.10, Ruff + MyPy
-- Test: Python 3.10/3.11/3.12/3.13, `pytest tests/auto/`
+- Lint: Python 3.12, Ruff + MyPy
+- Test: Python 3.12/3.13, `pytest tests/auto/`
 - Security: Bandit, Semgrep, pip-audit
 
 ## Forbidden
