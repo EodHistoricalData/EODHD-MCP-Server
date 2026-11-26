@@ -322,6 +322,8 @@ _PAGE_REGISTRY: dict[int, dict[int, tuple[str, str]]] = {
         85: ("endpoints", "asx-corporate-actions.md"),
         86: ("endpoints", "historical-commodity-prices.md"),
         87: ("endpoints", "insider-transactions-form4.md"),
+        88: ("endpoints", "etf-holdings.md"),
+        89: ("endpoints", "etf-held-by.md"),
     },
     # type 3 — general reference
     3: {

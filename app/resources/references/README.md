@@ -16,7 +16,7 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 |------|----------|----------|-------------|
 | 0 | Global README | — | This help page |
 | 1 | Subscription Plans | 1–7 | EODHD subscription tiers and features |
-| 2 | Endpoint Documentation | 1–83 | Per-endpoint API reference |
+| 2 | Endpoint Documentation | 1–89 | Per-endpoint API reference |
 | 3 | General Reference | 1–28 | Authentication, formats, guides, FAQ |
 
 ## Quick Reference
@@ -33,7 +33,7 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 6 | All-In-One Extended Fundamentals |
 | 7 | Calendar Feed |
 
-### Type 2 — Endpoint Documentation (ids 1–83)
+### Type 2 — Endpoint Documentation (ids 1–89)
 
 | ID | Page |
 |----|------|
@@ -120,6 +120,8 @@ Call `retrieve_description_by_id` with a **type** and an **id** to retrieve a sp
 | 81 | Real Estate Detailed Series |
 | 82 | Real Estate Selected Prices |
 | 83 | Congressional Trades |
+| 88 | ETF Holdings (beta) |
+| 89 | ETF Held By (beta) |
 
 ### Type 3 — General Reference (ids 1–28)
 
