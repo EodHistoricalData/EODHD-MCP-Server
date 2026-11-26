@@ -58,7 +58,7 @@ It also ships bundled MCP prompts and documentation resources.
 
 ## Requirements
 
-- Python `3.10+`
+- Python `3.12+`
 - A valid EODHD API key
 - An MCP-compatible client such as Claude Desktop, Claude Code, ChatGPT MCP/Connectors, or MCP Inspector
 

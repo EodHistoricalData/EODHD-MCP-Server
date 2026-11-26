@@ -29,6 +29,11 @@
       }
     }
   },
+  "compatibility": {
+    "runtimes": {
+      "python": ">=3.12"
+    }
+  },
   "user_config": {
     "EODHD_API_KEY": {
       "type": "string",

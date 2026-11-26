@@ -3,7 +3,7 @@ name = "eodhd-mcp"
 version = "2.3.2"
 description = "MCP server for EODHD financial data APIs"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 authors = [{name = "EODHD", email = "support@eodhistoricaldata.com"}]
 dependencies = [
     "python-dotenv>=1.0.0",
@@ -37,7 +37,7 @@ build-backend = "hatchling.build"
 
 # --- Ruff ---
 [tool.ruff]
-target-version = "py310"
+target-version = "py312"
 line-length = 120
 src = ["app", "tests"]
 # ruff is a Python tool; don't lint/format the hand-written Markdown reference docs
@@ -73,6 +73,7 @@ ignore = [
     "PLR0917", # too-many-positional-args — same root cause as PLR0913 (API-shaped signatures)
     "PLR2004", # magic values are API constants (status codes, limits)
     "C901",    # complex functions tracked in code review report — refactor separately
+    "UP017",   # keep timezone.utc: app code stays importable on 3.10/3.11 for stdio users
     "PLR0912", # too-many-branches — same as C901, tracked for refactoring
     "PLR0915", # too-many-statements — same as C901
     "PLR0911", # too-many-return-statements — same as C901
@@ -109,7 +110,7 @@ quote-style = "double"
 
 # --- Mypy ---
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.12"
 warn_return_any = true
 disallow_untyped_defs = false
 check_untyped_defs = true
