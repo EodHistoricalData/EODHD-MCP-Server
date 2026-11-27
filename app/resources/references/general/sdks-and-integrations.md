@@ -54,7 +54,7 @@ Model Context Protocol server for AI assistants (Claude, ChatGPT).
 
 | Attribute | Value |
 |-----------|-------|
-| Language | Python 3.10+ |
+| Language | Python 3.12+ |
 | Status | Active (beta) |
 | Repository | [EODHD-MCP-Server](https://github.com/EodHistoricalData/EODHD-MCP-Server) |
 
