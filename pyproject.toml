@@ -73,7 +73,7 @@ ignore = [
     "PLR0917", # too-many-positional-args — same root cause as PLR0913 (API-shaped signatures)
     "PLR2004", # magic values are API constants (status codes, limits)
     "C901",    # complex functions tracked in code review report — refactor separately
-    "UP017",   # keep timezone.utc: app code stays importable on 3.10/3.11 for stdio users
+    "UP017",   # keep timezone.utc: a direct `python server.py` on 3.10/3.11 bypasses the version gates
     "PLR0912", # too-many-branches — same as C901, tracked for refactoring
     "PLR0915", # too-many-statements — same as C901
     "PLR0911", # too-many-return-statements — same as C901
